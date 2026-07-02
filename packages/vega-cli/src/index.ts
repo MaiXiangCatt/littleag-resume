@@ -1,12 +1,23 @@
 #!/usr/bin/env node
-import { pathToFileURL } from 'node:url'
+import { realpathSync } from 'node:fs'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { runVega } from './cli'
 
 export { runVega }
 
-const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
+export function isDirectRun(importMetaUrl: string, argvEntry: string | undefined): boolean {
+  if (!argvEntry) {
+    return false
+  }
 
-if (isDirectRun) {
+  try {
+    return realpathSync(fileURLToPath(importMetaUrl)) === realpathSync(argvEntry)
+  } catch {
+    return importMetaUrl === pathToFileURL(argvEntry).href
+  }
+}
+
+if (isDirectRun(import.meta.url, process.argv[1])) {
   runVega(process.argv.slice(2)).then((exitCode) => {
     process.exitCode = exitCode
   })
