@@ -1,11 +1,11 @@
 ---
 name: vega-breakdown
-description: 将 Vega Full workflow 中已批准的技术设计拆解为可并行实现的模块，生成 breakdown 文档，校验模块路径和职责边界，并通过 `vega module add` 登记模块、`vega doc set breakdown` 记录产物、完成 breakdown 阶段。用于活跃需求处于 `breakdown`、用户要求拆模块/任务拆解/并行开发规划，或 `vega next --json` 返回 `vega-breakdown` 时。此 Skill 不生成 OpenSpec、不写业务实现代码。
+description: 将 Vega Full workflow 中的技术设计拆解为可并行实现、可验收的模块，生成 breakdown 文档，校验模块路径和职责边界，并通过 `vega module add` 登记模块、`vega doc set breakdown` 记录产物、完成 breakdown 阶段。用于活跃需求处于 `breakdown`、用户要求拆模块/任务拆解/并行开发规划，或 `vega next --json` 返回 `vega-breakdown` 时。此 Skill 不生成 OpenSpec、不写业务实现代码。
 ---
 
 # Vega 模块拆解
 
-`vega-breakdown` 只服务 Full workflow。它把已批准的技术设计拆成后续 OpenSpec 和实现阶段可逐个推进的模块，并把模块状态写入 Vega CLI。
+`vega-breakdown` 只服务 Full workflow。它把技术设计拆成后续 OpenSpec 和实现阶段可逐个推进的模块，并把模块状态写入 Vega CLI。
 
 ## 硬性边界
 
@@ -14,7 +14,14 @@ description: 将 Vega Full workflow 中已批准的技术设计拆解为可并�
 - 不执行 `git commit`。
 - 不直接编辑 `.vega-harness/requirements/*.json`；模块登记必须使用 `vega module add`。
 - 不为了凑模块而拆分；每个模块必须有明确职责、路径边界和验收线索。
-- 不在用户确认模块拆解前执行 `vega complete`。
+- 不在模块拆解未完成零重叠校验前执行 `vega complete`。
+- 不把用户批准作为写入 breakdown、登记模块或推进阶段的默认前置条件；用户验收发生在产物生成和阶段推进之后。
+
+## 默认自主推进
+
+- 默认根据 TD 和代码边界生成模块拆解，完成零重叠校验后写入文档、登记模块并推进阶段。
+- 只有现有模块列表与新拆解冲突、需要删除/重命名模块、或模块边界无法做到低冲突时，才暂停询问用户。
+- 大模块默认继续拆分；如果无法继续拆分则写明原因和验收关注点，不因缺少用户即时接受而停下。
 
 ## 输入与产出
 
@@ -134,9 +141,9 @@ vega module list --json
 
 发现重叠时，先调整边界；调整不了就合并模块或抽共享模块。不要把有冲突的拆解交给后续阶段。
 
-### 5. 用户确认模块拆解
+### 5. 生成模块拆解并标出验收点
 
-向用户展示模块表，至少包含：
+在 breakdown 文档中写入模块表，至少包含：
 
 ```text
 模块名 | 职责 | 预计路径 | 依赖 | Size | 验收线索
@@ -149,7 +156,7 @@ vega module list --json
 - 哪些路径有潜在冲突以及如何规避；
 - 是否有被压缩或延期的范围。
 
-用户要求调整时，更新拆解并重新执行零重叠校验。只有用户明确批准后，才写入最终文档和登记模块。
+用户要求调整时，后续可更新拆解并重新执行零重叠校验。不要等待用户明确批准才写入最终文档和登记模块。
 
 ### 6. 写入 breakdown 文档
 
@@ -181,6 +188,7 @@ vega module list --json
 ## 并行计划
 ## 路径重叠校验
 ## 风险与开放项
+## 用户验收关注点
 ```
 
 要求：
@@ -200,7 +208,7 @@ vega doc set breakdown .vega-harness/docs/breakdown-<requirement-name>.md
 vega doc get breakdown --json
 ```
 
-然后按用户批准的顺序逐个登记模块：
+然后按拆解文档中的依赖顺序逐个登记模块：
 
 ```bash
 vega module add <module-name>
@@ -210,8 +218,8 @@ vega module list --json
 规则：
 
 - `vega module add` 是幂等的；已有同名模块时不会重复创建，但仍要核对状态；
-- 如果已有模块列表与新文档不一致，先停下来让用户确认是保留、追加还是重新规划。当前 CLI 没有删除或重命名模块命令，不能手改状态文件；
-- 不登记临时模块、占位模块或未获批准的模块。
+- 如果已有模块列表与新文档不一致，且不能通过幂等追加安全处理，先停下来让用户确认是保留、追加还是重新规划。当前 CLI 没有删除或重命名模块命令，不能手改状态文件；
+- 不登记临时模块或占位模块。
 
 ### 8. 推进阶段
 
@@ -233,8 +241,7 @@ vega next --json
 
 ## 失败与中断
 
-- 等待用户确认模块拆解时，保持 `breakdown` 为 `in_progress`。
-- 模块路径无法做到低冲突、TD 输入不足、现有模块状态与新拆解冲突时，不推进阶段。
+- 模块路径无法做到低冲突、TD 输入不足、现有模块状态与新拆解冲突且无法安全追加时，保持 `breakdown` 为 `in_progress`。
 - 已确认阻塞且无法继续时执行：
   ```bash
   vega fail --reason "<具体原因>"
@@ -245,7 +252,7 @@ vega next --json
 - breakdown 文档已写入并登记；
 - 模块职责、路径边界、依赖和验收线索清楚；
 - 模块之间已完成路径重叠校验；
-- 用户已批准拆解；
-- 所有批准模块已通过 `vega module add` 登记；
+- breakdown 文档已标出用户验收关注点；
+- 所有模块已通过 `vega module add` 登记；
 - 未写实现代码、未生成 OpenSpec；
 - `vega complete` 已把阶段推进到 `openspec`。

@@ -15,6 +15,12 @@ description: 基于已生成并登记的 OpenSpec change 执行 Vega 需求实�
 - 不绕过 TDD。生产代码必须有先失败过的测试支撑。
 - 不在测试或关键验证失败时执行 `vega complete`。
 
+## 默认自主推进
+
+- 默认根据 OpenSpec tasks 逐项实现、验证、勾选任务并推进阶段，不在每个任务组前等待用户批准。
+- 只有 OpenSpec 缺失、任务含义会导致明显错误实现、需要扩大需求范围、会触碰用户无关脏改动，或需要跳过 TDD/关键验证时，才暂停询问用户。
+- 实现后的代码、测试和验证结果在最终摘要中交给用户验收；用户指出问题时，回到 implementation 或 OpenSpec 修订后继续。
+
 ## 输入与产出
 
 输入：
@@ -82,7 +88,7 @@ vega doc get openspec_dir --json
 如果 `path` 为空：
 
 1. 检查 `openspec/changes/` 是否只有一个可用 change；
-2. 若能唯一确定，询问用户是否登记该路径；
+2. 若能唯一确定，直接通过 `vega doc set openspec_dir <path>` 登记该路径，并在摘要中说明；
 3. 否则停止并要求先运行 `vega-openspec`。
 
 从 `openspec_dir` 推导 `<change-name>`，然后执行：
@@ -117,14 +123,14 @@ openspec instructions apply --change <change-name> --json
 - 应运行的测试命令；
 - 是否涉及 OpenAPI 契约和代码生成。
 
-如果任务不清楚，先问用户或回到 OpenSpec 产物修订；不要猜着实现。
+如果任务不清楚，先尝试从 spec scenario、design 和相关代码中收敛为最小实现假设，并把假设写回 `tasks.md` 或最终摘要；仍无法安全判断时才问用户或回到 OpenSpec 产物修订。
 
 Full workflow 规则：
 
 - 按 `vega module list --json` 的 pending 模块逐个推进；模块间有依赖时按 `design.md` 的依赖顺序处理；
 - 只勾选当前模块对应的 tasks，避免把其他模块的任务批量标完成；
 - 当前模块所有 tasks、相关测试和 OpenSpec validation 通过后，执行 `vega module complete <module-name>`；
-- 已 completed 模块如果需要返工，先说明原因并让用户确认是否重新打开需求范围；当前 CLI 没有 module retry/reopen，不能手改状态文件。
+- 已 completed 模块如果需要返工，先判断是否能作为当前 pending 模块的必要修复处理；如果需要重新打开模块状态或扩大范围，才向用户确认。当前 CLI 没有 module retry/reopen，不能手改状态文件。
 
 ### 4. TDD 循环
 

@@ -1,19 +1,26 @@
 ---
 name: vega-openspec
-description: 将已经确认的 Vega 需求设计转成 OpenSpec spec-driven change，生成 proposal、specs、design、tasks 等实现前规约产物，并通过 `vega doc set openspec_dir` 记录产物目录、完成 openspec 阶段。用于活跃需求处于 `openspec`、用户要求生成 OpenSpec/规约/任务/契约变更，或 `vega next --json` 返回 `vega-openspec` 时。此 Skill 不写业务实现代码。
+description: 将 Vega 需求设计转成 OpenSpec spec-driven change，生成 proposal、specs、design、tasks 等实现前规约产物，并通过 `vega doc set openspec_dir` 记录产物目录、完成 openspec 阶段。用于活跃需求处于 `openspec`、用户要求生成 OpenSpec/规约/任务/契约变更，或 `vega next --json` 返回 `vega-openspec` 时。此 Skill 不写业务实现代码。
 ---
 
 # Vega OpenSpec 生成
 
-把 brainstorm / tech design 中已经确认的需求，转成可实施的 OpenSpec change。Lite workflow 按“一个活跃需求对应一个主 OpenSpec change”执行；Full workflow 必须读取 `vega module list --json`，在同一个 change 内按模块组织 capabilities、design 和 tasks，确保后续实现可以逐个模块推进并调用 `vega module complete`。
+把 brainstorm / tech design 中的需求，转成可实施、可验收的 OpenSpec change。Lite workflow 按“一个活跃需求对应一个主 OpenSpec change”执行；Full workflow 必须读取 `vega module list --json`，在同一个 change 内按模块组织 capabilities、design 和 tasks，确保后续实现可以逐个模块推进并调用 `vega module complete`。
 
 ## 硬性边界
 
 - 不编写业务实现代码，不新增生产逻辑，不修改测试来适配未来实现。
 - 不执行 `git commit`。
 - 不直接编辑 `.vega-harness/requirements/*.json`；所有文档关联通过 `vega doc set/get`。
-- 不在 OpenSpec 规约未验证、未获用户批准前执行 `vega complete`。
-- 不把缺失的需求、接口、验收规则猜成事实；关键歧义先问用户。
+- 不在 OpenSpec 规约未验证通过前执行 `vega complete`。
+- 不把缺失的需求、接口、验收规则猜成事实；能安全假设的写入假设和验收关注点，不能安全假设的关键歧义才问用户。
+- 不把用户批准作为生成 OpenSpec 或推进阶段的默认前置条件；用户验收发生在产物生成和阶段推进之后。
+
+## 默认自主推进
+
+- 默认基于已登记产物和代码事实生成 OpenSpec artifacts，验证通过后登记并推进阶段。
+- 只有 change 命名冲突、已有 change 需要覆盖式修订、artifact instructions 缺少无法推断的必须上下文，或 OpenSpec 校验无法自动修复时，才暂停询问用户。
+- 所有非阻塞不确定性写入 `proposal.md`、`design.md` 或 `tasks.md` 的风险/开放项/验收关注点。
 
 ## 输入与产出
 
@@ -36,7 +43,7 @@ description: 将已经确认的 Vega 需求设计转成 OpenSpec spec-driven cha
 
 ## 执行流程
 
-为以下步骤建立任务清单并逐步更新状态。不要把等待用户确认的关卡标记为完成。
+为以下步骤建立任务清单并逐步更新状态。不要把非阻塞验收点当作暂停关卡。
 
 ### 1. 恢复 Vega 上下文
 
@@ -101,7 +108,7 @@ vega module list --json
 
 要求：
 
-- 至少存在一个模块；如果为空，说明 breakdown 阶段未登记模块，应返回 `vega-breakdown` 或让用户确认先补模块；
+- 至少存在一个模块；如果为空，说明 breakdown 阶段未登记模块，应返回 `vega-breakdown` 补模块；
 - breakdown 文档中的模块名必须能与 `vega module list --json` 对齐；
 - 只把 `pending` 和 `completed` 作为合法状态；其他状态视为 CLI state 异常；
 - `completed` 模块仍可作为上下文读取，但本阶段重点为尚未形成清晰规约的 pending 模块；
@@ -130,9 +137,9 @@ vega module list --json
 
 - 使用 kebab-case；
 - 表达需求目标，不使用 `misc-change`、`update-stuff`；
-- 如果 `openspec/changes/<change-name>/` 已存在，先读取现有状态并询问用户是继续、覆盖式修订，还是创建新名称；
+- 如果 `openspec/changes/<change-name>/` 已存在，先读取现有状态；能判断为同一需求的未完成 change 时继续修订，不能安全判断或需要覆盖式重写时才询问用户；
 - 禁止删除已有 change 目录来“重新开始”。
-- Full workflow 默认仍使用一个主 change，模块名体现在 specs capability、design 小节和 tasks 分组中；只有用户明确要求或模块间完全独立时，才拆成多个 change。
+- Full workflow 默认仍使用一个主 change，模块名体现在 specs capability、design 小节和 tasks 分组中；只有用户明确要求或模块间完全独立且一个主 change 会制造明显耦合风险时，才拆成多个 change。
 
 ### 5. 创建或恢复 OpenSpec change
 
@@ -182,7 +189,7 @@ openspec instructions <artifact-id> --change <change-name> --json
 - `specs` 不是可选项；没有 specs 不允许生成 tasks；
 - Full workflow 中，`proposal.md` 必须列出模块清单和模块间依赖；`design.md` 必须按模块说明职责边界；`tasks.md` 必须按模块分组，每个模块至少包含测试、实现、验证步骤；
 - 不把 `context`、`rules` 等 OpenSpec 指令块原样复制进文件；
-- 如果 artifact instructions 缺少必须上下文，先问用户，不要猜。
+- 如果 artifact instructions 缺少必须上下文，先尝试从已登记产物和代码事实补齐；仍无法补齐且会影响规约正确性时再问用户。
 
 ### 7. Artifact 质量门禁
 
@@ -204,11 +211,9 @@ openspec status --change <change-name> --json
 
 如果校验失败，修复 OpenSpec 产物后重跑。不要在校验失败时推进 Vega 阶段。
 
-### 8. 用户审查关卡
+### 8. 产后验收说明
 
-向用户报告 change 目录和关键文件，请用户审查。用户要求修改时，修改后重新执行质量门禁。
-
-只有用户明确批准 OpenSpec 产物后，才进入阶段完成。
+在 OpenSpec 产物中标出用户验收关注点，至少覆盖范围边界、关键 Requirement/Scenario、任务拆分和仍需后续确认的假设。用户要求修改时，后续可修订产物并重新执行质量门禁。不要等待用户明确批准才进入阶段完成。
 
 ### 9. 关联产物并推进阶段
 
@@ -230,7 +235,7 @@ vega next --json
 
 ## 失败与中断
 
-- 等待用户审查或关键澄清时，保持 `openspec` 为 `in_progress`。
+- 关键澄清无法安全假设、或校验失败无法自动修复时，保持 `openspec` 为 `in_progress`。
 - OpenSpec CLI 不可用、schema 不匹配、artifact 校验失败且无法自动修复时，执行：
   ```bash
   vega fail --reason "<具体原因>"
@@ -241,7 +246,7 @@ vega next --json
 
 - 所有必要 OpenSpec artifacts 已生成；
 - `openspec validate <change-name> --strict --json` 通过；
-- 用户已批准书面产物；
+- OpenSpec 产物已生成、验证、登记，并标出用户验收关注点；
 - `documents.openspec_dir` 已登记；
 - 未产生业务实现代码；
 - `vega complete` 已把阶段推进到 `implementation`。

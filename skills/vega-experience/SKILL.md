@@ -18,6 +18,12 @@ description: 处理 Vega workflow 的失败态和复盘沉淀：当 `vega next -
 - 不执行 `git commit`。
 - 不为了“修复失败”扩大需求范围；只做解除当前失败所需的最小改动。
 
+## 默认自主推进
+
+- 默认收集证据、定位根因、做安全的最小修复、写经验文档、登记并执行 `vega retry`，不等待用户逐项批准。
+- 如果当前阶段未标记 failed，但用户提供了明确 CI/lint/test/build/OpenSpec 失败，默认先复盘和修复；只有需要改变 Vega 状态为 failed 时，才要求用户明确授权。
+- 只有根因需要需求变更、外部系统动作、扩大范围、破坏性操作，或证据不足且无法通过最小命令复现时，才暂停询问用户。
+
 ## 输入与产出
 
 输入：
@@ -61,7 +67,7 @@ git log -n 5 --oneline
 如果当前 phase 不是 failed：
 
 - 用户只是要求复盘：可以写经验文档，但不要执行 `vega retry`；
-- 用户要求处理 CI 失败但状态未 failed：先确认是否需要执行 `vega fail --reason "<原因>"`；没有用户确认时不要改状态。
+- 用户要求处理 CI 失败但状态未 failed：先收集证据并修复；只有确实需要把状态改成 failed 时，才确认是否执行 `vega fail --reason "<原因>"`。没有用户确认时不要改状态。
 
 ### 2. 读取关联产物
 
@@ -147,7 +153,7 @@ openspec validate --all --strict --json
 
 - 不直接在 implementation 中硬改需求；
 - 修改对应 OpenSpec / docs 后重新验证；
-- 必要时保持当前阶段 failed，等待用户确认需求变更。
+- 必要时保持当前阶段 failed，等待用户确认需求变更；如果只是文字或任务一致性修复，可直接修订并记录。
 
 ### 6. 写经验文档
 
@@ -239,11 +245,11 @@ vega requirement status --json
 - phase 状态恢复为 `in_progress`；
 - `vega next --json` 返回原阶段 Skill，不再返回 `vega-experience`。
 
-如果用户要求“修复并继续”，在 `vega retry` 后按照 `vega next --json` 路由到原阶段 Skill；否则输出恢复摘要，让用户选择是否继续。
+如果用户要求“修复并继续”或当前请求语义是继续推进，在 `vega retry` 后按照 `vega next --json` 路由到原阶段 Skill；否则输出恢复摘要和下一步。
 
 ## 失败与中断
 
-- 证据不足：要求用户提供原始日志或允许补跑最小复现命令。
+- 证据不足且无法通过最小复现命令补齐：要求用户提供原始日志。
 - 修复超出当前需求范围：停止并说明需要新需求或用户确认。
 - 工具链不可用：记录环境阻塞，不执行 `vega retry`。
 - 经验文档无法写入：先修复路径或权限，不跳过沉淀。
