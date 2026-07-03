@@ -24,14 +24,14 @@ spec-check:        ## 检查 OpenSpec 变更与 OpenAPI 契约一致性
 	pnpm --filter web spec:check
 generate:          ## 从 OpenAPI 契约生成 TS client 与 Go stub
 	pnpm --filter web gen:api
-	cd apps/server && oapi-codegen -config config.yaml ../../contracts/openapi.yaml
+	cd apps/server && go tool oapi-codegen -config oapi-codegen.yaml ../../contracts/openapi/openapi.yaml
 
 # ---- 静态检查 ----
 lint: lint-web lint-server lint-cli  ## 全量 lint
 lint-web:          ## ESLint + tsc
 	pnpm --filter web lint
-lint-server:       ## go vet + golangci-lint
-	cd apps/server && go vet ./... && golangci-lint run
+lint-server:       ## go vet
+	$(MAKE) -C apps/server lint
 lint-cli:          ## CLI 自身 lint
 	pnpm --filter @vega-resume/vega-cli lint
 
@@ -40,7 +40,7 @@ test: test-web test-server test-cli  ## 全量单元测试
 test-web:          ## Vitest + RTL
 	pnpm --filter web test
 test-server:       ## Go test
-	cd apps/server && go test ./...
+	$(MAKE) -C apps/server test
 test-cli:          ## CLI 单元测试
 	pnpm --filter @vega-resume/vega-cli test
 tdd-check:         ## 综合执行所有测试层，返回 red/green 状态
@@ -54,7 +54,7 @@ build: build-web build-server build-cli  ## 全栈构建
 build-web:         ## 构建前端
 	pnpm --filter web build
 build-server:      ## 构建后端
-	cd apps/server && go build -o ../../dist/server ./cmd/api
+	$(MAKE) -C apps/server build
 build-cli:         ## 构建 vega CLI
 	pnpm --filter @vega-resume/vega-cli build
 storybook:         ## 启动 Storybook UI 隔离开发环境

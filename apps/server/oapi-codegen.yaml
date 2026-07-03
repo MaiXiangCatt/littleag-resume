@@ -1,0 +1,8 @@
+package: generated
+output: internal/generated/auth.gen.go
+generate:
+  models: true
+  gin-server: true
+  embedded-spec: true
+output-options:
+  skip-prune: true

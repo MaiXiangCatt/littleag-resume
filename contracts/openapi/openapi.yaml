@@ -1,0 +1,406 @@
+openapi: 3.0.3
+info:
+  title: VegaResume Auth API
+  version: 0.1.0
+  description: Contract for Home Page authentication MVP.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/auth/register:
+    post:
+      operationId: registerAuthUser
+      tags:
+        - Auth
+      summary: Register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: Registered user and access token.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshTokenSetCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/auth/login:
+    post:
+      operationId: loginAuthUser
+      tags:
+        - Auth
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged-in user and access token.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshTokenSetCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '423':
+          description: ErrAccountLocked response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                ErrAccountLocked:
+                  value:
+                    code: 101009
+                    message: Account is temporarily locked.
+                    data: null
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/auth/me:
+    get:
+      operationId: getCurrentAuthUser
+      tags:
+        - Auth
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/auth/refresh:
+    post:
+      operationId: refreshAuthSession
+      tags:
+        - Auth
+      summary: Rotate refresh token and issue a new access token
+      parameters:
+        - $ref: '#/components/parameters/RefreshTokenCookie'
+      responses:
+        '200':
+          description: Refreshed user session.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshTokenSetCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: ErrRefreshTokenInvalid response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                ErrRefreshTokenInvalid:
+                  value:
+                    code: 101010
+                    message: Refresh token is invalid.
+                    data: null
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/auth/logout:
+    post:
+      operationId: logoutAuthUser
+      tags:
+        - Auth
+      summary: Revoke refresh token and clear cookie
+      parameters:
+        - $ref: '#/components/parameters/RefreshTokenCookie'
+      responses:
+        '200':
+          description: Logged out. Clears refresh_token cookie.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/ClearRefreshTokenSetCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    RefreshTokenCookie:
+      name: refresh_token
+      in: cookie
+      required: false
+      description: HttpOnly refresh token cookie.
+      schema:
+        type: string
+  headers:
+    RefreshTokenSetCookie:
+      description: HttpOnly refresh_token cookie scoped to authentication endpoints.
+      schema:
+        type: string
+        example: refresh_token=opaque; Path=/api/auth; Max-Age=604800; HttpOnly; SameSite=Lax
+    ClearRefreshTokenSetCookie:
+      description: Expired refresh_token cookie.
+      schema:
+        type: string
+        example: refresh_token=; Path=/api/auth; Max-Age=0; HttpOnly; SameSite=Lax
+  responses:
+    BadRequest:
+      description: Invalid request, including ErrUsernameFormatInvalid and validation errors.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            ErrUsernameFormatInvalid:
+              value:
+                code: 101008
+                message: Username format is invalid.
+                data: null
+    Unauthorized:
+      description: Authentication failed, token missing, token expired, or token invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            ErrTokenExpired:
+              value:
+                code: 101003
+                message: Token expired.
+                data: null
+            ErrTokenInvalid:
+              value:
+                code: 101004
+                message: Token invalid.
+                data: null
+    Conflict:
+      description: Duplicate email or username, including ErrUsernameExists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            ErrUsernameExists:
+              value:
+                code: 101007
+                message: Username already exists.
+                data: null
+    TooManyRequests:
+      description: ErrTooManyRequests response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            ErrTooManyRequests:
+              value:
+                code: 100006
+                message: Too many requests.
+                data: null
+    InternalServerError:
+      description: Server error response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    BaseResponse:
+      type: object
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: 0 for success; non-zero documented error code for failure.
+          example: 0
+        message:
+          type: string
+          description: Empty for success; human-readable message for failure.
+          example: ''
+        data:
+          nullable: true
+          description: Endpoint-specific payload, or null for errors.
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              example: 100001
+            message:
+              type: string
+              example: Request parameters are invalid.
+            data:
+              nullable: true
+              example: null
+    EmptyResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum:
+                - 0
+            message:
+              type: string
+              enum:
+                - ''
+            data:
+              nullable: true
+              example: null
+    AuthUser:
+      type: object
+      required:
+        - id
+        - username
+        - email
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          minLength: 2
+          maxLength: 32
+          example: zhangsan
+        email:
+          type: string
+          format: email
+          example: user@example.com
+    AuthPayload:
+      type: object
+      required:
+        - accessToken
+        - user
+      properties:
+        accessToken:
+          type: string
+          description: 15-minute bearer access token.
+        user:
+          $ref: '#/components/schemas/AuthUser'
+    AuthResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum:
+                - 0
+            message:
+              type: string
+              enum:
+                - ''
+            data:
+              $ref: '#/components/schemas/AuthPayload'
+    AuthUserResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum:
+                - 0
+            message:
+              type: string
+              enum:
+                - ''
+            data:
+              $ref: '#/components/schemas/AuthUser'
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - confirmPassword
+      properties:
+        username:
+          type: string
+          minLength: 2
+          maxLength: 32
+          pattern: '^[A-Za-z0-9_\u4e00-\u9fa5-]+$'
+          example: zhangsan
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          example: password1
+        confirmPassword:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          example: password1
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 128
+          example: password1
