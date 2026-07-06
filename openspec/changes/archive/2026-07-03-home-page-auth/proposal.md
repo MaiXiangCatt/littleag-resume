@@ -64,7 +64,6 @@ No breaking API changes are introduced because the project does not yet have an 
   - `apps/server/go.mod`
   - `apps/server/cmd/api/main.go`
   - `apps/server/config.yaml`
-  - `apps/server/migrations/`
   - `apps/server/internal/model/`
   - `apps/server/internal/repository/`
   - `apps/server/internal/service/`

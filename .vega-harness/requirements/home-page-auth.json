@@ -1,8 +1,8 @@
 {
   "name": "home-page-auth",
   "workflow": "full",
-  "status": "in_progress",
-  "current_phase": "verification",
+  "status": "completed",
+  "current_phase": "archive",
   "phases": {
     "init": {
       "status": "completed",
@@ -29,18 +29,21 @@
       "completed_at": "2026-07-03T03:34:49.436Z"
     },
     "verification": {
-      "status": "in_progress"
+      "status": "completed",
+      "completed_at": "2026-07-03T08:21:17.440Z"
     },
     "archive": {
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-07-03T08:22:37.909Z"
     }
   },
   "documents": {
     "prd": ".vega-harness/docs/prd-home-page-auth.md",
     "brainstorm": ".vega-harness/docs/brainstorm-home-page-auth.md",
     "tech_design": ".vega-harness/docs/tech-design-home-page-auth.md",
-    "openspec_dir": "openspec/changes/home-page-auth",
-    "breakdown": ".vega-harness/docs/breakdown-home-page-auth.md"
+    "openspec_dir": "openspec/changes/archive/2026-07-03-home-page-auth",
+    "breakdown": ".vega-harness/docs/breakdown-home-page-auth.md",
+    "verification_report": "docs/verification/home-page-auth-verification-2026-07-03.md"
   },
   "modules": [
     {
@@ -80,5 +83,5 @@
     }
   ],
   "created_at": "2026-07-02T08:30:05.780Z",
-  "updated_at": "2026-07-03T03:34:49.436Z"
+  "updated_at": "2026-07-03T08:22:37.909Z"
 }

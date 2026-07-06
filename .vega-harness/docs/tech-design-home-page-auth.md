@@ -56,18 +56,18 @@
 
 ### 方案 A：契约优先 + 轻量分层实现
 
-OpenAPI 放在 `contracts/openapi/openapi.yaml`，同步修正 Makefile/generator 配置。前端使用生成 client，加轻量 `fetch` wrapper 和认证 store；后端使用 Gin、`database/sql`、pgx driver、手写 repository、SQL migration；Refresh Token 只持久化 hash。
+OpenAPI 放在 `contracts/openapi/openapi.yaml`，同步修正 Makefile/generator 配置。前端使用生成 client，加轻量 `fetch` wrapper 和认证 store；后端使用 Gin、GORM、GORM PostgreSQL driver、手写 repository，schema 由 GORM `AutoMigrate` 和必要的 GORM 迁移 helper 管理；Refresh Token 只持久化 hash。
 
 收益：
 
 - 贴合当前空骨架，依赖数量可控。
 - 保持契约优先，符合 `CLAUDE.md`。
 - 前端、后端、契约、集成可以在 breakdown 阶段清晰拆分。
-- 手写 repository 对当前简单数据模型更直接，回滚成本低。
+- GORM 让模型、迁移和数据库操作统一落在 Go 数据层，减少 SQL 文件与 model 漂移。
 
 代价：
 
-- repository SQL 需要手写测试覆盖。
+- PostgreSQL partial unique index 仍需用 GORM migration helper 显式补齐并测试。
 - OpenAPI 生成配置需要一次性补齐。
 
 ### 方案 B：生成优先 + 强类型后端
@@ -244,8 +244,6 @@ interface AuthUser {
 apps/server/
 ├── cmd/api/main.go
 ├── config.yaml
-├── migrations/
-│   └── 000001_create_auth_tables.sql
 └── internal/
     ├── handler/
     ├── middleware/
@@ -259,7 +257,7 @@ apps/server/
 `apps/server/cmd/api/main.go` 负责：
 
 - 读取配置。
-- 初始化数据库连接。
+- 初始化 GORM 数据库连接并执行 schema migration。
 - 初始化 repository/service/handler。
 - 创建 Gin engine。
 - 注册全局 IP 限流 middleware。
@@ -316,7 +314,7 @@ Refresh Token 原文只出现在生成和 Cookie 写入过程；数据库仅存 
   - `RevokeByID`
   - `RevokeAllForUser`（可用于安全扩展，当前 logout 只要求当前 token）
 
-使用 `database/sql`，PostgreSQL driver 使用 pgx stdlib，例如 `github.com/jackc/pgx/v5/stdlib`。
+使用 GORM，PostgreSQL driver 使用 `gorm.io/driver/postgres`。仓储方法接收 `context.Context` 并通过 `WithContext` 执行查询；schema 通过 model tag + `AutoMigrate` 维护，active user 唯一索引用 GORM migration helper 创建 partial unique index。
 
 ### Model 层
 
@@ -634,7 +632,7 @@ Cookie：
 后端测试：
 
 - service 层单测覆盖注册、登录、失败计数锁定、refresh 轮换、logout、`/me` token 校验。
-- repository 层测试覆盖 users partial unique index、email normalized 查找、refresh token revoke/rotate。
+- repository 层测试覆盖 GORM AutoMigrate schema、users partial unique index、email normalized 查找、refresh token revoke/rotate。
 - handler 层使用 `httptest` 覆盖 HTTP 状态码、统一响应 body、Cookie 设置/清除。
 
 前端测试：
@@ -671,7 +669,7 @@ Cookie：
    - 输出：可生成的 OpenAPI 契约。
 
 2. `server-auth-core`
-   - 范围：Gin API、统一响应、错误码、users/refresh_tokens migration、repository/service/handler、JWT/bcrypt、refresh token 轮换、限流。
+   - 范围：Gin API、统一响应、错误码、users/refresh_tokens GORM migration、repository/service/handler、JWT/bcrypt、refresh token 轮换、限流。
    - 依赖：`contract-auth-api` 的契约。
    - 输出：后端认证接口和测试。
 
@@ -720,7 +718,7 @@ Cookie：
 
 - 2026-07-02：采用方案 A，契约优先 + 轻量分层实现。
 - 2026-07-02：OpenAPI 路径定为 `contracts/openapi/openapi.yaml`。
-- 2026-07-02：后端使用 Gin、`database/sql`、pgx stdlib、手写 repository。
+- 2026-07-03：后端数据库实现调整为 GORM + AutoMigrate + GORM repository，保留手写 repository 接口边界。
 - 2026-07-02：Refresh Token 仅存 hash。
 - 2026-07-02：AuthUser 返回 `id`、`username`、`email`。
 - 2026-07-02：数据库用户主键列使用 `id UUID`。

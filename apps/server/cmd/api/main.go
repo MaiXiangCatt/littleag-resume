@@ -1,10 +1,8 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"log"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/vega-resume/server/internal/config"
 	"github.com/vega-resume/server/internal/handler"
@@ -15,13 +13,20 @@ import (
 
 func main() {
 	cfg := config.Load()
-	db, err := sql.Open("pgx", cfg.DatabaseURL)
+	db, err := repository.OpenPostgres(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("open database: %v", err)
 	}
-	defer db.Close()
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("database handle: %v", err)
+	}
+	defer sqlDB.Close()
+	if err := repository.Migrate(context.Background(), db); err != nil {
+		log.Fatalf("migrate database: %v", err)
+	}
 
-	store := repository.NewPostgresStore(db)
+	store := repository.NewGormStore(db)
 	authService := service.NewAuthService(service.AuthServiceConfig{
 		Users:            store,
 		RefreshTokens:    store,

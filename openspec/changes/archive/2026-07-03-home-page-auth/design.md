@@ -44,11 +44,11 @@ The OpenAPI contract path SHALL be `contracts/openapi/openapi.yaml`. The current
 
 Alternative considered: keep root-level `contracts/openapi.yaml`. That conflicts with the existing directory boundary and repository guidance that contract files live under `contracts/openapi/`.
 
-### Decision 3: Use lightweight backend layering with `database/sql` and pgx
+### Decision 3: Use lightweight backend layering with GORM
 
-The backend will use Gin, `database/sql`, pgx stdlib, hand-written repositories, and SQL migrations under `apps/server/migrations/`.
+The backend will use Gin, GORM, the GORM PostgreSQL driver, and hand-written repositories backed by GORM. Database schema creation SHALL run through GORM `AutoMigrate` from model definitions. PostgreSQL indexes that GORM cannot express portably, such as active-record partial unique indexes, SHALL be created by a repository migration helper using GORM's SQL execution APIs rather than standalone migration files.
 
-Alternative considered: sqlc-generated repositories. That would provide stronger generated types, but it adds another generator while the project is still a skeleton. Hand-written repositories are sufficient for the initial users and refresh tokens model.
+Alternative considered: keep `database/sql` with standalone SQL migration files. That is explicit, but it splits schema truth between SQL files and Go models. GORM keeps schema, migration, and database operations in one backend data layer while avoiding an additional sqlc-style generator.
 
 ### Decision 4: Store refresh token hashes only
 
@@ -104,7 +104,6 @@ Primary paths:
 - `apps/server/go.mod`
 - `apps/server/cmd/api/main.go`
 - `apps/server/config.yaml`
-- `apps/server/migrations/`
 - `apps/server/internal/model/`
 - `apps/server/internal/repository/`
 - `apps/server/internal/service/`
@@ -115,8 +114,8 @@ Responsibilities:
 
 - Build Gin API server and register auth routes.
 - Implement `BaseResponse`, `AppError`, and auth DTO/model types.
-- Add users and refresh_tokens migrations.
-- Implement user and refresh token repositories using `database/sql`.
+- Add users and refresh_tokens GORM model migrations.
+- Implement user and refresh token repositories using GORM.
 - Implement auth service for register, login, me, refresh, logout, lockout, token signing, and token verification.
 - Implement handler tests and service/repository tests.
 
@@ -285,7 +284,7 @@ All responses use `BaseResponse`.
 ## Migration Plan
 
 1. Create the OpenAPI contract and generation foundation.
-2. Implement backend authentication using the generated contract and migrations.
+2. Implement backend authentication using the generated contract and GORM migrations.
 3. Implement frontend auth shell and Home UI in parallel after foundation.
 4. Integrate routing, proxy/CORS, and end-to-end flow.
 5. Run `make generate`, `make test-web`, `make test-server`, `make e2e`, `make lint`, and `make build`.
@@ -294,7 +293,7 @@ Rollback strategy:
 
 - This is new functionality on a skeleton app. If a module fails, keep the Vega module pending and do not mark it complete.
 - Revert generated contract/config changes as a unit if contract generation cannot be stabilized.
-- Refresh token persistence is introduced by a new migration; production rollback would require disabling auth routes before rolling back database changes.
+- Refresh token persistence is introduced by the GORM schema migration; production rollback would require disabling auth routes before rolling back database changes.
 
 ## Open Questions
 

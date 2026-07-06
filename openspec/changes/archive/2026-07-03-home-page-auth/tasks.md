@@ -10,10 +10,10 @@
 ## 2. server-auth-core
 
 - [x] 2.1 Tests: add backend model/service tests for registration validation, duplicate email, duplicate username, password strength, login success, invalid credentials, account lockout, token validation, refresh rotation, and logout revocation.
-- [x] 2.2 Tests: add repository tests for users partial unique indexes, email normalization lookup, refresh token hash lookup, refresh token revoke, and refresh token replacement behavior.
+- [x] 2.2 Tests: add repository tests for GORM AutoMigrate schema, users partial unique indexes, email normalization lookup, refresh token hash lookup, refresh token revoke, and refresh token replacement behavior.
 - [x] 2.3 Tests: add handler tests with `httptest` for register, login, me, refresh, logout, unified response envelopes, HTTP status codes, and refresh cookie set/clear behavior.
 - [x] 2.4 Implementation: add Gin server wiring, configuration loading, database connection, auth routes, and global IP rate limit middleware.
-- [x] 2.5 Implementation: add users and refresh_tokens migrations with active-record unique constraints and refresh token hash persistence.
+- [x] 2.5 Implementation: add users and refresh_tokens GORM migrations with active-record unique constraints and refresh token hash persistence.
 - [x] 2.6 Implementation: add model, repository, service, and handler layers for register, login, me, refresh, and logout.
 - [x] 2.7 Implementation: implement bcrypt password hashing, Access Token signing/validation, Refresh Token generation/hash/rotation/revocation, and account-level failed login lockout.
 - [x] 2.8 Verification: run `make test-server`, `make lint-server`, and `make build-server`.

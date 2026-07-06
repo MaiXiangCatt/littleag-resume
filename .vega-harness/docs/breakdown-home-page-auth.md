@@ -75,13 +75,13 @@
 ### server-auth-core
 
 - Description:
-  - 实现后端认证核心：Gin 路由、统一响应、数据库 migration、repository/service/handler、JWT/bcrypt、Refresh Token 轮换、全局 IP 限流和账号失败锁定。
+  - 实现后端认证核心：Gin 路由、统一响应、GORM migration、repository/service/handler、JWT/bcrypt、Refresh Token 轮换、全局 IP 限流和账号失败锁定。
   - 不修改前端 UI 或顶层前端路由。
 - Scope:
   - 启动 Gin server 并注册 `/api/auth/*`。
-  - 新增 users 和 refresh_tokens migration。
+  - 新增 users 和 refresh_tokens GORM migration。
   - 实现 `internal/model`、`internal/repository`、`internal/service`、`internal/handler`、`internal/middleware`。
-  - 使用 `database/sql` + pgx stdlib 连接 PostgreSQL。
+  - 使用 GORM + PostgreSQL driver 连接 PostgreSQL。
   - 实现 bcrypt、Access Token、Refresh Token hash 存储与轮换。
   - 实现账号维度失败 5 次锁定 15 分钟。
   - 实现全局 IP 内存限流。
@@ -93,7 +93,6 @@
   - `apps/server/go.mod`
   - `apps/server/cmd/api/main.go`
   - `apps/server/config.yaml`
-  - `apps/server/migrations/`
   - `apps/server/internal/model/`
   - `apps/server/internal/repository/`
   - `apps/server/internal/service/`

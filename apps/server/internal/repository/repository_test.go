@@ -3,12 +3,12 @@ package repository_test
 import (
 	"context"
 	"errors"
-	"os"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
 	"github.com/vega-resume/server/internal/model"
 	"github.com/vega-resume/server/internal/repository"
@@ -99,24 +99,95 @@ func TestRefreshTokenRepositoryLookupRevokeAndReplacement(t *testing.T) {
 	}
 }
 
-func TestPostgresMigrationsDefineAuthPersistenceConstraints(t *testing.T) {
-	content, err := os.ReadFile("../../migrations/001_auth.sql")
-	if err != nil {
-		t.Fatalf("read migration: %v", err)
-	}
-	migration := string(content)
+func TestGormMigrationDefinesAuthPersistenceConstraints(t *testing.T) {
+	db := openTestGormStore(t)
+	migrator := db.Migrator()
 
-	for _, expected := range []string{
-		"CREATE TABLE IF NOT EXISTS users",
-		"CREATE UNIQUE INDEX IF NOT EXISTS users_email_active_uidx",
-		"WHERE deleted_at IS NULL",
-		"CREATE UNIQUE INDEX IF NOT EXISTS users_username_active_uidx",
-		"CREATE TABLE IF NOT EXISTS refresh_tokens",
-		"token_hash TEXT NOT NULL UNIQUE",
-		"replaced_by_token_id UUID NULL",
-	} {
-		if !strings.Contains(migration, expected) {
-			t.Fatalf("migration must contain %q", expected)
+	for _, table := range []any{&model.User{}, &model.RefreshToken{}} {
+		if !migrator.HasTable(table) {
+			t.Fatalf("expected table for %T", table)
 		}
 	}
+	for _, index := range []string{
+		"users_email_active_uidx",
+		"users_username_active_uidx",
+		"idx_refresh_tokens_token_hash",
+		"idx_refresh_tokens_user_id",
+	} {
+		if !migrator.HasIndex(&model.RefreshToken{}, index) && !migrator.HasIndex(&model.User{}, index) {
+			t.Fatalf("expected migrated index %q", index)
+		}
+	}
+}
+
+func TestGormRepositoryPersistsAuthRecords(t *testing.T) {
+	ctx := context.Background()
+	db := openTestGormStore(t)
+	store := repository.NewGormStore(db)
+
+	user := &model.User{
+		ID:              uuid.New(),
+		Username:        "wangwu",
+		Email:           "Wangwu@Example.com",
+		EmailNormalized: "wangwu@example.com",
+		PasswordHash:    "hash",
+	}
+	if err := store.CreateUser(ctx, user); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	found, err := store.FindActiveUserByEmailNormalized(ctx, "wangwu@example.com")
+	if err != nil {
+		t.Fatalf("lookup user: %v", err)
+	}
+	if found.ID != user.ID || found.Username != "wangwu" {
+		t.Fatalf("unexpected user: %+v", found)
+	}
+
+	if err := store.CreateUser(ctx, &model.User{
+		ID:              uuid.New(),
+		Username:        "other",
+		Email:           "other@example.com",
+		EmailNormalized: "wangwu@example.com",
+		PasswordHash:    "hash",
+	}); !errors.Is(err, repository.ErrDuplicateEmail) {
+		t.Fatalf("expected duplicate email, got %v", err)
+	}
+
+	oldToken := &model.RefreshToken{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		TokenHash: "gorm-old-hash",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	if err := store.CreateRefreshToken(ctx, oldToken); err != nil {
+		t.Fatalf("create token: %v", err)
+	}
+	newID := uuid.New()
+	if err := store.RevokeRefreshToken(ctx, oldToken.ID, &newID, time.Now()); err != nil {
+		t.Fatalf("revoke token: %v", err)
+	}
+	if _, err := store.FindActiveRefreshTokenByHash(ctx, "gorm-old-hash"); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("expected revoked token lookup to miss, got %v", err)
+	}
+}
+
+func openTestGormStore(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	db, err := gorm.Open(sqlite.Open("file:"+uuid.NewString()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := repository.Migrate(ctxWithTestTimeout(t), db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	return db
+}
+
+func ctxWithTestTimeout(t *testing.T) context.Context {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	t.Cleanup(cancel)
+	return ctx
 }
