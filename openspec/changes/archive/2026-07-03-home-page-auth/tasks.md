@@ -23,8 +23,8 @@
 - [x] 3.1 Tests: add frontend tests for auth store state transitions, `http.client` unified response handling, Authorization header injection, credentialed refresh/logout requests, and single refresh retry behavior.
 - [x] 3.2 Tests: add AuthModal tests for login/register tab defaults, username/email/password/confirmPassword validation, backend error-code mapping, loading state, and duplicate-submit prevention.
 - [x] 3.3 Tests: add Console and auth hook tests for bootstrap success, bootstrap failure, logout, and current-user loading.
-- [x] 3.4 Implementation: add `AuthUser`, API error, form models, and validation schemas under `apps/web/src/models/`.
-- [x] 3.5 Implementation: add in-memory auth store with Access Token, current user, and status actions under `apps/web/src/store/`.
+- [x] 3.4 Implementation: add `AuthUser`, API error, form models, and validation schemas under `apps/web/src/shared/auth/model/`.
+- [x] 3.5 Implementation: add in-memory auth store with Access Token, current user, and status actions under `apps/web/src/shared/auth/store/`.
 - [x] 3.6 Implementation: add `services/http.client.ts` and `services/auth.service.ts` using generated OpenAPI client output.
 - [x] 3.7 Implementation: add `useAuth`, `useAuthBootstrap`, and `useHomeGuard` hooks.
 - [x] 3.8 Implementation: add AuthModal, LoginForm, RegisterForm, and minimal Console page without wiring top-level routing.
@@ -35,14 +35,14 @@
 - [x] 4.1 Tests: add Home Page UI tests for AppHeader actions slot, sticky scroll styling, Hero content, placeholder preview, features cards, footer, and example preview action.
 - [x] 4.2 Tests: add responsive checks for 375px layout without horizontal overflow and Dialog-compatible entry points.
 - [x] 4.3 Implementation: add shared AppHeader UI with actions slot and logged-in user menu surface.
-- [x] 4.4 Implementation: add HomePage, HeroSection, ExamplePreview, FeaturesSection, and Footer under `apps/web/src/ui/pages/home/`.
+- [x] 4.4 Implementation: add HomePage, HeroSection, ExamplePreview, FeaturesSection, and Footer under `apps/web/src/pages/home/ui/`.
 - [x] 4.5 Implementation: ensure Home Page exposes callback props for login, registration, and view-example interactions without owning authentication business logic.
 - [x] 4.6 Verification: run `make test-web`, `make lint-web`, and `make build-web`.
 
 ## 5. integration-auth-flow
 
 - [x] 5.1 Tests: add integration or e2e coverage for unauthenticated home render, registration to Console, login to Console, refresh-based session restoration, logout, authenticated home redirect, and Console guard failure.
-- [x] 5.2 Implementation: replace Vite starter entry with Router mounting in `apps/web/src/main.tsx` and app shell routing in `apps/web/src/ui/App.tsx`.
+- [x] 5.2 Implementation: replace Vite starter entry with Router mounting in `apps/web/src/main.tsx` and app shell routing in `apps/web/src/app/App.tsx`.
 - [x] 5.3 Implementation: wire HomePage callbacks to AuthModal, auth store, auth bootstrap, Home guard, and Console guard.
 - [x] 5.4 Implementation: configure Vite proxy or backend CORS/credentials behavior so Refresh Token cookies work in local development.
 - [x] 5.5 Verification: run `make test-web`, `make test-server`, `make e2e`, `make lint`, and `make build`.

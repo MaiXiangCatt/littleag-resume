@@ -55,7 +55,7 @@ expectIncludes('Makefile', makefile, [
 
 expectIncludes('orval config', orvalConfig, [
   '../../contracts/openapi/openapi.yaml',
-  'src/services/generated',
+  'src/shared/api/generated',
 ]);
 
 expectIncludes('oapi-codegen config', oapiConfig, [

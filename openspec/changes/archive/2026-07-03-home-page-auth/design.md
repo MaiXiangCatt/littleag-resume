@@ -74,7 +74,7 @@ Primary paths:
 - `docs/designAndPrd/api_response_and_error_codes.md`
 - `apps/web/package.json`
 - `apps/web/orval.config.ts`
-- `apps/web/src/services/generated/`
+- `apps/web/src/shared/api/generated/`
 - `apps/server/oapi-codegen.yaml`
 - `apps/server/internal/generated/`
 - `apps/web/src/index.css`
@@ -156,15 +156,15 @@ CREATE TABLE refresh_tokens (
 
 Primary paths:
 
-- `apps/web/src/models/`
-- `apps/web/src/store/`
-- `apps/web/src/hooks/useAuth.ts`
-- `apps/web/src/hooks/useAuthBootstrap.ts`
-- `apps/web/src/hooks/useHomeGuard.ts`
-- `apps/web/src/services/http.client.ts`
-- `apps/web/src/services/auth.service.ts`
-- `apps/web/src/ui/pages/console/`
-- `apps/web/src/ui/pages/home/components/AuthModal/`
+- `apps/web/src/shared/auth/model/`
+- `apps/web/src/shared/auth/store/`
+- `apps/web/src/shared/auth/hooks/useAuth.ts`
+- `apps/web/src/shared/auth/hooks/useAuthBootstrap.ts`
+- `apps/web/src/shared/auth/hooks/useHomeGuard.ts`
+- `apps/web/src/shared/http/http.client.ts`
+- `apps/web/src/shared/auth/api/auth.service.ts`
+- `apps/web/src/pages/console/ui/`
+- `apps/web/src/pages/home/ui/components/AuthModal/`
 
 Responsibilities:
 
@@ -179,12 +179,12 @@ Responsibilities:
 
 Primary paths:
 
-- `apps/web/src/ui/shared/AppHeader/`
-- `apps/web/src/ui/pages/home/HomePage.tsx`
-- `apps/web/src/ui/pages/home/components/HeroSection/`
-- `apps/web/src/ui/pages/home/components/FeaturesSection/`
-- `apps/web/src/ui/pages/home/components/Footer/`
-- `apps/web/src/ui/pages/home/components/ExamplePreview/`
+- `apps/web/src/shared/layout/AppHeader/`
+- `apps/web/src/pages/home/ui/HomePage.tsx`
+- `apps/web/src/pages/home/ui/components/HeroSection/`
+- `apps/web/src/pages/home/ui/components/FeaturesSection/`
+- `apps/web/src/pages/home/ui/components/Footer/`
+- `apps/web/src/pages/home/ui/components/ExamplePreview/`
 
 Responsibilities:
 
@@ -199,7 +199,7 @@ Responsibilities:
 Primary paths:
 
 - `apps/web/src/main.tsx`
-- `apps/web/src/ui/App.tsx`
+- `apps/web/src/app/App.tsx`
 - `apps/web/vite.config.ts`
 - `apps/web/e2e/`
 - `apps/web/src/**/*.integration.test.tsx`

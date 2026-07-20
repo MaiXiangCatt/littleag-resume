@@ -41,7 +41,7 @@ No breaking API changes are introduced because the project does not yet have an 
   - `contracts/openapi/openapi.yaml`
   - `Makefile`
   - `apps/web/orval.config.ts`
-  - `apps/web/src/services/generated/`
+  - `apps/web/src/shared/api/generated/`
   - `apps/server/oapi-codegen.yaml`
   - `apps/server/internal/generated/`
 - Documentation:
@@ -50,14 +50,15 @@ No breaking API changes are introduced because the project does not yet have an 
   - `apps/web/package.json`
   - `apps/web/src/index.css`
   - `apps/web/src/main.tsx`
-  - `apps/web/src/ui/App.tsx`
-  - `apps/web/src/models/`
-  - `apps/web/src/store/`
-  - `apps/web/src/hooks/`
-  - `apps/web/src/services/`
-  - `apps/web/src/ui/shared/AppHeader/`
-  - `apps/web/src/ui/pages/home/`
-  - `apps/web/src/ui/pages/console/`
+  - `apps/web/src/app/App.tsx`
+  - `apps/web/src/shared/auth/model/`
+  - `apps/web/src/shared/auth/store/`
+  - `apps/web/src/shared/auth/hooks/`
+  - `apps/web/src/shared/http/`
+  - `apps/web/src/shared/auth/api/`
+  - `apps/web/src/shared/layout/AppHeader/`
+  - `apps/web/src/pages/home/ui/`
+  - `apps/web/src/pages/console/ui/`
   - `apps/web/vite.config.ts`
   - frontend unit, integration, or e2e test paths
 - Backend:

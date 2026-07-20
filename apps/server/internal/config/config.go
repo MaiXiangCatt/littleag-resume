@@ -19,7 +19,7 @@ type Config struct {
 func Load() Config {
 	return Config{
 		Addr:             env("SERVER_ADDR", ":8080"),
-		DatabaseURL:      env("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/vega_resume?sslmode=disable"),
+		DatabaseURL:      env("DATABASE_URL", "postgres://vega_resume:vega_resume@localhost:5432/vega_resume?sslmode=disable"),
 		AccessTokenKey:   []byte(env("ACCESS_TOKEN_KEY", "dev-access-secret-change-me")),
 		AccessTokenTTL:   durationEnv("ACCESS_TOKEN_TTL", 15*time.Minute),
 		RefreshTokenTTL:  durationEnv("REFRESH_TOKEN_TTL", 7*24*time.Hour),

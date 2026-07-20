@@ -53,7 +53,7 @@
   - `docs/designAndPrd/api_response_and_error_codes.md`
   - `apps/web/package.json`
   - `apps/web/orval.config.ts`
-  - `apps/web/src/services/generated/`
+  - `apps/web/src/shared/api/generated/`
   - `apps/server/oapi-codegen.yaml`
   - `apps/server/internal/generated/`
   - `apps/web/src/index.css`
@@ -132,15 +132,15 @@
   - 不实现 AppHeader、Hero、Features、Footer。
   - 不修改 OpenAPI 或生成配置。
 - Affected paths:
-  - `apps/web/src/models/`
-  - `apps/web/src/store/`
-  - `apps/web/src/hooks/useAuth.ts`
-  - `apps/web/src/hooks/useAuthBootstrap.ts`
-  - `apps/web/src/hooks/useHomeGuard.ts`
-  - `apps/web/src/services/http.client.ts`
-  - `apps/web/src/services/auth.service.ts`
-  - `apps/web/src/ui/pages/console/`
-  - `apps/web/src/ui/pages/home/components/AuthModal/`
+  - `apps/web/src/shared/auth/model/`
+  - `apps/web/src/shared/auth/store/`
+  - `apps/web/src/shared/auth/hooks/useAuth.ts`
+  - `apps/web/src/shared/auth/hooks/useAuthBootstrap.ts`
+  - `apps/web/src/shared/auth/hooks/useHomeGuard.ts`
+  - `apps/web/src/shared/http/http.client.ts`
+  - `apps/web/src/shared/auth/api/auth.service.ts`
+  - `apps/web/src/pages/console/ui/`
+  - `apps/web/src/pages/home/ui/components/AuthModal/`
 - Dependencies:
   - `contract-tooling-foundation`
 - Acceptance:
@@ -171,12 +171,12 @@
   - 不写认证 store、service 或 refresh 逻辑。
   - 不修改顶层路由。
 - Affected paths:
-  - `apps/web/src/ui/shared/AppHeader/`
-  - `apps/web/src/ui/pages/home/HomePage.tsx`
-  - `apps/web/src/ui/pages/home/components/HeroSection/`
-  - `apps/web/src/ui/pages/home/components/FeaturesSection/`
-  - `apps/web/src/ui/pages/home/components/Footer/`
-  - `apps/web/src/ui/pages/home/components/ExamplePreview/`
+  - `apps/web/src/shared/layout/AppHeader/`
+  - `apps/web/src/pages/home/ui/HomePage.tsx`
+  - `apps/web/src/pages/home/ui/components/HeroSection/`
+  - `apps/web/src/pages/home/ui/components/FeaturesSection/`
+  - `apps/web/src/pages/home/ui/components/Footer/`
+  - `apps/web/src/pages/home/ui/components/ExamplePreview/`
 - Dependencies:
   - `contract-tooling-foundation`
 - Acceptance:
@@ -209,7 +209,7 @@
   - 不重构 Home UI 或 AuthModal 内部实现。
 - Affected paths:
   - `apps/web/src/main.tsx`
-  - `apps/web/src/ui/App.tsx`
+  - `apps/web/src/app/App.tsx`
   - `apps/web/vite.config.ts`
   - `apps/web/e2e/`
   - `apps/web/src/**/*.integration.test.tsx`
@@ -258,7 +258,7 @@
   - server 写 `apps/server/internal/model/`、`repository/`、`service/`、`handler/`、`middleware/`。
   - 主要路径不重叠；server 只消费 generated。
 - `contract-tooling-foundation` 与 `web-auth-shell`：
-  - foundation 写 `apps/web/package.json`、`apps/web/orval.config.ts`、`apps/web/src/services/generated/`、`apps/web/src/index.css`。
+  - foundation 写 `apps/web/package.json`、`apps/web/orval.config.ts`、`apps/web/src/shared/api/generated/`、`apps/web/src/index.css`。
   - web auth 写 `models/`、`store/`、`hooks/`、`services/http.client.ts`、`services/auth.service.ts`、AuthModal 和 Console。
   - 主要路径不重叠；web auth 只消费 generated 和依赖。
 - `contract-tooling-foundation` 与 `home-page-ui`：
@@ -273,7 +273,7 @@
   - server 写 `apps/server/`，web auth 写 `apps/web/src/`。
   - 路径不重叠。
 - `server-auth-core` 与 `home-page-ui`：
-  - server 写 `apps/server/`，home UI 写 `apps/web/src/ui/`。
+  - server 写 `apps/server/`，home UI 写 `apps/web/src/pages/home/ui/`，共享能力写 `apps/web/src/shared/`。
   - 路径不重叠。
 - `server-auth-core` 与 `integration-auth-flow`：
   - server 写后端业务目录。

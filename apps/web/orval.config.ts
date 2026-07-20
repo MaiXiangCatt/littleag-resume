@@ -7,8 +7,8 @@ export default defineConfig({
     },
     output: {
       mode: 'single',
-      target: 'src/services/generated/auth.ts',
-      schemas: 'src/services/generated/model',
+      target: 'src/shared/api/generated/auth.ts',
+      schemas: 'src/shared/api/generated/model',
       client: 'fetch',
       clean: true,
       prettier: false,
