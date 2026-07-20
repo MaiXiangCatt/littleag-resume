@@ -1,8 +1,9 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { runVega } from '../src'
+import { isDirectRun, runVega } from '../src'
 import type { CommandRunner } from '../src/core/types'
 
 const fixedNow = () => new Date('2026-06-01T00:00:00.000Z')
@@ -447,5 +448,16 @@ describe('vega CLI core commands', () => {
       stdout: '',
       stderr: 'Error: Archive can only complete a requirement that is already in the archive phase.\n',
     })
+  })
+
+  it('treats a linked executable path as a direct run', async () => {
+    const cwd = await createWorkspace()
+    const entryPath = join(cwd, 'index.mjs')
+    const linkedPath = join(cwd, 'linked-index.mjs')
+
+    await writeFile(entryPath, '')
+    await symlink(entryPath, linkedPath)
+
+    expect(isDirectRun(pathToFileURL(entryPath).href, linkedPath)).toBe(true)
   })
 })

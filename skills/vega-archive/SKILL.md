@@ -15,8 +15,14 @@ description: 在 Vega 需求通过 verification 后执行最终归档：同步 O
 - 不新增业务实现，不在归档阶段补做未完成需求。
 - 不跳过 verification 报告；没有质量验证证据不归档。
 - 不直接编辑 `.vega-harness/requirements/*.json`；状态关闭只使用 `vega archive`。
-- 不手工移动 OpenSpec change 来替代 `openspec archive`，除非 OpenSpec CLI 不可用且用户明确批准。
+- 不手工移动 OpenSpec change 来替代 `openspec archive`，除非 OpenSpec CLI 不可用且已确认手工方案安全、可验证。
 - 不删除历史文档或既有 specs；只做必要同步、合并和纠偏。
+
+## 默认自主推进
+
+- 默认完成归档前置检查、OpenSpec archive、长期文档同步、路径重登记和 `vega archive`，不等待用户逐项批准。
+- Medium 风险、非阻塞工具链缺口或文档开放项记录到归档摘要即可，不作为默认暂停点。
+- 只有 verification 存在未解决 Critical/High、OpenSpec 归档会覆盖/删除无法确认的内容、需要手工迁移且无法验证，或长期事实不清会误导后续开发时，才暂停询问用户。
 
 ## 输入与产出
 
@@ -81,7 +87,7 @@ vega doc get verification_report --json
 - `openspec_dir` 存在且指向未归档的 OpenSpec change；
 - `verification_report` 存在，文件可读取；
 - verification 报告没有未解决的 Critical / High 问题；
-- 若报告中有 Medium 风险或工具链缺口，必须确认用户已接受或已经修复。
+- 若报告中有 Medium 风险或工具链缺口，记录到归档摘要；只有其影响归档正确性时才阻塞。
 
 从 `openspec_dir` 推导 `<change-name>`，然后执行：
 
@@ -118,7 +124,7 @@ openspec status --change <change-name> --json
 
 - 写当前系统事实，不写“本次新增了什么”的流水账；
 - 保留已有正确内容，只补充、纠偏或替换过时段落；
-- 不能确定的事实不要写入长期文档，先问用户或保留为后续项。
+- 不能确定的事实不要写入长期文档；优先保留为后续项，只有该事实会影响归档正确性时才问用户。
 
 ### 4. 同步 OpenSpec 主 specs
 
@@ -140,7 +146,7 @@ openspec archive <change-name> -y --skip-specs
 
 - `openspec archive` 不可用；
 - CLI 归档失败且错误明确指向可手工修复的文档冲突；
-- 用户明确批准手工归档方案。
+- OpenSpec CLI 不可用且手工归档方案可验证；如果方案会删除、覆盖或重写历史内容，必须先问用户。
 
 手工处理时必须：
 
@@ -226,8 +232,8 @@ vega next --json
 
 - verification 报告缺失或存在未解决 Critical / High：停止，不执行 `vega archive`。
 - OpenSpec validation 失败：修复 specs / change 后重跑，不跳过 strict validation。
-- `openspec archive` 失败：先根据错误修复；不可修复时询问用户是否允许手工归档。
-- 文档事实不清楚：保持 archive 为 `in_progress`，询问用户，不写猜测内容。
+- `openspec archive` 失败：先根据错误修复；不可修复但可安全手工归档时执行可验证手工方案，否则询问用户。
+- 文档事实不清楚：不写猜测内容；能保留为后续项则继续归档，影响归档正确性时保持 archive 为 `in_progress` 并询问用户。
 - 已确认阻塞且无法继续时执行：
   ```bash
   vega fail --reason "<具体原因>"
@@ -236,7 +242,7 @@ vega next --json
 ## 完成标准
 
 - verification 报告存在且无未解决 Critical / High；
-- OpenSpec change 已通过 CLI 或批准的手工流程归档；
+- OpenSpec change 已通过 CLI 或可验证的手工流程归档；
 - 主 specs 与长期文档反映当前系统事实；
 - `documents.openspec_dir` 指向归档后的 OpenSpec 目录；
 - `vega archive` 已把需求标记为 `completed`；

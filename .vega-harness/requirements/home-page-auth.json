@@ -1,0 +1,87 @@
+{
+  "name": "home-page-auth",
+  "workflow": "full",
+  "status": "completed",
+  "current_phase": "archive",
+  "phases": {
+    "init": {
+      "status": "completed",
+      "completed_at": "2026-07-02T08:30:41.265Z"
+    },
+    "brainstorm": {
+      "status": "completed",
+      "completed_at": "2026-07-02T11:19:34.990Z"
+    },
+    "tech_design": {
+      "status": "completed",
+      "completed_at": "2026-07-02T11:39:26.471Z"
+    },
+    "breakdown": {
+      "status": "completed",
+      "completed_at": "2026-07-02T12:07:37.061Z"
+    },
+    "openspec": {
+      "status": "completed",
+      "completed_at": "2026-07-02T12:29:40.922Z"
+    },
+    "implementation": {
+      "status": "completed",
+      "completed_at": "2026-07-03T03:34:49.436Z"
+    },
+    "verification": {
+      "status": "completed",
+      "completed_at": "2026-07-03T08:21:17.440Z"
+    },
+    "archive": {
+      "status": "completed",
+      "completed_at": "2026-07-03T08:22:37.909Z"
+    }
+  },
+  "documents": {
+    "prd": ".vega-harness/docs/prd-home-page-auth.md",
+    "brainstorm": ".vega-harness/docs/brainstorm-home-page-auth.md",
+    "tech_design": ".vega-harness/docs/tech-design-home-page-auth.md",
+    "openspec_dir": "openspec/changes/archive/2026-07-03-home-page-auth",
+    "breakdown": ".vega-harness/docs/breakdown-home-page-auth.md",
+    "verification_report": "docs/verification/home-page-auth-verification-2026-07-03.md"
+  },
+  "modules": [
+    {
+      "name": "contract-tooling-foundation",
+      "status": "completed",
+      "created_at": "2026-07-02T12:06:50.674Z",
+      "updated_at": "2026-07-03T02:52:31.436Z",
+      "completed_at": "2026-07-03T02:52:31.436Z"
+    },
+    {
+      "name": "server-auth-core",
+      "status": "completed",
+      "created_at": "2026-07-02T12:06:55.713Z",
+      "updated_at": "2026-07-03T03:14:20.465Z",
+      "completed_at": "2026-07-03T03:14:20.465Z"
+    },
+    {
+      "name": "web-auth-shell",
+      "status": "completed",
+      "created_at": "2026-07-02T12:07:01.246Z",
+      "updated_at": "2026-07-03T03:20:56.419Z",
+      "completed_at": "2026-07-03T03:20:56.419Z"
+    },
+    {
+      "name": "home-page-ui",
+      "status": "completed",
+      "created_at": "2026-07-02T12:07:05.951Z",
+      "updated_at": "2026-07-03T03:23:59.301Z",
+      "completed_at": "2026-07-03T03:23:59.301Z"
+    },
+    {
+      "name": "integration-auth-flow",
+      "status": "completed",
+      "created_at": "2026-07-02T12:07:13.312Z",
+      "updated_at": "2026-07-03T03:33:57.079Z",
+      "completed_at": "2026-07-03T03:33:57.079Z"
+    }
+  ],
+  "created_at": "2026-07-02T08:30:05.780Z",
+  "updated_at": "2026-07-03T08:22:37.909Z"
+}
