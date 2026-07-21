@@ -21,8 +21,22 @@ import type { ComponentType } from 'react';
 
 import type { ResumeStats } from '@/shared/api/generated/model/resumeStats';
 import type { ResumeSummary } from '@/shared/api/generated/model/resumeSummary';
-import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
+import { Button } from '@/shared/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu';
+import { Label } from '@/shared/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/ui/select';
 
 import type {
   ConsolePageSize,
@@ -55,9 +69,9 @@ export function FeedbackNotice({ feedback, onClose }: { feedback: Feedback; onCl
       )}
     >
       <span>{feedback.message}</span>
-      <button className="font-semibold opacity-65 hover:opacity-100" onClick={onClose} type="button">
+      <Button variant="ghost" className="h-auto p-0 font-semibold opacity-65 hover:bg-transparent hover:opacity-100" onClick={onClose}>
         关闭
-      </button>
+      </Button>
     </div>
   );
 }
@@ -130,55 +144,55 @@ export function ResumeToolbar({
     <section className="flex min-h-28 flex-col justify-center gap-4 rounded-2xl border border-[#ebe6ed] bg-white px-4 py-5 shadow-[0_8px_30px_rgba(57,39,61,0.035)] sm:flex-row sm:items-center sm:justify-between">
       <div aria-label="按状态筛选" className="flex min-w-0 gap-2 overflow-x-auto pb-1 sm:pb-0">
         {FILTERS.map((filter) => (
-          <button
+          <Button
             aria-pressed={status === filter.value}
+            variant="ghost"
             className={cn(
-              'shrink-0 rounded-full border px-5 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#850477] focus-visible:ring-offset-2',
+              'h-auto shrink-0 rounded-full border px-5 py-2 text-sm font-medium transition',
               status === filter.value
-                ? 'border-[#850477] bg-[#850477] text-white shadow-[0_7px_18px_rgba(133,4,119,0.2)]'
-                : 'border-[#e7e1e9] bg-white text-[#635b67] hover:border-[#cba7c7] hover:text-[#850477]',
+                ? 'border-[#850477] bg-[#850477] text-white shadow-[0_7px_18px_rgba(133,4,119,0.2)] hover:bg-[#850477] hover:text-white'
+                : 'border-[#e7e1e9] bg-white text-[#635b67] hover:border-[#cba7c7] hover:bg-white hover:text-[#850477]',
             )}
             key={filter.value}
             onClick={() => onStatusChange(filter.value)}
-            type="button"
           >
             {filter.label}
-          </button>
+          </Button>
         ))}
       </div>
-      <label className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-[#dfd9e2] bg-white px-3 text-sm text-[#5e5662] focus-within:border-[#850477] focus-within:ring-3 focus-within:ring-[#850477]/8">
+      <div className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-[#dfd9e2] bg-white px-3 text-sm text-[#5e5662]">
         <ArrowDownAZ aria-hidden="true" size={18} />
-        <span>排序</span>
-        <select
-          aria-label="简历排序"
-          className="cursor-pointer border-0 bg-transparent pr-1 font-medium text-[#332936] outline-none"
-          onChange={(event) => onSortChange(event.target.value as ConsoleSort)}
-          value={sort}
-        >
-          <option value="updated_desc">最近更新</option>
-          <option value="updated_asc">最早更新</option>
-          <option value="created_desc">最新创建</option>
-          <option value="title_asc">名称升序</option>
-        </select>
-      </label>
+        <Label className="text-sm text-[#5e5662]">排序</Label>
+        <Select onValueChange={(value) => onSortChange(value as ConsoleSort)} value={sort}>
+          <SelectTrigger aria-label="简历排序" className="h-auto w-auto border-0 bg-transparent px-1 py-0 font-medium text-[#332936] shadow-none focus-visible:ring-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="updated_desc">最近更新</SelectItem>
+            <SelectItem value="updated_asc">最早更新</SelectItem>
+            <SelectItem value="created_desc">最新创建</SelectItem>
+            <SelectItem value="title_asc">名称升序</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
     </section>
   );
 }
 
 export function CreateResumeCard({ isPending, onCreate }: { isPending: boolean; onCreate: () => void }) {
   return (
-    <button
-      className="group flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-[#a63498] bg-[radial-gradient(circle_at_50%_20%,rgba(176,56,158,0.08),transparent_52%)] px-8 text-center outline-none transition duration-300 hover:-translate-y-1 hover:border-[#850477] hover:shadow-[0_18px_38px_rgba(97,32,89,0.11)] focus-visible:ring-4 focus-visible:ring-[#850477]/15 disabled:pointer-events-none disabled:opacity-60"
+    <Button
+      variant="ghost"
+      className="group h-auto min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-[#a63498] bg-[radial-gradient(circle_at_50%_20%,rgba(176,56,158,0.08),transparent_52%)] px-8 text-center transition duration-300 hover:-translate-y-1 hover:border-[#850477] hover:bg-[radial-gradient(circle_at_50%_20%,rgba(176,56,158,0.08),transparent_52%)] hover:shadow-[0_18px_38px_rgba(97,32,89,0.11)] focus-visible:ring-4 focus-visible:ring-[#850477]/15 disabled:pointer-events-none disabled:opacity-60"
       disabled={isPending}
       onClick={onCreate}
-      type="button"
     >
       <span className="grid size-14 place-items-center rounded-full bg-[#850477] text-white shadow-[0_10px_24px_rgba(133,4,119,0.28)] transition group-hover:scale-105">
         {isPending ? <LoaderCircle aria-hidden="true" className="animate-spin" size={25} /> : <Plus aria-hidden="true" size={30} strokeWidth={1.8} />}
       </span>
       <span className="mt-5 text-lg font-semibold text-[#7d176f]">{isPending ? '正在创建…' : '创建新简历'}</span>
       <span className="mt-2 max-w-72 text-sm leading-6 text-[#817684]">从空白模板开始，快速创建你的专属简历</span>
-    </button>
+    </Button>
   );
 }
 
@@ -205,20 +219,20 @@ export function ResumeCard({
 
   return (
     <article className="resume-card group relative grid min-h-56 grid-cols-[38%_1fr] gap-5 overflow-visible rounded-2xl border border-[#e8e3ea] bg-white p-4 shadow-[0_8px_25px_rgba(50,34,53,0.055)] transition duration-300 hover:-translate-y-1 hover:border-[#dbcddd] hover:shadow-[0_20px_44px_rgba(63,37,65,0.11)] sm:p-5">
-      <button
+      <Button
         aria-label={`编辑 ${resume.title}`}
-        className="relative min-h-48 overflow-hidden rounded-xl border border-[#e5e0e7] bg-[#faf9fb] text-left outline-none focus-visible:ring-3 focus-visible:ring-[#850477]/25"
+        variant="ghost"
+        className="relative h-auto min-h-48 w-full overflow-hidden rounded-xl border border-[#e5e0e7] bg-[#faf9fb] p-0 text-left hover:bg-[#faf9fb] focus-visible:ring-3 focus-visible:ring-[#850477]/25"
         onClick={onOpen}
-        type="button"
       >
         <ResumePlaceholder initial={ownerInitial} />
-      </button>
+      </Button>
 
       <div className="flex min-w-0 flex-col py-1">
         <div className="flex items-start gap-2">
-          <button className="min-w-0 text-left outline-none" onClick={onOpen} type="button">
+          <Button variant="ghost" className="h-auto min-w-0 p-0 text-left hover:bg-transparent" onClick={onOpen}>
             <h2 className="truncate text-lg font-semibold tracking-[-0.025em] text-[#241a27] transition hover:text-[#850477]">{resume.title}</h2>
-          </button>
+          </Button>
           <span
             className={cn(
               'mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold',
@@ -240,34 +254,40 @@ export function ResumeCard({
             disabled
             size="sm"
             title="PDF 导出将在编辑器完成后开放"
-            type="button"
             variant="outline"
           >
             <Download size={16} />
             导出 PDF
           </Button>
-          <details className="relative">
-            <summary className="grid size-8 cursor-pointer list-none place-items-center rounded-lg border border-[#ded8e1] text-[#564e59] outline-none transition hover:border-[#ba82b3] hover:text-[#850477] focus-visible:ring-2 focus-visible:ring-[#850477] [&::-webkit-details-marker]:hidden">
-              <Ellipsis aria-label={`${resume.title} 更多操作`} size={18} />
-            </summary>
-            <div className="absolute right-0 top-10 z-20 w-36 rounded-xl border border-[#e8e2ea] bg-white p-1.5 shadow-[0_14px_34px_rgba(48,31,51,0.16)]">
-              <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[#514955] hover:bg-[#f8f2f8] hover:text-[#850477]" onClick={onRename} type="button">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-label={`${resume.title} 更多操作`}
+                variant="outline"
+                size="icon"
+                className="size-8 rounded-lg border-[#ded8e1] text-[#564e59] hover:border-[#ba82b3] hover:text-[#850477]"
+              >
+                <Ellipsis size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36 rounded-xl border-[#e8e2ea] p-1.5 shadow-[0_14px_34px_rgba(48,31,51,0.16)]">
+              <DropdownMenuItem className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#850477]" onClick={onRename}>
                 <Pencil size={15} />重命名
-              </button>
-              <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[#514955] hover:bg-[#f8f2f8] hover:text-[#850477]" onClick={onCopy} type="button">
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#850477]" onClick={onCopy}>
                 <Copy size={15} />复制简历
-              </button>
-            </div>
-          </details>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-[#f0ecf1] pt-3">
-          <button className="flex items-center gap-2 text-sm text-[#625966] transition hover:text-[#850477]" onClick={onOpen} type="button">
+          <Button variant="ghost" className="h-auto gap-2 p-0 text-sm text-[#625966] hover:bg-transparent hover:text-[#850477]" onClick={onOpen}>
             <Pencil aria-hidden="true" size={16} />编辑
-          </button>
-          <button className="flex items-center gap-2 text-sm text-[#625966] transition hover:text-red-600" onClick={onDelete} type="button">
+          </Button>
+          <Button variant="ghost" className="h-auto gap-2 p-0 text-sm text-[#625966] hover:bg-transparent hover:text-red-600" onClick={onDelete}>
             <Trash2 aria-hidden="true" size={16} />删除
-          </button>
+          </Button>
         </div>
       </div>
       {isPending ? (
@@ -387,36 +407,39 @@ export function Pagination({
           <ChevronLeft size={17} />
         </Button>
         {pages.map((pageNumber) => (
-          <button
+          <Button
             aria-current={pageNumber === page ? 'page' : undefined}
+            variant="ghost"
+            size="icon"
             className={cn(
-              'grid size-9 place-items-center rounded-lg text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#850477]',
-              pageNumber === page ? 'bg-[#850477] text-white shadow-[0_7px_18px_rgba(133,4,119,0.2)]' : 'text-[#514955] hover:bg-[#f5edf5]',
+              'size-9 rounded-lg text-sm font-semibold',
+              pageNumber === page
+                ? 'bg-[#850477] text-white shadow-[0_7px_18px_rgba(133,4,119,0.2)] hover:bg-[#850477] hover:text-white'
+                : 'text-[#514955] hover:bg-[#f5edf5]',
             )}
             key={pageNumber}
             onClick={() => onPageChange(pageNumber)}
-            type="button"
           >
             {pageNumber}
-          </button>
+          </Button>
         ))}
         <Button aria-label="下一页" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} size="icon" variant="outline">
           <ChevronRight size={17} />
         </Button>
       </div>
-      <label className="flex items-center gap-2 text-sm text-[#716976]">
-        每页显示
-        <select
-          aria-label="每页显示数量"
-          className="h-10 rounded-lg border border-[#ded8e1] bg-white px-3 font-semibold text-[#332936] outline-none focus:border-[#850477]"
-          onChange={(event) => onPageSizeChange(Number(event.target.value) as ConsolePageSize)}
-          value={pageSize}
-        >
-          <option value={6}>6</option>
-          <option value={12}>12</option>
-          <option value={24}>24</option>
-        </select>
-      </label>
+      <div className="flex items-center gap-2 text-sm text-[#716976]">
+        <Label className="text-sm font-normal leading-normal text-[#716976]">每页显示</Label>
+        <Select onValueChange={(value) => onPageSizeChange(Number(value) as ConsolePageSize)} value={String(pageSize)}>
+          <SelectTrigger aria-label="每页显示数量" className="h-10 w-auto rounded-lg border-[#ded8e1] bg-white px-3 font-semibold text-[#332936] focus-visible:border-[#850477]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="6">6</SelectItem>
+            <SelectItem value="12">12</SelectItem>
+            <SelectItem value="24">24</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
     </nav>
   );
 }

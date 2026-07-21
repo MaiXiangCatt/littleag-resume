@@ -59,7 +59,6 @@ describe('app auth flow integration', () => {
     await user.click(screen.getByRole('button', { name: '创建账号' }));
 
     expect(await screen.findByText('zhangsan')).toBeInTheDocument();
-    expect(screen.getByText('user@example.com')).toBeInTheDocument();
   });
 
   it('logs in from home and lands on console', async () => {
@@ -100,7 +99,8 @@ describe('app auth flow integration', () => {
 
     renderApp('/console');
 
-    await user.click(await screen.findByRole('button', { name: '退出登录' }));
+    await user.click(await screen.findByRole('button', { name: /zhangsan/ }));
+    await user.click(await screen.findByRole('menuitem', { name: /退出登录/ }));
     expect(await screen.findByRole('heading', { level: 1, name: /VegaResume/ })).toBeInTheDocument();
     expect(authServiceMock.logout).toHaveBeenCalledTimes(1);
   });

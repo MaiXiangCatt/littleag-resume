@@ -19,6 +19,14 @@ Use the root `Makefile` as the main command surface:
 
 TypeScript uses ES modules, React function components, and strict TypeScript configs. Follow the existing two-space indentation style, single quotes, and extension-aware imports used in `apps/web/src/` and `packages/vega-cli/src/`. React components should use `PascalCase`; hooks should use `useCamelCase`; tests should use `*.test.ts` or `*.test.tsx`. Go code must be formatted with `gofmt` and should stay under `apps/server/`; do not add a `package.json` there.
 
+### UI Component Rules
+
+**Always use shadcn/ui components** — never use native HTML interactive elements (`<button>`, `<input>`, `<select>`, `<a>`, `<label>`, `<details>/<summary>`) when a shadcn/ui equivalent exists in `apps/web/src/shared/ui/`. Use `Button`, `Input`, `Select`, `Label`, `Link`, `DropdownMenu`, `Dialog`, etc. Semantic HTML elements without shadcn equivalents ( `<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<kbd>`) and hidden utility elements are acceptable.
+
+### Frontend Five-Layer Architecture
+
+Strictly follow the `model → service → store → hooks → ui` layering. React hooks must **only** live in `hooks/` directories — never in `models/` or other layers. The `models/` layer is for types/interfaces and pure transform functions only (zero side effects, no React imports).
+
 ## Testing Guidelines
 
 CLI tests use Vitest and live in `packages/vega-cli/tests/`. Server tests should use Go's standard `testing` package next to the package being tested. Frontend tests are expected to use Vitest and React Testing Library when added. Prefer focused tests for new behavior and run the relevant Make target before opening a PR.
