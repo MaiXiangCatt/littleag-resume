@@ -27,4 +27,5 @@ type RefreshTokenRepository interface {
 	CreateRefreshToken(ctx context.Context, token *model.RefreshToken) error
 	FindActiveRefreshTokenByHash(ctx context.Context, tokenHash string) (*model.RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID, replacementID *uuid.UUID, revokedAt time.Time) error
+	RotateRefreshToken(ctx context.Context, id uuid.UUID, replacement *model.RefreshToken, revokedAt time.Time) error
 }

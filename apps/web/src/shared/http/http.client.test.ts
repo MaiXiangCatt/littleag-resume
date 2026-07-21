@@ -102,4 +102,46 @@ describe('http client', () => {
       }),
     );
   });
+
+  it('shares one refresh across concurrent expired requests', async () => {
+    useAuthStore.getState().setSession({
+      accessToken: 'old-token',
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+    });
+
+    const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
+      if (input === '/api/auth/refresh') {
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            message: '',
+            data: {
+              accessToken: 'new-token',
+              user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+            },
+          }),
+          { status: 200 },
+        );
+      }
+
+      const headers = init?.headers as Record<string, string> | undefined;
+      if (headers?.Authorization === 'Bearer old-token') {
+        return new Response(
+          JSON.stringify({ code: 101003, message: 'Expired', data: null }),
+          { status: 401 },
+        );
+      }
+
+      return new Response(JSON.stringify({ code: 0, message: '', data: { ok: true } }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      Promise.all([httpRequest('/api/private/one'), httpRequest('/api/private/two')]),
+    ).resolves.toEqual([{ ok: true }, { ok: true }]);
+
+    expect(fetchMock.mock.calls.filter(([input]) => input === '/api/auth/refresh')).toHaveLength(1);
+  });
 });

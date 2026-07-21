@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAuthStore } from '@/shared/auth/store/auth.store';
+import { ApiError } from '@/shared/http/http.client';
 
 import { useAuth, useAuthBootstrap, useHomeGuard } from './useAuth';
 
@@ -36,11 +37,20 @@ describe('auth hooks', () => {
   });
 
   it('marks user unauthenticated when bootstrap fails', async () => {
-    authServiceMock.refresh.mockRejectedValueOnce(new Error('no cookie'));
+    authServiceMock.refresh.mockRejectedValueOnce(new ApiError(101010, 'no cookie', 401));
 
     renderHook(() => useAuthBootstrap());
 
     await waitFor(() => expect(useAuthStore.getState().status).toBe('unauthenticated'));
+  });
+
+  it('preserves a retryable error state when bootstrap hits a server failure', async () => {
+    authServiceMock.refresh.mockRejectedValueOnce(new ApiError(200002, 'database unavailable', 500));
+
+    renderHook(() => useAuthBootstrap());
+
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('error'));
+    expect(useAuthStore.getState()).toMatchObject({ accessToken: null, user: null });
   });
 
   it('loads current user and clears state on logout', async () => {

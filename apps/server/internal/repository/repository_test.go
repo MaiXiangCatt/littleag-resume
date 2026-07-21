@@ -3,6 +3,7 @@ package repository_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -99,6 +100,58 @@ func TestRefreshTokenRepositoryLookupRevokeAndReplacement(t *testing.T) {
 	}
 }
 
+func TestMemoryRefreshTokenRotationIsAtomic(t *testing.T) {
+	ctx := context.Background()
+	store := repository.NewMemoryStore()
+	userID := uuid.New()
+	oldToken := &model.RefreshToken{
+		ID:        uuid.New(),
+		UserID:    userID,
+		TokenHash: "shared-old-hash",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	if err := store.CreateRefreshToken(ctx, oldToken); err != nil {
+		t.Fatalf("create old token: %v", err)
+	}
+
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	var ready sync.WaitGroup
+	ready.Add(2)
+	for i := 0; i < 2; i++ {
+		replacement := &model.RefreshToken{
+			ID:        uuid.New(),
+			UserID:    userID,
+			TokenHash: "replacement-" + uuid.NewString(),
+			ExpiresAt: time.Now().Add(time.Hour),
+		}
+		go func() {
+			ready.Done()
+			<-start
+			results <- store.RotateRefreshToken(ctx, oldToken.ID, replacement, time.Now())
+		}()
+	}
+	ready.Wait()
+	close(start)
+
+	successes := 0
+	notFound := 0
+	for i := 0; i < 2; i++ {
+		err := <-results
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, repository.ErrNotFound):
+			notFound++
+		default:
+			t.Fatalf("unexpected rotation error: %v", err)
+		}
+	}
+	if successes != 1 || notFound != 1 {
+		t.Fatalf("expected one success and one consumed-token failure, got success=%d notFound=%d", successes, notFound)
+	}
+}
+
 func TestGormMigrationDefinesAuthPersistenceConstraints(t *testing.T) {
 	db := openTestGormStore(t)
 	migrator := db.Migrator()
@@ -168,6 +221,58 @@ func TestGormRepositoryPersistsAuthRecords(t *testing.T) {
 	}
 	if _, err := store.FindActiveRefreshTokenByHash(ctx, "gorm-old-hash"); !errors.Is(err, repository.ErrNotFound) {
 		t.Fatalf("expected revoked token lookup to miss, got %v", err)
+	}
+}
+
+func TestGormRefreshTokenRotationIsAtomic(t *testing.T) {
+	ctx := context.Background()
+	db := openTestGormStore(t)
+	store := repository.NewGormStore(db)
+	user := &model.User{
+		ID:              uuid.New(),
+		Username:        "rotate-user",
+		Email:           "rotate@example.com",
+		EmailNormalized: "rotate@example.com",
+		PasswordHash:    "hash",
+	}
+	if err := store.CreateUser(ctx, user); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	oldToken := &model.RefreshToken{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		TokenHash: "gorm-shared-old-hash",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	if err := store.CreateRefreshToken(ctx, oldToken); err != nil {
+		t.Fatalf("create old token: %v", err)
+	}
+
+	firstReplacement := &model.RefreshToken{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		TokenHash: "gorm-first-replacement",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	if err := store.RotateRefreshToken(ctx, oldToken.ID, firstReplacement, time.Now()); err != nil {
+		t.Fatalf("rotate token: %v", err)
+	}
+
+	secondReplacement := &model.RefreshToken{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		TokenHash: "gorm-second-replacement",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	if err := store.RotateRefreshToken(ctx, oldToken.ID, secondReplacement, time.Now()); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("expected consumed old token, got %v", err)
+	}
+	if _, err := store.FindActiveRefreshTokenByHash(ctx, secondReplacement.TokenHash); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("failed rotation must roll back replacement insert, got %v", err)
+	}
+	if _, err := store.FindActiveRefreshTokenByHash(ctx, firstReplacement.TokenHash); err != nil {
+		t.Fatalf("successful replacement should remain active: %v", err)
 	}
 }
 

@@ -12,7 +12,10 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("load config: %v", err)
+	}
 	db, err := repository.OpenPostgres(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("open database: %v", err)

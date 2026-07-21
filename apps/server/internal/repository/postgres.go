@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"errors"
+	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/vega-resume/server/internal/model"
 )
@@ -19,7 +22,17 @@ type GormStore struct {
 }
 
 func OpenPostgres(databaseURL string) (*gorm.DB, error) {
-	return gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
+	return gorm.Open(postgres.Open(databaseURL), &gorm.Config{
+		Logger: logger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			logger.Config{
+				SlowThreshold:             200 * time.Millisecond,
+				LogLevel:                  logger.Warn,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  true,
+			},
+		),
+	})
 }
 
 func NewGormStore(db *gorm.DB) *GormStore {
@@ -108,6 +121,28 @@ func (s *GormStore) RevokeRefreshToken(ctx context.Context, id uuid.UUID, replac
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (s *GormStore) RotateRefreshToken(ctx context.Context, id uuid.UUID, replacement *model.RefreshToken, revokedAt time.Time) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(replacement).Error; err != nil {
+			return err
+		}
+
+		result := tx.Model(&model.RefreshToken{}).
+			Where("id = ? AND revoked_at IS NULL", id).
+			Updates(map[string]any{
+				"revoked_at":           revokedAt,
+				"replaced_by_token_id": replacement.ID,
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
 }
 
 func mapNotFound(err error) error {

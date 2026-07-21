@@ -131,3 +131,27 @@ func (s *MemoryStore) RevokeRefreshToken(_ context.Context, id uuid.UUID, replac
 	token.ReplacedByTokenID = replacementID
 	return nil
 }
+
+func (s *MemoryStore) RotateRefreshToken(_ context.Context, id uuid.UUID, replacement *model.RefreshToken, revokedAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	current, ok := s.refreshTokens[id]
+	if !ok || current.RevokedAt != nil {
+		return ErrNotFound
+	}
+	for _, existing := range s.refreshTokens {
+		if existing.TokenHash == replacement.TokenHash {
+			return ErrDuplicateUsername
+		}
+	}
+
+	replacementCopy := *replacement
+	if replacementCopy.CreatedAt.IsZero() {
+		replacementCopy.CreatedAt = time.Now().UTC()
+	}
+	s.refreshTokens[replacementCopy.ID] = &replacementCopy
+	current.RevokedAt = &revokedAt
+	current.ReplacedByTokenID = &replacementCopy.ID
+	return nil
+}

@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { useAuthBootstrap } from '@/shared/auth/hooks/useAuthBootstrap';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
+import { authService } from '@/shared/auth/api/auth.service';
 import { AuthModal } from '@/pages/home/ui/components/AuthModal/AuthModal';
 import { ConsolePage } from '@/pages/console/ui/ConsolePage';
 import { HomePage } from '@/pages/home/ui/HomePage';
@@ -82,7 +83,8 @@ function ConsoleRoute() {
 
   return (
     <ConsolePage
-      onLogout={() => {
+      onLogout={async () => {
+        await authService.logout();
         clearSession();
         navigate('/', { replace: true });
       }}

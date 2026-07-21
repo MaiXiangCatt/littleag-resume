@@ -102,6 +102,7 @@ describe('app auth flow integration', () => {
 
     await user.click(await screen.findByRole('button', { name: '退出登录' }));
     expect(await screen.findByRole('heading', { level: 1, name: /VegaResume/ })).toBeInTheDocument();
+    expect(authServiceMock.logout).toHaveBeenCalledTimes(1);
   });
 
   it('redirects authenticated home visits and protects console failures', async () => {

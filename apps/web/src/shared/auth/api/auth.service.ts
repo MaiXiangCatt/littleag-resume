@@ -2,14 +2,12 @@ import {
   getCurrentAuthUser,
   loginAuthUser,
   logoutAuthUser,
-  refreshAuthSession,
   registerAuthUser,
 } from '@/shared/api/generated/auth';
 import type { AuthUser } from '@/shared/api/generated/model';
 
 import type { AuthSession, LoginFormValues, RegisterFormValues } from '@/shared/auth/model/auth';
-import { ApiError, httpRequest } from '@/shared/http/http.client';
-import { useAuthStore } from '@/shared/auth/store/auth.store';
+import { ApiError, httpRequest, refreshSession } from '@/shared/http/http.client';
 
 type GeneratedResponse<T> = {
   data: {
@@ -49,18 +47,15 @@ export const authService = {
   },
 
   async refresh() {
-    return unwrap(
-      await refreshAuthSession({
-        credentials: 'include',
-      }),
-    ) as AuthSession;
+    return refreshSession();
   },
 
   async logout() {
-    await logoutAuthUser({
-      credentials: 'include',
-    });
-    useAuthStore.getState().clearSession();
+    unwrap(
+      await logoutAuthUser({
+        credentials: 'include',
+      }),
+    );
   },
 };
 
