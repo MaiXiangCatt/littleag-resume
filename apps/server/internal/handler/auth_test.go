@@ -12,6 +12,7 @@ import (
 
 	"github.com/vega-resume/server/internal/generated"
 	"github.com/vega-resume/server/internal/handler"
+	"github.com/vega-resume/server/internal/middleware"
 	"github.com/vega-resume/server/internal/model"
 	"github.com/vega-resume/server/internal/repository"
 	"github.com/vega-resume/server/internal/service"
@@ -31,9 +32,16 @@ func newTestRouter(t *testing.T) *gin.Engine {
 		AccountLockLimit: 5,
 		AccountLockTTL:   15 * time.Minute,
 	})
+	resumes := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
 
 	router := gin.New()
-	generated.RegisterHandlers(router, handler.NewAuthHandler(auth))
+	generated.RegisterHandlersWithOptions(router, handler.NewAPIHandler(
+		handler.NewAuthHandler(auth),
+		handler.NewResumeHandler(resumes),
+	), generated.GinServerOptions{
+		Middlewares:  []generated.MiddlewareFunc{middleware.Authenticate(auth)},
+		ErrorHandler: handler.GeneratedErrorHandler,
+	})
 	return router
 }
 

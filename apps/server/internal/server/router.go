@@ -10,10 +10,13 @@ import (
 	"github.com/vega-resume/server/internal/middleware"
 )
 
-func NewRouter(authHandler *handler.AuthHandler) *gin.Engine {
+func NewRouter(apiHandler generated.ServerInterface, middlewares ...generated.MiddlewareFunc) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.RateLimit(120, time.Minute))
-	generated.RegisterHandlers(router, authHandler)
+	generated.RegisterHandlersWithOptions(router, apiHandler, generated.GinServerOptions{
+		Middlewares:  middlewares,
+		ErrorHandler: handler.GeneratedErrorHandler,
+	})
 	return router
 }

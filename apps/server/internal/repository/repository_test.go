@@ -156,7 +156,7 @@ func TestGormMigrationDefinesAuthPersistenceConstraints(t *testing.T) {
 	db := openTestGormStore(t)
 	migrator := db.Migrator()
 
-	for _, table := range []any{&model.User{}, &model.RefreshToken{}} {
+	for _, table := range []any{&model.User{}, &model.RefreshToken{}, &model.Resume{}} {
 		if !migrator.HasTable(table) {
 			t.Fatalf("expected table for %T", table)
 		}
@@ -166,8 +166,12 @@ func TestGormMigrationDefinesAuthPersistenceConstraints(t *testing.T) {
 		"users_username_active_uidx",
 		"idx_refresh_tokens_token_hash",
 		"idx_refresh_tokens_user_id",
+		"idx_resumes_user_updated",
+		"idx_resumes_user_status",
 	} {
-		if !migrator.HasIndex(&model.RefreshToken{}, index) && !migrator.HasIndex(&model.User{}, index) {
+		if !migrator.HasIndex(&model.RefreshToken{}, index) &&
+			!migrator.HasIndex(&model.User{}, index) &&
+			!migrator.HasIndex(&model.Resume{}, index) {
 			t.Fatalf("expected migrated index %q", index)
 		}
 	}
@@ -221,6 +225,58 @@ func TestGormRepositoryPersistsAuthRecords(t *testing.T) {
 	}
 	if _, err := store.FindActiveRefreshTokenByHash(ctx, "gorm-old-hash"); !errors.Is(err, repository.ErrNotFound) {
 		t.Fatalf("expected revoked token lookup to miss, got %v", err)
+	}
+}
+
+func TestGormRepositoryPersistsAndListsResumes(t *testing.T) {
+	ctx := context.Background()
+	db := openTestGormStore(t)
+	store := repository.NewGormStore(db)
+	userID := uuid.New()
+	now := time.Now().UTC()
+	resume := &model.Resume{
+		ID:             uuid.New(),
+		UserID:         userID,
+		Title:          "Frontend 100% Resume",
+		Status:         model.ResumeStatusCompleted,
+		ContentVersion: 1,
+		ContentJSON:    model.JSONDocument(`{"profile":{"name":"Vega"}}`),
+		ExportCount:    3,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	if err := store.CreateResume(ctx, resume); err != nil {
+		t.Fatalf("create resume: %v", err)
+	}
+
+	found, err := store.FindResumeByID(ctx, userID, resume.ID)
+	if err != nil {
+		t.Fatalf("find resume: %v", err)
+	}
+	if string(found.ContentJSON) != string(resume.ContentJSON) {
+		t.Fatalf("unexpected content: %s", found.ContentJSON)
+	}
+
+	items, total, err := store.ListResumes(ctx, userID, repository.ResumeListOptions{
+		Query: "100%", Status: model.ResumeStatusCompleted, Sort: "updated_desc", Limit: 6,
+	})
+	if err != nil {
+		t.Fatalf("list resumes: %v", err)
+	}
+	if total != 1 || len(items) != 1 || items[0].ID != resume.ID {
+		t.Fatalf("unexpected resume list: total=%d items=%+v", total, items)
+	}
+
+	stats, err := store.GetResumeStats(ctx, userID)
+	if err != nil {
+		t.Fatalf("get resume stats: %v", err)
+	}
+	if stats.Total != 1 || stats.Completed != 1 || stats.Draft != 0 || stats.Exported != 3 {
+		t.Fatalf("unexpected resume stats: %+v", stats)
+	}
+
+	if _, err := store.FindResumeByID(ctx, uuid.New(), resume.ID); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("expected cross-user lookup to miss, got %v", err)
 	}
 }
 

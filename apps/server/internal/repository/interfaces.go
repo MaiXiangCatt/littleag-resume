@@ -29,3 +29,27 @@ type RefreshTokenRepository interface {
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID, replacementID *uuid.UUID, revokedAt time.Time) error
 	RotateRefreshToken(ctx context.Context, id uuid.UUID, replacement *model.RefreshToken, revokedAt time.Time) error
 }
+
+type ResumeListOptions struct {
+	Query  string
+	Status model.ResumeStatus
+	Sort   string
+	Offset int
+	Limit  int
+}
+
+type ResumeStats struct {
+	Total     int
+	Draft     int
+	Completed int
+	Exported  int64
+}
+
+type ResumeRepository interface {
+	CreateResume(ctx context.Context, resume *model.Resume) error
+	FindResumeByID(ctx context.Context, userID, resumeID uuid.UUID) (*model.Resume, error)
+	ListResumes(ctx context.Context, userID uuid.UUID, options ResumeListOptions) ([]model.Resume, int, error)
+	UpdateResume(ctx context.Context, resume *model.Resume) error
+	DeleteResume(ctx context.Context, userID, resumeID uuid.UUID) error
+	GetResumeStats(ctx context.Context, userID uuid.UUID) (ResumeStats, error)
+}

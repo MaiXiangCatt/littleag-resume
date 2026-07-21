@@ -6,6 +6,7 @@ import (
 
 	"github.com/vega-resume/server/internal/config"
 	"github.com/vega-resume/server/internal/handler"
+	"github.com/vega-resume/server/internal/middleware"
 	"github.com/vega-resume/server/internal/repository"
 	"github.com/vega-resume/server/internal/server"
 	"github.com/vega-resume/server/internal/service"
@@ -39,7 +40,12 @@ func main() {
 		AccountLockLimit: cfg.AccountLockLimit,
 		AccountLockTTL:   cfg.AccountLockTTL,
 	})
-	router := server.NewRouter(handler.NewAuthHandler(authService))
+	resumeService := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
+	apiHandler := handler.NewAPIHandler(
+		handler.NewAuthHandler(authService),
+		handler.NewResumeHandler(resumeService),
+	)
+	router := server.NewRouter(apiHandler, middleware.Authenticate(authService))
 	if err := router.Run(cfg.Addr); err != nil {
 		log.Fatalf("run server: %v", err)
 	}

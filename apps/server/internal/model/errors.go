@@ -40,4 +40,7 @@ var (
 	ErrUsernameFormatInvalid = &AppError{Code: 101008, Message: "用户名格式不正确", HTTPStatus: http.StatusBadRequest}
 	ErrAccountLocked         = &AppError{Code: 101009, Message: "账号已临时锁定", HTTPStatus: http.StatusLocked}
 	ErrRefreshTokenInvalid   = &AppError{Code: 101010, Message: "Refresh Token 无效或已失效", HTTPStatus: http.StatusUnauthorized}
+	ErrResumeNotFound        = &AppError{Code: 103001, Message: "简历不存在", HTTPStatus: http.StatusNotFound}
+	ErrResumeInvalidSchema   = &AppError{Code: 103004, Message: "简历数据结构不合法", HTTPStatus: http.StatusBadRequest}
+	ErrFileTooLarge          = &AppError{Code: 105002, Message: "上传文件超过大小限制", HTTPStatus: http.StatusBadRequest}
 )
