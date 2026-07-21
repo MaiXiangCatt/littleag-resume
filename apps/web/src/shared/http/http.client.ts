@@ -12,6 +12,8 @@ type RequestOptions = RequestInit & {
   skipRefreshRetry?: boolean;
 };
 
+let refreshPromise: Promise<AuthSession> | null = null;
+
 export class ApiError extends Error {
   code: number;
   status: number;
@@ -40,9 +42,16 @@ async function requestWithRetry<T>(
       throw error;
     }
 
-    const session = await refreshSession();
-    useAuthStore.getState().setSession(session);
-    return requestWithRetry<T>(input, options, true);
+    try {
+      const session = await refreshSession();
+      useAuthStore.getState().setSession(session);
+      return requestWithRetry<T>(input, options, true);
+    } catch (refreshError) {
+      if (isSessionInvalidError(refreshError)) {
+        useAuthStore.getState().clearSession();
+      }
+      throw refreshError;
+    }
   }
 }
 
@@ -99,7 +108,20 @@ function shouldRefresh(error: unknown) {
   return error instanceof ApiError && [100003, 101003, 101004].includes(error.code);
 }
 
-async function refreshSession() {
+export function isSessionInvalidError(error: unknown) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+export function refreshSession() {
+  if (!refreshPromise) {
+    refreshPromise = performRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+async function performRefresh() {
   const response = await fetch('/api/auth/refresh', {
     credentials: 'include',
     method: 'POST',

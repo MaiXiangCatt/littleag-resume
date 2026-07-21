@@ -202,7 +202,10 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 
 	oldToken, err := s.refresh.FindActiveRefreshTokenByHash(ctx, hashRefreshToken(refreshToken))
 	if err != nil {
-		return nil, "", model.ErrRefreshTokenInvalid
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, "", model.ErrRefreshTokenInvalid
+		}
+		return nil, "", model.ErrDBError
 	}
 	if !oldToken.ExpiresAt.After(s.now()) {
 		return nil, "", model.ErrRefreshTokenInvalid
@@ -210,17 +213,20 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 
 	user, err := s.users.FindActiveUserByID(ctx, oldToken.UserID)
 	if err != nil {
-		return nil, "", model.ErrRefreshTokenInvalid
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, "", model.ErrRefreshTokenInvalid
+		}
+		return nil, "", model.ErrDBError
 	}
 
 	payload, newRefresh, newToken, err := s.buildSession(user)
 	if err != nil {
 		return nil, "", err
 	}
-	if err := s.refresh.CreateRefreshToken(ctx, newToken); err != nil {
-		return nil, "", model.ErrDBError
-	}
-	if err := s.refresh.RevokeRefreshToken(ctx, oldToken.ID, &newToken.ID, s.now()); err != nil {
+	if err := s.refresh.RotateRefreshToken(ctx, oldToken.ID, newToken, s.now()); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, "", model.ErrRefreshTokenInvalid
+		}
 		return nil, "", model.ErrDBError
 	}
 	return payload, newRefresh, nil
@@ -232,7 +238,10 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	}
 	token, err := s.refresh.FindActiveRefreshTokenByHash(ctx, hashRefreshToken(refreshToken))
 	if err != nil {
-		return nil
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil
+		}
+		return model.ErrDBError
 	}
 	if err := s.refresh.RevokeRefreshToken(ctx, token.ID, nil, s.now()); err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return model.ErrDBError

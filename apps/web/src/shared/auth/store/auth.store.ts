@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import type { AuthSession, AuthUser } from '@/shared/auth/model/auth';
 
-type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
+type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated' | 'error';
 
 type AuthState = {
   accessToken: string | null;
@@ -14,6 +14,7 @@ type AuthState = {
   setFailed: (message: string) => void;
   setLoading: () => void;
   setSession: (session: AuthSession) => void;
+  setTransientFailure: (message: string) => void;
   setUser: (user: AuthUser) => void;
 };
 
@@ -38,6 +39,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       status: 'authenticated',
       user: session.user,
     }),
+  setTransientFailure: (message) => set({ error: message, status: 'error' }),
   setUser: (user) =>
     set({
       error: null,

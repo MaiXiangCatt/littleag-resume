@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"errors"
+	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/vega-resume/server/internal/model"
 )
@@ -19,7 +22,17 @@ type GormStore struct {
 }
 
 func OpenPostgres(databaseURL string) (*gorm.DB, error) {
-	return gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
+	return gorm.Open(postgres.Open(databaseURL), &gorm.Config{
+		Logger: logger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			logger.Config{
+				SlowThreshold:             200 * time.Millisecond,
+				LogLevel:                  logger.Warn,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  true,
+			},
+		),
+	})
 }
 
 func NewGormStore(db *gorm.DB) *GormStore {
@@ -28,7 +41,7 @@ func NewGormStore(db *gorm.DB) *GormStore {
 
 func Migrate(ctx context.Context, db *gorm.DB) error {
 	gdb := db.WithContext(ctx)
-	if err := gdb.AutoMigrate(&model.User{}, &model.RefreshToken{}); err != nil {
+	if err := gdb.AutoMigrate(&model.User{}, &model.RefreshToken{}, &model.Resume{}); err != nil {
 		return err
 	}
 	for _, statement := range []string{
@@ -40,6 +53,104 @@ func Migrate(ctx context.Context, db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+func (s *GormStore) CreateResume(ctx context.Context, resume *model.Resume) error {
+	return s.db.WithContext(ctx).Create(resume).Error
+}
+
+func (s *GormStore) FindResumeByID(ctx context.Context, userID, resumeID uuid.UUID) (*model.Resume, error) {
+	var resume model.Resume
+	if err := s.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", resumeID, userID).
+		First(&resume).Error; err != nil {
+		return nil, mapNotFound(err)
+	}
+	return &resume, nil
+}
+
+func (s *GormStore) ListResumes(ctx context.Context, userID uuid.UUID, options ResumeListOptions) ([]model.Resume, int, error) {
+	query := s.db.WithContext(ctx).Model(&model.Resume{}).Where("user_id = ?", userID)
+	if options.Query != "" {
+		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(options.Query))
+		query = query.Where(`LOWER(title) LIKE ? ESCAPE '\'`, "%"+escaped+"%")
+	}
+	if options.Status != "" {
+		query = query.Where("status = ?", options.Status)
+	}
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	order := "updated_at DESC, id DESC"
+	switch options.Sort {
+	case "updated_asc":
+		order = "updated_at ASC, id ASC"
+	case "created_desc":
+		order = "created_at DESC, id DESC"
+	case "title_asc":
+		order = "LOWER(title) ASC, updated_at DESC"
+	}
+	var resumes []model.Resume
+	if err := query.Order(order).Offset(options.Offset).Limit(options.Limit).Find(&resumes).Error; err != nil {
+		return nil, 0, err
+	}
+	return resumes, int(total), nil
+}
+
+func (s *GormStore) UpdateResume(ctx context.Context, resume *model.Resume) error {
+	result := s.db.WithContext(ctx).
+		Model(&model.Resume{}).
+		Where("id = ? AND user_id = ?", resume.ID, resume.UserID).
+		Select("title", "status", "template_id", "content_version", "content_json", "export_count", "updated_at").
+		Updates(resume)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *GormStore) DeleteResume(ctx context.Context, userID, resumeID uuid.UUID) error {
+	result := s.db.WithContext(ctx).Where("id = ? AND user_id = ?", resumeID, userID).Delete(&model.Resume{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *GormStore) GetResumeStats(ctx context.Context, userID uuid.UUID) (ResumeStats, error) {
+	var rows []struct {
+		Status      model.ResumeStatus
+		Count       int
+		ExportCount int64
+	}
+	err := s.db.WithContext(ctx).
+		Model(&model.Resume{}).
+		Select("status, COUNT(*) AS count, COALESCE(SUM(export_count), 0) AS export_count").
+		Where("user_id = ?", userID).
+		Group("status").
+		Scan(&rows).Error
+	if err != nil {
+		return ResumeStats{}, err
+	}
+	stats := ResumeStats{}
+	for _, row := range rows {
+		stats.Total += row.Count
+		stats.Exported += row.ExportCount
+		switch row.Status {
+		case model.ResumeStatusDraft:
+			stats.Draft += row.Count
+		case model.ResumeStatusCompleted:
+			stats.Completed += row.Count
+		}
+	}
+	return stats, nil
 }
 
 func (s *GormStore) CreateUser(ctx context.Context, user *model.User) error {
@@ -108,6 +219,28 @@ func (s *GormStore) RevokeRefreshToken(ctx context.Context, id uuid.UUID, replac
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (s *GormStore) RotateRefreshToken(ctx context.Context, id uuid.UUID, replacement *model.RefreshToken, revokedAt time.Time) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(replacement).Error; err != nil {
+			return err
+		}
+
+		result := tx.Model(&model.RefreshToken{}).
+			Where("id = ? AND revoked_at IS NULL", id).
+			Updates(map[string]any{
+				"revoked_at":           revokedAt,
+				"replaced_by_token_id": replacement.ID,
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
 }
 
 func mapNotFound(err error) error {

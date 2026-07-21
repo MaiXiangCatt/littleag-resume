@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/vega-resume/server/internal/model"
 	"github.com/vega-resume/server/internal/repository"
 	"github.com/vega-resume/server/internal/service"
@@ -157,6 +159,45 @@ func TestAuthServiceLoginTokenRefreshAndLogout(t *testing.T) {
 	if !errors.Is(err, model.ErrRefreshTokenInvalid) {
 		t.Fatalf("expected logged-out refresh token to be invalid, got %v", err)
 	}
+}
+
+func TestAuthServiceRefreshPreservesDatabaseErrors(t *testing.T) {
+	store := repository.NewMemoryStore()
+	databaseFailure := errors.New("database unavailable")
+	auth := service.NewAuthService(service.AuthServiceConfig{
+		Users:            store,
+		RefreshTokens:    failingRefreshRepository{err: databaseFailure},
+		AccessTokenKey:   []byte("test-access-secret-with-enough-length"),
+		AccessTokenTTL:   15 * time.Minute,
+		RefreshTokenTTL:  7 * 24 * time.Hour,
+		AccountLockLimit: 5,
+		AccountLockTTL:   15 * time.Minute,
+	})
+
+	_, _, err := auth.Refresh(context.Background(), "refresh-token")
+	if !errors.Is(err, model.ErrDBError) {
+		t.Fatalf("expected database error, got %v", err)
+	}
+}
+
+type failingRefreshRepository struct {
+	err error
+}
+
+func (r failingRefreshRepository) CreateRefreshToken(context.Context, *model.RefreshToken) error {
+	return r.err
+}
+
+func (r failingRefreshRepository) FindActiveRefreshTokenByHash(context.Context, string) (*model.RefreshToken, error) {
+	return nil, r.err
+}
+
+func (r failingRefreshRepository) RevokeRefreshToken(context.Context, uuid.UUID, *uuid.UUID, time.Time) error {
+	return r.err
+}
+
+func (r failingRefreshRepository) RotateRefreshToken(context.Context, uuid.UUID, *model.RefreshToken, time.Time) error {
+	return r.err
 }
 
 func TestAuthServiceAccountLockout(t *testing.T) {

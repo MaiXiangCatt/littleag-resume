@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { authErrorMessage } from '@/shared/auth/model/auth';
 import { authService } from '@/shared/auth/api/auth.service';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
+import { isSessionInvalidError } from '@/shared/http/http.client';
 
 export function useAuth() {
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -43,6 +44,7 @@ export function useAuthBootstrap() {
   const setFailed = useAuthStore((state) => state.setFailed);
   const setLoading = useAuthStore((state) => state.setLoading);
   const setSession = useAuthStore((state) => state.setSession);
+  const setTransientFailure = useAuthStore((state) => state.setTransientFailure);
 
   useEffect(() => {
     if (accessToken) {
@@ -61,14 +63,19 @@ export function useAuthBootstrap() {
       })
       .catch((error) => {
         if (!cancelled) {
-          setFailed(authErrorMessage(error));
+          const message = authErrorMessage(error);
+          if (isSessionInvalidError(error)) {
+            setFailed(message);
+          } else {
+            setTransientFailure(message);
+          }
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [accessToken, setFailed, setLoading, setSession]);
+  }, [accessToken, setFailed, setLoading, setSession, setTransientFailure]);
 }
 
 export function useHomeGuard() {

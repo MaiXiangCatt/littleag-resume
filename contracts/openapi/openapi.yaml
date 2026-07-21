@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: VegaResume Auth API
-  version: 0.1.0
-  description: Contract for Home Page authentication MVP.
+  title: VegaResume API
+  version: 0.2.0
+  description: Contract for authentication and resume management.
 servers:
   - url: http://localhost:8080
 paths:
@@ -153,6 +153,219 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/resumes:
+    get:
+      operationId: listResumes
+      tags:
+        - Resume
+      summary: List the current user's resumes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+            maxLength: 80
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ResumeStatus'
+        - name: sort
+          in: query
+          schema:
+            $ref: '#/components/schemas/ResumeSort'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            enum: [6, 12, 24]
+            default: 6
+      responses:
+        '200':
+          description: Paginated resume summaries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      operationId: createResume
+      tags:
+        - Resume
+      summary: Create a blank draft resume
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateResumeRequest'
+      responses:
+        '200':
+          description: Created resume.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/resumes/stats:
+    get:
+      operationId: getResumeStats
+      tags:
+        - Resume
+      summary: Get resume statistics for the current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user's aggregate resume statistics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeStatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/resumes/import:
+    post:
+      operationId: importResume
+      tags:
+        - Resume
+      summary: Import a VegaResume envelope as a new draft
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportResumeRequest'
+      responses:
+        '200':
+          description: Imported resume.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/resumes/{resumeId}:
+    parameters:
+      - $ref: '#/components/parameters/ResumeId'
+    get:
+      operationId: getResume
+      tags:
+        - Resume
+      summary: Get a resume owned by the current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Resume details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      operationId: updateResume
+      tags:
+        - Resume
+      summary: Update resume metadata or opaque content
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateResumeRequest'
+      responses:
+        '200':
+          description: Updated resume.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      operationId: deleteResume
+      tags:
+        - Resume
+      summary: Delete a resume owned by the current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Resume deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/resumes/{resumeId}/copy:
+    parameters:
+      - $ref: '#/components/parameters/ResumeId'
+    post:
+      operationId: copyResume
+      tags:
+        - Resume
+      summary: Copy a resume as a new draft
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Copied resume.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     bearerAuth:
@@ -160,6 +373,13 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    ResumeId:
+      name: resumeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     RefreshTokenCookie:
       name: refresh_token
       in: cookie
@@ -179,6 +399,12 @@ components:
         type: string
         example: refresh_token=; Path=/api/auth; Max-Age=0; HttpOnly; SameSite=Lax
   responses:
+    NotFound:
+      description: Requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     BadRequest:
       description: Invalid request, including ErrUsernameFormatInvalid and validation errors.
       content:
@@ -358,6 +584,194 @@ components:
                 - ''
             data:
               $ref: '#/components/schemas/AuthUser'
+    ResumeStatus:
+      type: string
+      enum:
+        - draft
+        - completed
+    ResumeSort:
+      type: string
+      enum:
+        - updated_desc
+        - updated_asc
+        - created_desc
+        - title_asc
+    ResumeSummary:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - exportCount
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+        status:
+          $ref: '#/components/schemas/ResumeStatus'
+        templateId:
+          type: string
+          nullable: true
+        exportCount:
+          type: integer
+          format: int64
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ResumeDetail:
+      allOf:
+        - $ref: '#/components/schemas/ResumeSummary'
+        - type: object
+          required:
+            - contentVersion
+            - content
+          properties:
+            contentVersion:
+              type: integer
+              minimum: 1
+            content:
+              type: object
+              additionalProperties: true
+    ResumeStats:
+      type: object
+      required:
+        - total
+        - draft
+        - completed
+        - exported
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        draft:
+          type: integer
+          minimum: 0
+        completed:
+          type: integer
+          minimum: 0
+        exported:
+          type: integer
+          format: int64
+          minimum: 0
+    ResumeListPayload:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResumeSummary'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          enum: [6, 12, 24]
+        total:
+          type: integer
+          minimum: 0
+    CreateResumeRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+    UpdateResumeRequest:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+        status:
+          $ref: '#/components/schemas/ResumeStatus'
+        templateId:
+          type: string
+          nullable: true
+        content:
+          type: object
+          additionalProperties: true
+    ImportResumeRequest:
+      type: object
+      required:
+        - version
+        - title
+        - content
+      properties:
+        version:
+          type: integer
+          enum: [1]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+        content:
+          type: object
+          additionalProperties: true
+    ResumeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum: [0]
+            message:
+              type: string
+              enum: ['']
+            data:
+              $ref: '#/components/schemas/ResumeListPayload'
+    ResumeDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum: [0]
+            message:
+              type: string
+              enum: ['']
+            data:
+              $ref: '#/components/schemas/ResumeDetail'
+    ResumeStatsResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum: [0]
+            message:
+              type: string
+              enum: ['']
+            data:
+              $ref: '#/components/schemas/ResumeStats'
     RegisterRequest:
       type: object
       required:

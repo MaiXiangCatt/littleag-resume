@@ -30,3 +30,9 @@ Recent commits use short Conventional Commit-style subjects such as `feat: init 
 ## Agent-Specific Instructions
 
 For library, framework, SDK, API, CLI, or cloud-service questions, fetch current docs with `npx ctx7@latest library <name> "<question>"`, then `npx ctx7@latest docs <libraryId> "<question>"`. Prefer Makefile targets over ad hoc package commands when modifying this repo.
+
+### Vega Harness Usage
+
+- Do not initialize or advance Vega Harness, create `.vega-harness` lifecycle documents, or require OpenSpec artifacts for ordinary feature work, bug fixes, refactors, or reviews by default.
+- Use Vega Harness or its `vega-*` workflow skills only when the user explicitly asks to use Vega Harness/OpenSpec or explicitly requests requirement lifecycle artifacts.
+- Otherwise, inspect the existing implementation, make a proportional plan when useful, implement the requested change directly, and run the relevant Makefile validation targets.
