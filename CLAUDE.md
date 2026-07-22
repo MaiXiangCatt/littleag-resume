@@ -57,10 +57,26 @@ JS and Go are physically isolated. `pnpm-workspace.yaml` covers `apps/*` + `pack
 Strict layering rules — do not violate these boundaries:
 
 - **`ui/`** — View rendering and event forwarding only. No direct `services` calls or `store` mutations; bridge through `hooks`.
-- **`hooks/`** — Custom React hooks orchestrating `services` and `store`. Handles page-level effects and flows.
+- **`hooks/`** — Custom React hooks orchestrating `services` and `store`. Handles page-level effects and flows. **All hooks must live here**, never in `models/` or other layers.
 - **`services/`** — Pure business logic and API calls. No UI deps. Must run in Node.js/test environments.
 - **`store/`** — Zustand state definitions. No complex logic, only state + pure actions.
-- **`models/`** — TS types/interfaces and pure transform functions only. Zero side effects.
+- **`models/`** — TS types/interfaces and pure transform functions only. Zero side effects. **No React hooks allowed.**
+
+### UI Component Rules
+
+**Always use shadcn/ui components.** Native HTML interactive elements (`<button>`, `<input>`, `<select>`, `<a>`, `<label>`, `<details>/<summary>`) are **strictly prohibited** when a shadcn/ui equivalent exists. Use:
+
+| Native HTML | shadcn/ui Component |
+|---|---|
+| `<button>` | `Button` (`@/shared/ui/button`) |
+| `<input>` | `Input` (`@/shared/ui/input`) |
+| `<select>` | `Select` (`@/shared/ui/select`) |
+| `<label>` | `Label` (`@/shared/ui/label`) |
+| `<a>` | `Link` (`@/shared/ui/link`) |
+| `<details>/<summary>` (dropdown) | `DropdownMenu` (`@/shared/ui/dropdown-menu`) |
+| `<dialog>` | `Dialog` (`@/shared/ui/dialog`) |
+
+Exceptions: semantic HTML elements without shadcn equivalents (`<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<kbd>`) and hidden utility elements (`<input type="file" hidden>`) are acceptable.
 
 ### Vega Harness System
 

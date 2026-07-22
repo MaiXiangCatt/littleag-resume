@@ -4,7 +4,7 @@ import type { ResumeListPayload } from '@/shared/api/generated/model/resumeListP
 import type { ResumeStats } from '@/shared/api/generated/model/resumeStats';
 
 import { resumeErrorMessage, resumeService } from '../service/resume.service';
-import type { ConsoleQueryState } from './console.types';
+import type { ConsoleQueryState } from '../model/console.types';
 
 const EMPTY_LIST: ResumeListPayload = { items: [], page: 1, pageSize: 6, total: 0 };
 const EMPTY_STATS: ResumeStats = { completed: 0, draft: 0, exported: 0, total: 0 };
@@ -32,41 +32,47 @@ export function useConsoleData(query: ConsoleQueryState) {
     const controller = new AbortController();
     const requestId = ++listRequestId.current;
 
-    resumeService
-      .list(
-        {
-          page: query.page,
-          pageSize: query.pageSize,
-          query: query.query,
-          sort: query.sort,
-          status: query.status === 'all' ? undefined : query.status,
-        },
-        controller.signal,
-      )
-      .then((nextList) => {
+    const fetchList = async () => {
+      try {
+        const nextList = await resumeService.list(
+          {
+            page: query.page,
+            pageSize: query.pageSize,
+            query: query.query,
+            sort: query.sort,
+            status: query.status === 'all' ? undefined : query.status,
+          },
+          controller.signal,
+        );
         if (requestId === listRequestId.current) {
           setListState({ data: nextList, error: null, key: listQueryKey });
         }
-      })
-      .catch((error: unknown) => {
+      } catch (error: unknown) {
         if (!controller.signal.aborted && requestId === listRequestId.current) {
           setListState((current) => ({ ...current, error: resumeErrorMessage(error), key: listQueryKey }));
         }
-      });
+      }
+    };
 
+    void fetchList();
     return () => controller.abort();
   }, [listQueryKey, query.page, query.pageSize, query.query, query.sort, query.status]);
 
   useEffect(() => {
     const controller = new AbortController();
-    resumeService
-      .stats(controller.signal)
-      .then((stats) => setStatsState({ data: stats, error: null, key: reloadVersion }))
-      .catch((error: unknown) => {
+
+    const fetchStats = async () => {
+      try {
+        const stats = await resumeService.stats(controller.signal);
+        setStatsState({ data: stats, error: null, key: reloadVersion });
+      } catch (error: unknown) {
         if (!controller.signal.aborted) {
           setStatsState((current) => ({ ...current, error: resumeErrorMessage(error), key: reloadVersion }));
         }
-      });
+      }
+    };
+
+    void fetchStats();
     return () => controller.abort();
   }, [reloadVersion]);
 

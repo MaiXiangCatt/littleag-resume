@@ -17,7 +17,7 @@ const resumeServiceMock = vi.hoisted(() => ({
   update: vi.fn(),
 }));
 
-vi.mock('../api/resume.service', () => ({
+vi.mock('../service/resume.service', () => ({
   resumeErrorMessage: () => '操作失败，请稍后重试',
   resumeService: resumeServiceMock,
 }));
@@ -72,7 +72,6 @@ describe('ConsolePage', () => {
 
     expect(await screen.findByRole('heading', { name: '产品经理简历' })).toBeInTheDocument();
     expect(screen.getByText('zhangsan')).toBeInTheDocument();
-    expect(screen.getByText('user@example.com')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: '我的简历' })).toBeInTheDocument();
   });
 

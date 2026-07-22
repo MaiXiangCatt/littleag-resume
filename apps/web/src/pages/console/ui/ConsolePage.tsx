@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog';
 import { Input } from '@/shared/ui/input';
+import { Label } from '@/shared/ui/label';
 
 import { resumeErrorMessage, resumeService } from '../service/resume.service';
 import type {
@@ -21,7 +22,7 @@ import type {
   ConsoleStatusFilter,
   Feedback,
 } from '../model/console.types';
-import { useConsoleData } from '../model/useConsoleData';
+import { useConsoleData } from '../hooks/useConsoleData';
 import { ConsoleHeader } from './components/ConsoleHeader';
 import {
   CreateResumeCard,
@@ -367,7 +368,7 @@ function RenameResumeDialog({
             }
           }}
         >
-          <label className="text-sm font-medium text-[#433747]" htmlFor="resume-title">简历名称</label>
+          <Label className="text-[#433747]" htmlFor="resume-title">简历名称</Label>
           <Input
             autoFocus
             className="mt-2 focus:border-[#850477] focus-visible:ring-[#850477]"
