@@ -21,6 +21,7 @@ type Config struct {
 	RefreshTokenTTL  time.Duration
 	AccountLockLimit int
 	AccountLockTTL   time.Duration
+	AvatarStorageDir string
 }
 
 func Load() (Config, error) {
@@ -45,6 +46,7 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 		RefreshTokenTTL:  durationEnv("REFRESH_TOKEN_TTL", 7*24*time.Hour),
 		AccountLockLimit: intEnv("ACCOUNT_LOCK_LIMIT", 5),
 		AccountLockTTL:   durationEnv("ACCOUNT_LOCK_TTL", 15*time.Minute),
+		AvatarStorageDir: env("AVATAR_STORAGE_DIR", "data/avatars"),
 	}, nil
 }
 

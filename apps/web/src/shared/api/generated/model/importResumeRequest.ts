@@ -5,8 +5,9 @@
  * Contract for authentication and resume management.
  * OpenAPI spec version: 0.2.0
  */
-import type { ImportResumeRequestContent } from './importResumeRequestContent';
+import type { ImportResumeRequestTemplateId } from './importResumeRequestTemplateId';
 import type { ImportResumeRequestVersion } from './importResumeRequestVersion';
+import type { ResumeContent } from './resumeContent';
 
 export interface ImportResumeRequest {
   version: ImportResumeRequestVersion;
@@ -15,5 +16,12 @@ export interface ImportResumeRequest {
      * @maxLength 80
      */
   title: string;
-  content: ImportResumeRequestContent;
+  /** @nullable */
+  templateId?: ImportResumeRequestTemplateId;
+  /**
+     * @maxLength 750000
+     * @nullable
+     */
+  avatar?: string | null;
+  content: ResumeContent;
 }

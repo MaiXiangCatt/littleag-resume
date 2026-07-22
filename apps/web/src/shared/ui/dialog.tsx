@@ -61,11 +61,16 @@ function DialogDescription({ className, ...props }: ComponentProps<typeof Dialog
   );
 }
 
+function DialogFooter({ className, ...props }: ComponentProps<'div'>) {
+  return <div className={cn('mt-6 flex justify-end gap-2', className)} {...props} />;
+}
+
 export {
   Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogOverlay,
   DialogPortal,
   DialogTitle,

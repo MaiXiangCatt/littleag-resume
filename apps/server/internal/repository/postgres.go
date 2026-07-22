@@ -98,12 +98,45 @@ func (s *GormStore) ListResumes(ctx context.Context, userID uuid.UUID, options R
 	return resumes, int(total), nil
 }
 
-func (s *GormStore) UpdateResume(ctx context.Context, resume *model.Resume) error {
+func (s *GormStore) UpdateResume(ctx context.Context, resume *model.Resume, expectedRevision int64) error {
 	result := s.db.WithContext(ctx).
 		Model(&model.Resume{}).
-		Where("id = ? AND user_id = ?", resume.ID, resume.UserID).
-		Select("title", "status", "template_id", "content_version", "content_json", "export_count", "updated_at").
+		Where("id = ? AND user_id = ? AND revision = ?", resume.ID, resume.UserID, expectedRevision).
+		Select("title", "status", "template_id", "content_version", "content_json", "revision", "export_count", "updated_at").
 		Updates(resume)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		var count int64
+		if err := s.db.WithContext(ctx).Model(&model.Resume{}).Where("id = ? AND user_id = ?", resume.ID, resume.UserID).Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return ErrConflict
+		}
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *GormStore) SetResumeAvatar(ctx context.Context, userID, resumeID uuid.UUID, avatarKey *string) error {
+	result := s.db.WithContext(ctx).Model(&model.Resume{}).
+		Where("id = ? AND user_id = ?", resumeID, userID).
+		Updates(map[string]any{"avatar_key": avatarKey, "updated_at": time.Now().UTC()})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *GormStore) IncrementResumeExport(ctx context.Context, userID, resumeID uuid.UUID, updatedAt time.Time) error {
+	result := s.db.WithContext(ctx).Model(&model.Resume{}).
+		Where("id = ? AND user_id = ?", resumeID, userID).
+		Updates(map[string]any{"export_count": gorm.Expr("export_count + 1"), "updated_at": updatedAt})
 	if result.Error != nil {
 		return result.Error
 	}

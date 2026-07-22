@@ -22,6 +22,16 @@ test('unauthenticated home and login to console', async ({ page }) => {
       }),
     });
   });
+  await page.route('**/api/resumes/stats', (route) => route.fulfill({
+    contentType: 'application/json',
+    status: 200,
+    body: JSON.stringify({ code: 0, message: '', data: { total: 0, draft: 0, completed: 0, exported: 0 } }),
+  }));
+  await page.route('**/api/resumes?**', (route) => route.fulfill({
+    contentType: 'application/json',
+    status: 200,
+    body: JSON.stringify({ code: 0, message: '', data: { items: [], page: 1, pageSize: 6, total: 0 } }),
+  }));
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /VegaResume/ })).toBeVisible();

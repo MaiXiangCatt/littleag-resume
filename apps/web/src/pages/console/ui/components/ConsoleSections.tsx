@@ -200,6 +200,7 @@ type ResumeCardProps = {
   isPending: boolean;
   onCopy: () => void;
   onDelete: () => void;
+  onExport: () => void;
   onOpen: () => void;
   onRename: () => void;
   ownerInitial: string;
@@ -210,6 +211,7 @@ export function ResumeCard({
   isPending,
   onCopy,
   onDelete,
+  onExport,
   onOpen,
   onRename,
   ownerInitial,
@@ -249,15 +251,15 @@ export function ResumeCard({
 
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
           <Button
-            aria-label={`导出 ${resume.title} PDF，暂未开放`}
+            aria-label={`导出 ${resume.title} PDF`}
             className="border-[#d6a7d1] text-[#850477]"
-            disabled
+            disabled={isPending}
+            onClick={onExport}
             size="sm"
-            title="PDF 导出将在编辑器完成后开放"
             variant="outline"
           >
-            <Download size={16} />
-            导出 PDF
+            {isPending ? <LoaderCircle className="animate-spin" size={16} /> : <Download size={16} />}
+            {isPending ? '生成中…' : '导出 PDF'}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

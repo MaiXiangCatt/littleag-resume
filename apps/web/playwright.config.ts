@@ -8,8 +8,8 @@ export default defineConfig({
   },
   webServer: {
     command: 'pnpm dev --host 127.0.0.1',
-    port: 5173,
-    reuseExistingServer: true,
+    url: 'http://127.0.0.1:5173',
+    reuseExistingServer: false,
   },
   projects: [
     {

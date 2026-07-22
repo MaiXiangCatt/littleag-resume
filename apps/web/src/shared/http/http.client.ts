@@ -30,6 +30,10 @@ export async function httpRequest<T>(input: string, options: RequestOptions = {}
   return requestWithRetry<T>(input, options, false);
 }
 
+export async function httpBlobRequest(input: string, options: RequestOptions = {}): Promise<Blob> {
+  return rawRequestWithRetry(input, options, false);
+}
+
 async function requestWithRetry<T>(
   input: string,
   options: RequestOptions,
@@ -56,6 +60,34 @@ async function requestWithRetry<T>(
 }
 
 async function sendRequest<T>(input: string, options: RequestOptions): Promise<T> {
+
+  const response = await sendRawRequest(input, options);
+  const envelope = await parseEnvelope<T>(response);
+
+  if (!response.ok || envelope.code !== 0) {
+    throw new ApiError(envelope.code, envelope.message, response.status);
+  }
+
+  return envelope.data;
+}
+
+async function rawRequestWithRetry(input: string, options: RequestOptions, hasRetried: boolean): Promise<Blob> {
+  try {
+    const response = await sendRawRequest(input, options);
+    if (!response.ok) {
+      const envelope = await parseEnvelope<null>(response);
+      throw new ApiError(envelope.code, envelope.message, response.status);
+    }
+    return response.blob();
+  } catch (error) {
+    if (hasRetried || options.skipRefreshRetry || !shouldRefresh(error)) throw error;
+    const session = await refreshSession();
+    useAuthStore.getState().setSession(session);
+    return rawRequestWithRetry(input, options, true);
+  }
+}
+
+async function sendRawRequest(input: string, options: RequestOptions) {
   const { headers, skipAuth } = options;
   const init = { ...options } as RequestInit;
   delete (init as RequestOptions).skipAuth;
@@ -83,13 +115,7 @@ async function sendRequest<T>(input: string, options: RequestOptions): Promise<T
     ...init,
     headers: requestHeaders,
   });
-  const envelope = await parseEnvelope<T>(response);
-
-  if (!response.ok || envelope.code !== 0) {
-    throw new ApiError(envelope.code, envelope.message, response.status);
-  }
-
-  return envelope.data;
+  return response;
 }
 
 function hasHeader(headers: Record<string, string>, name: string) {

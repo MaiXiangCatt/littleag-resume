@@ -40,7 +40,7 @@ func main() {
 		AccountLockLimit: cfg.AccountLockLimit,
 		AccountLockTTL:   cfg.AccountLockTTL,
 	})
-	resumeService := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
+	resumeService := service.NewResumeService(service.ResumeServiceConfig{Resumes: store, AvatarDir: cfg.AvatarStorageDir})
 	apiHandler := handler.NewAPIHandler(
 		handler.NewAuthHandler(authService),
 		handler.NewResumeHandler(resumeService),

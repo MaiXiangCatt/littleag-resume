@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrNotFound          = errors.New("repository: not found")
+	ErrConflict          = errors.New("repository: revision conflict")
 	ErrDuplicateEmail    = errors.New("repository: duplicate email")
 	ErrDuplicateUsername = errors.New("repository: duplicate username")
 )
@@ -49,7 +50,9 @@ type ResumeRepository interface {
 	CreateResume(ctx context.Context, resume *model.Resume) error
 	FindResumeByID(ctx context.Context, userID, resumeID uuid.UUID) (*model.Resume, error)
 	ListResumes(ctx context.Context, userID uuid.UUID, options ResumeListOptions) ([]model.Resume, int, error)
-	UpdateResume(ctx context.Context, resume *model.Resume) error
+	UpdateResume(ctx context.Context, resume *model.Resume, expectedRevision int64) error
+	SetResumeAvatar(ctx context.Context, userID, resumeID uuid.UUID, avatarKey *string) error
+	IncrementResumeExport(ctx context.Context, userID, resumeID uuid.UUID, updatedAt time.Time) error
 	DeleteResume(ctx context.Context, userID, resumeID uuid.UUID) error
 	GetResumeStats(ctx context.Context, userID uuid.UUID) (ResumeStats, error)
 }

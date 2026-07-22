@@ -30,8 +30,6 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/auth/login:
@@ -321,6 +319,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
     delete:
@@ -356,6 +356,142 @@ paths:
       responses:
         '200':
           description: Copied resume.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/resumes/{resumeId}/import:
+    parameters:
+      - $ref: '#/components/parameters/ResumeId'
+    put:
+      operationId: replaceResumeImport
+      tags:
+        - Resume
+      summary: Replace an existing resume from a VegaResume envelope
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ImportResumeRequest'
+                - type: object
+                  required:
+                    - expectedRevision
+                  properties:
+                    expectedRevision:
+                      type: integer
+                      format: int64
+                      minimum: 1
+      responses:
+        '200':
+          description: Replaced resume.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/resumes/{resumeId}/exports:
+    parameters:
+      - $ref: '#/components/parameters/ResumeId'
+    post:
+      operationId: recordResumeExport
+      tags:
+        - Resume
+      summary: Record a successfully started PDF download
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Updated resume.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/resumes/{resumeId}/avatar:
+    parameters:
+      - $ref: '#/components/parameters/ResumeId'
+    get:
+      operationId: getResumeAvatar
+      tags:
+        - Resume
+      summary: Get the current resume avatar
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: JPEG avatar bytes.
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: putResumeAvatar
+      tags:
+        - Resume
+      summary: Replace the current resume avatar
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Updated resume.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      operationId: deleteResumeAvatar
+      tags:
+        - Resume
+      summary: Delete the current resume avatar
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Updated resume.
           content:
             application/json:
               schema:
@@ -602,6 +738,8 @@ components:
         - id
         - title
         - status
+        - revision
+        - hasAvatar
         - exportCount
         - createdAt
         - updatedAt
@@ -615,6 +753,12 @@ components:
           maxLength: 80
         status:
           $ref: '#/components/schemas/ResumeStatus'
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        hasAvatar:
+          type: boolean
         templateId:
           type: string
           nullable: true
@@ -640,8 +784,7 @@ components:
               type: integer
               minimum: 1
             content:
-              type: object
-              additionalProperties: true
+              $ref: '#/components/schemas/ResumeContent'
     ResumeStats:
       type: object
       required:
@@ -694,7 +837,13 @@ components:
     UpdateResumeRequest:
       type: object
       minProperties: 1
+      required:
+        - expectedRevision
       properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 1
         title:
           type: string
           minLength: 1
@@ -705,8 +854,7 @@ components:
           type: string
           nullable: true
         content:
-          type: object
-          additionalProperties: true
+          $ref: '#/components/schemas/ResumeContent'
     ImportResumeRequest:
       type: object
       required:
@@ -721,7 +869,36 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+        templateId:
+          type: string
+          nullable: true
+          enum:
+            - modern-editorial
+            - classic-professional
+        avatar:
+          type: string
+          nullable: true
+          maxLength: 750000
         content:
+          $ref: '#/components/schemas/ResumeContent'
+    ResumeContent:
+      type: object
+      required:
+        - profile
+        - sections
+        - formatting
+      additionalProperties: false
+      properties:
+        profile:
+          type: object
+          additionalProperties: true
+        sections:
+          type: array
+          maxItems: 64
+          items:
+            type: object
+            additionalProperties: true
+        formatting:
           type: object
           additionalProperties: true
     ResumeListResponse:

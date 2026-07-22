@@ -15,6 +15,9 @@ export interface ResumeSummary {
      */
   title: string;
   status: ResumeStatus;
+  /** @minimum 1 */
+  revision: number;
+  hasAvatar: boolean;
   /** @nullable */
   templateId?: string | null;
   /** @minimum 0 */

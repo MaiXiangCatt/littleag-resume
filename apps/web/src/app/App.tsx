@@ -1,5 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 
 import { useAuthBootstrap } from '@/shared/auth/hooks/useAuthBootstrap';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
@@ -7,7 +7,8 @@ import { authService } from '@/shared/auth/api/auth.service';
 import { AuthModal } from '@/pages/home/ui/components/AuthModal/AuthModal';
 import { ConsolePage } from '@/pages/console/ui/ConsolePage';
 import { HomePage } from '@/pages/home/ui/HomePage';
-import { ResumeEditorPlaceholder } from '@/pages/resume-editor/ui/ResumeEditorPlaceholder';
+
+const ResumeEditorPage = lazy(() => import('@/pages/resume-editor/ui/ResumeEditorPage').then((module) => ({ default: module.ResumeEditorPage })));
 
 type AuthMode = 'login' | 'register';
 
@@ -34,6 +35,7 @@ export function AppRoutes() {
 
 function ResumeEditorRoute() {
   const status = useAuthStore((state) => state.status);
+  const { resumeId } = useParams<{ resumeId: string }>();
 
   if (status === 'idle' || status === 'loading') {
     return <main className="grid min-h-screen place-items-center text-slate-600">正在加载账号信息</main>;
@@ -43,11 +45,14 @@ function ResumeEditorRoute() {
     return <Navigate replace to="/" />;
   }
 
-  return <ResumeEditorPlaceholder />;
+  if (!resumeId) {
+    return <Navigate replace to="/console" />;
+  }
+
+  return <Suspense fallback={<main className="grid min-h-screen place-items-center text-slate-600">正在加载简历编辑器</main>}><ResumeEditorPage resumeId={resumeId} /></Suspense>;
 }
 
 function HomeRoute() {
-  const navigate = useNavigate();
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const [authMode, setAuthMode] = useState<AuthMode>('login');
@@ -63,7 +68,7 @@ function HomeRoute() {
   }
 
   function handleAuthenticated() {
-    navigate('/console', { replace: true });
+    setAuthModalOpen(false);
   }
 
   return (

@@ -19,6 +19,7 @@ import type {
   LoginRequest,
   NotFoundResponse,
   RegisterRequest,
+  ReplaceResumeImportBody,
   ResumeDetailResponse,
   ResumeListResponse,
   ResumeStatsResponse,
@@ -37,11 +38,6 @@ export type registerAuthUserResponse400 = {
   status: 400
 }
 
-export type registerAuthUserResponse409 = {
-  data: ConflictResponse
-  status: 409
-}
-
 export type registerAuthUserResponse500 = {
   data: InternalServerErrorResponse
   status: 500
@@ -50,7 +46,7 @@ export type registerAuthUserResponse500 = {
 export type registerAuthUserResponseSuccess = (registerAuthUserResponse200) & {
   headers: Headers;
 };
-export type registerAuthUserResponseError = (registerAuthUserResponse400 | registerAuthUserResponse409 | registerAuthUserResponse500) & {
+export type registerAuthUserResponseError = (registerAuthUserResponse400 | registerAuthUserResponse500) & {
   headers: Headers;
 };
 
@@ -654,6 +650,11 @@ export type updateResumeResponse404 = {
   status: 404
 }
 
+export type updateResumeResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
 export type updateResumeResponse500 = {
   data: InternalServerErrorResponse
   status: 500
@@ -662,7 +663,7 @@ export type updateResumeResponse500 = {
 export type updateResumeResponseSuccess = (updateResumeResponse200) & {
   headers: Headers;
 };
-export type updateResumeResponseError = (updateResumeResponse400 | updateResumeResponse401 | updateResumeResponse404 | updateResumeResponse500) & {
+export type updateResumeResponseError = (updateResumeResponse400 | updateResumeResponse401 | updateResumeResponse404 | updateResumeResponse409 | updateResumeResponse500) & {
   headers: Headers;
 };
 
@@ -816,4 +817,315 @@ export const copyResume = async (resumeId: string, options?: RequestInit): Promi
 
   const data: copyResumeResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as copyResumeResponse
+}
+
+
+
+export type replaceResumeImportResponse200 = {
+  data: ResumeDetailResponse
+  status: 200
+}
+
+export type replaceResumeImportResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type replaceResumeImportResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type replaceResumeImportResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type replaceResumeImportResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type replaceResumeImportResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type replaceResumeImportResponseSuccess = (replaceResumeImportResponse200) & {
+  headers: Headers;
+};
+export type replaceResumeImportResponseError = (replaceResumeImportResponse400 | replaceResumeImportResponse401 | replaceResumeImportResponse404 | replaceResumeImportResponse409 | replaceResumeImportResponse500) & {
+  headers: Headers;
+};
+
+export type replaceResumeImportResponse = (replaceResumeImportResponseSuccess | replaceResumeImportResponseError)
+
+export const getReplaceResumeImportUrl = (resumeId: string,) => {
+
+
+
+
+  return `/api/resumes/${resumeId}/import`
+}
+
+/**
+ * @summary Replace an existing resume from a VegaResume envelope
+ */
+export const replaceResumeImport = async (resumeId: string,
+    replaceResumeImportBody: ReplaceResumeImportBody, options?: RequestInit): Promise<replaceResumeImportResponse> => {
+
+  const res = await fetch(getReplaceResumeImportUrl(resumeId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(replaceResumeImportBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: replaceResumeImportResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as replaceResumeImportResponse
+}
+
+
+
+export type recordResumeExportResponse200 = {
+  data: ResumeDetailResponse
+  status: 200
+}
+
+export type recordResumeExportResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type recordResumeExportResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type recordResumeExportResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type recordResumeExportResponseSuccess = (recordResumeExportResponse200) & {
+  headers: Headers;
+};
+export type recordResumeExportResponseError = (recordResumeExportResponse401 | recordResumeExportResponse404 | recordResumeExportResponse500) & {
+  headers: Headers;
+};
+
+export type recordResumeExportResponse = (recordResumeExportResponseSuccess | recordResumeExportResponseError)
+
+export const getRecordResumeExportUrl = (resumeId: string,) => {
+
+
+
+
+  return `/api/resumes/${resumeId}/exports`
+}
+
+/**
+ * @summary Record a successfully started PDF download
+ */
+export const recordResumeExport = async (resumeId: string, options?: RequestInit): Promise<recordResumeExportResponse> => {
+
+  const res = await fetch(getRecordResumeExportUrl(resumeId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: recordResumeExportResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as recordResumeExportResponse
+}
+
+
+
+export type getResumeAvatarResponse200 = {
+  data: Blob
+  status: 200
+}
+
+export type getResumeAvatarResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getResumeAvatarResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getResumeAvatarResponseSuccess = (getResumeAvatarResponse200) & {
+  headers: Headers;
+};
+export type getResumeAvatarResponseError = (getResumeAvatarResponse401 | getResumeAvatarResponse404) & {
+  headers: Headers;
+};
+
+export type getResumeAvatarResponse = (getResumeAvatarResponseSuccess | getResumeAvatarResponseError)
+
+export const getGetResumeAvatarUrl = (resumeId: string,) => {
+
+
+
+
+  return `/api/resumes/${resumeId}/avatar`
+}
+
+/**
+ * @summary Get the current resume avatar
+ */
+export const getResumeAvatar = async (resumeId: string, options?: RequestInit): Promise<getResumeAvatarResponse> => {
+
+  const res = await fetch(getGetResumeAvatarUrl(resumeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.blob();
+  const data: getResumeAvatarResponse['data'] = body as getResumeAvatarResponse['data']
+  return { data, status: res.status, headers: res.headers } as getResumeAvatarResponse
+}
+
+
+
+export type putResumeAvatarResponse200 = {
+  data: ResumeDetailResponse
+  status: 200
+}
+
+export type putResumeAvatarResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type putResumeAvatarResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type putResumeAvatarResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type putResumeAvatarResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type putResumeAvatarResponseSuccess = (putResumeAvatarResponse200) & {
+  headers: Headers;
+};
+export type putResumeAvatarResponseError = (putResumeAvatarResponse400 | putResumeAvatarResponse401 | putResumeAvatarResponse404 | putResumeAvatarResponse500) & {
+  headers: Headers;
+};
+
+export type putResumeAvatarResponse = (putResumeAvatarResponseSuccess | putResumeAvatarResponseError)
+
+export const getPutResumeAvatarUrl = (resumeId: string,) => {
+
+
+
+
+  return `/api/resumes/${resumeId}/avatar`
+}
+
+/**
+ * @summary Replace the current resume avatar
+ */
+export const putResumeAvatar = async (resumeId: string,
+    putResumeAvatarBody: Blob, options?: RequestInit): Promise<putResumeAvatarResponse> => {
+
+  const res = await fetch(getPutResumeAvatarUrl(resumeId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/jpeg', ...options?.headers },
+    body: putResumeAvatarBody
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putResumeAvatarResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putResumeAvatarResponse
+}
+
+
+
+export type deleteResumeAvatarResponse200 = {
+  data: ResumeDetailResponse
+  status: 200
+}
+
+export type deleteResumeAvatarResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type deleteResumeAvatarResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type deleteResumeAvatarResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type deleteResumeAvatarResponseSuccess = (deleteResumeAvatarResponse200) & {
+  headers: Headers;
+};
+export type deleteResumeAvatarResponseError = (deleteResumeAvatarResponse401 | deleteResumeAvatarResponse404 | deleteResumeAvatarResponse500) & {
+  headers: Headers;
+};
+
+export type deleteResumeAvatarResponse = (deleteResumeAvatarResponseSuccess | deleteResumeAvatarResponseError)
+
+export const getDeleteResumeAvatarUrl = (resumeId: string,) => {
+
+
+
+
+  return `/api/resumes/${resumeId}/avatar`
+}
+
+/**
+ * @summary Delete the current resume avatar
+ */
+export const deleteResumeAvatar = async (resumeId: string, options?: RequestInit): Promise<deleteResumeAvatarResponse> => {
+
+  const res = await fetch(getDeleteResumeAvatarUrl(resumeId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteResumeAvatarResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteResumeAvatarResponse
 }

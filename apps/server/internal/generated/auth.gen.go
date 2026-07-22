@@ -114,15 +114,33 @@ func (e EmptyResponseMessage) Valid() bool {
 	}
 }
 
+// Defines values for ImportResumeRequestTemplateId.
+const (
+	ImportResumeRequestTemplateIdClassicProfessional ImportResumeRequestTemplateId = "classic-professional"
+	ImportResumeRequestTemplateIdModernEditorial     ImportResumeRequestTemplateId = "modern-editorial"
+)
+
+// Valid indicates whether the value is a known member of the ImportResumeRequestTemplateId enum.
+func (e ImportResumeRequestTemplateId) Valid() bool {
+	switch e {
+	case ImportResumeRequestTemplateIdClassicProfessional:
+		return true
+	case ImportResumeRequestTemplateIdModernEditorial:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ImportResumeRequestVersion.
 const (
-	N1 ImportResumeRequestVersion = 1
+	ImportResumeRequestVersionN1 ImportResumeRequestVersion = 1
 )
 
 // Valid indicates whether the value is a known member of the ImportResumeRequestVersion enum.
 func (e ImportResumeRequestVersion) Valid() bool {
 	switch e {
-	case N1:
+	case ImportResumeRequestVersionN1:
 		return true
 	default:
 		return false
@@ -303,6 +321,39 @@ func (e ListResumesParamsPageSize) Valid() bool {
 	}
 }
 
+// Defines values for ReplaceResumeImportJSONBodyTemplateId.
+const (
+	ReplaceResumeImportJSONBodyTemplateIdClassicProfessional ReplaceResumeImportJSONBodyTemplateId = "classic-professional"
+	ReplaceResumeImportJSONBodyTemplateIdModernEditorial     ReplaceResumeImportJSONBodyTemplateId = "modern-editorial"
+)
+
+// Valid indicates whether the value is a known member of the ReplaceResumeImportJSONBodyTemplateId enum.
+func (e ReplaceResumeImportJSONBodyTemplateId) Valid() bool {
+	switch e {
+	case ReplaceResumeImportJSONBodyTemplateIdClassicProfessional:
+		return true
+	case ReplaceResumeImportJSONBodyTemplateIdModernEditorial:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReplaceResumeImportJSONBodyVersion.
+const (
+	ReplaceResumeImportJSONBodyVersionN1 ReplaceResumeImportJSONBodyVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the ReplaceResumeImportJSONBodyVersion enum.
+func (e ReplaceResumeImportJSONBodyVersion) Valid() bool {
+	switch e {
+	case ReplaceResumeImportJSONBodyVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // AuthPayload defines model for AuthPayload.
 type AuthPayload struct {
 	// AccessToken 15-minute bearer access token.
@@ -382,10 +433,15 @@ type ErrorResponse struct {
 
 // ImportResumeRequest defines model for ImportResumeRequest.
 type ImportResumeRequest struct {
-	Content map[string]interface{}     `json:"content"`
-	Title   string                     `json:"title"`
-	Version ImportResumeRequestVersion `json:"version"`
+	Avatar     *string                        `json:"avatar,omitempty"`
+	Content    ResumeContent                  `json:"content"`
+	TemplateId *ImportResumeRequestTemplateId `json:"templateId,omitempty"`
+	Title      string                         `json:"title"`
+	Version    ImportResumeRequestVersion     `json:"version"`
 }
+
+// ImportResumeRequestTemplateId defines model for ImportResumeRequest.TemplateId.
+type ImportResumeRequestTemplateId string
 
 // ImportResumeRequestVersion defines model for ImportResumeRequest.Version.
 type ImportResumeRequestVersion int
@@ -404,17 +460,26 @@ type RegisterRequest struct {
 	Username        string              `json:"username"`
 }
 
+// ResumeContent defines model for ResumeContent.
+type ResumeContent struct {
+	Formatting map[string]interface{}   `json:"formatting"`
+	Profile    map[string]interface{}   `json:"profile"`
+	Sections   []map[string]interface{} `json:"sections"`
+}
+
 // ResumeDetail defines model for ResumeDetail.
 type ResumeDetail struct {
-	Content        map[string]interface{} `json:"content"`
-	ContentVersion int                    `json:"contentVersion"`
-	CreatedAt      time.Time              `json:"createdAt"`
-	ExportCount    int64                  `json:"exportCount"`
-	Id             openapi_types.UUID     `json:"id"`
-	Status         ResumeStatus           `json:"status"`
-	TemplateId     *string                `json:"templateId,omitempty"`
-	Title          string                 `json:"title"`
-	UpdatedAt      time.Time              `json:"updatedAt"`
+	Content        ResumeContent      `json:"content"`
+	ContentVersion int                `json:"contentVersion"`
+	CreatedAt      time.Time          `json:"createdAt"`
+	ExportCount    int64              `json:"exportCount"`
+	HasAvatar      bool               `json:"hasAvatar"`
+	Id             openapi_types.UUID `json:"id"`
+	Revision       int64              `json:"revision"`
+	Status         ResumeStatus       `json:"status"`
+	TemplateId     *string            `json:"templateId,omitempty"`
+	Title          string             `json:"title"`
+	UpdatedAt      time.Time          `json:"updatedAt"`
 }
 
 // ResumeDetailResponse defines model for ResumeDetailResponse.
@@ -485,7 +550,9 @@ type ResumeStatus string
 type ResumeSummary struct {
 	CreatedAt   time.Time          `json:"createdAt"`
 	ExportCount int64              `json:"exportCount"`
+	HasAvatar   bool               `json:"hasAvatar"`
 	Id          openapi_types.UUID `json:"id"`
+	Revision    int64              `json:"revision"`
 	Status      ResumeStatus       `json:"status"`
 	TemplateId  *string            `json:"templateId,omitempty"`
 	Title       string             `json:"title"`
@@ -494,10 +561,11 @@ type ResumeSummary struct {
 
 // UpdateResumeRequest defines model for UpdateResumeRequest.
 type UpdateResumeRequest struct {
-	Content    *map[string]interface{} `json:"content,omitempty"`
-	Status     *ResumeStatus           `json:"status,omitempty"`
-	TemplateId *string                 `json:"templateId,omitempty"`
-	Title      *string                 `json:"title,omitempty"`
+	Content          *ResumeContent `json:"content,omitempty"`
+	ExpectedRevision int64          `json:"expectedRevision"`
+	Status           *ResumeStatus  `json:"status,omitempty"`
+	TemplateId       *string        `json:"templateId,omitempty"`
+	Title            *string        `json:"title,omitempty"`
 }
 
 // RefreshTokenCookie defines model for RefreshTokenCookie.
@@ -551,6 +619,22 @@ type ListResumesParams struct {
 // ListResumesParamsPageSize defines parameters for ListResumes.
 type ListResumesParamsPageSize int
 
+// ReplaceResumeImportJSONBody defines parameters for ReplaceResumeImport.
+type ReplaceResumeImportJSONBody struct {
+	Avatar           *string                                `json:"avatar,omitempty"`
+	Content          ResumeContent                          `json:"content"`
+	ExpectedRevision int64                                  `json:"expectedRevision"`
+	TemplateId       *ReplaceResumeImportJSONBodyTemplateId `json:"templateId,omitempty"`
+	Title            string                                 `json:"title"`
+	Version          ReplaceResumeImportJSONBodyVersion     `json:"version"`
+}
+
+// ReplaceResumeImportJSONBodyTemplateId defines parameters for ReplaceResumeImport.
+type ReplaceResumeImportJSONBodyTemplateId string
+
+// ReplaceResumeImportJSONBodyVersion defines parameters for ReplaceResumeImport.
+type ReplaceResumeImportJSONBodyVersion int
+
 // LoginAuthUserJSONRequestBody defines body for LoginAuthUser for application/json ContentType.
 type LoginAuthUserJSONRequestBody = LoginRequest
 
@@ -565,6 +649,9 @@ type ImportResumeJSONRequestBody = ImportResumeRequest
 
 // UpdateResumeJSONRequestBody defines body for UpdateResume for application/json ContentType.
 type UpdateResumeJSONRequestBody = UpdateResumeRequest
+
+// ReplaceResumeImportJSONRequestBody defines body for ReplaceResumeImport for application/json ContentType.
+type ReplaceResumeImportJSONRequestBody ReplaceResumeImportJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -604,9 +691,24 @@ type ServerInterface interface {
 	// Update resume metadata or opaque content
 	// (PATCH /api/resumes/{resumeId})
 	UpdateResume(c *gin.Context, resumeId ResumeId)
+	// Delete the current resume avatar
+	// (DELETE /api/resumes/{resumeId}/avatar)
+	DeleteResumeAvatar(c *gin.Context, resumeId ResumeId)
+	// Get the current resume avatar
+	// (GET /api/resumes/{resumeId}/avatar)
+	GetResumeAvatar(c *gin.Context, resumeId ResumeId)
+	// Replace the current resume avatar
+	// (PUT /api/resumes/{resumeId}/avatar)
+	PutResumeAvatar(c *gin.Context, resumeId ResumeId)
 	// Copy a resume as a new draft
 	// (POST /api/resumes/{resumeId}/copy)
 	CopyResume(c *gin.Context, resumeId ResumeId)
+	// Record a successfully started PDF download
+	// (POST /api/resumes/{resumeId}/exports)
+	RecordResumeExport(c *gin.Context, resumeId ResumeId)
+	// Replace an existing resume from a VegaResume envelope
+	// (PUT /api/resumes/{resumeId}/import)
+	ReplaceResumeImport(c *gin.Context, resumeId ResumeId)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -914,6 +1016,87 @@ func (siw *ServerInterfaceWrapper) UpdateResume(c *gin.Context) {
 	siw.Handler.UpdateResume(c, resumeId)
 }
 
+// DeleteResumeAvatar operation middleware
+func (siw *ServerInterfaceWrapper) DeleteResumeAvatar(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteResumeAvatar(c, resumeId)
+}
+
+// GetResumeAvatar operation middleware
+func (siw *ServerInterfaceWrapper) GetResumeAvatar(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetResumeAvatar(c, resumeId)
+}
+
+// PutResumeAvatar operation middleware
+func (siw *ServerInterfaceWrapper) PutResumeAvatar(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutResumeAvatar(c, resumeId)
+}
+
 // CopyResume operation middleware
 func (siw *ServerInterfaceWrapper) CopyResume(c *gin.Context) {
 
@@ -939,6 +1122,60 @@ func (siw *ServerInterfaceWrapper) CopyResume(c *gin.Context) {
 	}
 
 	siw.Handler.CopyResume(c, resumeId)
+}
+
+// RecordResumeExport operation middleware
+func (siw *ServerInterfaceWrapper) RecordResumeExport(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RecordResumeExport(c, resumeId)
+}
+
+// ReplaceResumeImport operation middleware
+func (siw *ServerInterfaceWrapper) ReplaceResumeImport(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ReplaceResumeImport(c, resumeId)
 }
 
 // GinServerOptions provides options for the Gin server.
@@ -980,7 +1217,12 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/resumes/:resumeId", wrapper.DeleteResume)
 	router.GET(options.BaseURL+"/api/resumes/:resumeId", wrapper.GetResume)
 	router.PATCH(options.BaseURL+"/api/resumes/:resumeId", wrapper.UpdateResume)
+	router.DELETE(options.BaseURL+"/api/resumes/:resumeId/avatar", wrapper.DeleteResumeAvatar)
+	router.GET(options.BaseURL+"/api/resumes/:resumeId/avatar", wrapper.GetResumeAvatar)
+	router.PUT(options.BaseURL+"/api/resumes/:resumeId/avatar", wrapper.PutResumeAvatar)
 	router.POST(options.BaseURL+"/api/resumes/:resumeId/copy", wrapper.CopyResume)
+	router.POST(options.BaseURL+"/api/resumes/:resumeId/exports", wrapper.RecordResumeExport)
+	router.PUT(options.BaseURL+"/api/resumes/:resumeId/import", wrapper.ReplaceResumeImport)
 }
 
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
@@ -988,50 +1230,56 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"xf8DAAD//w==",
+	"7Fx7b9s4Ev8qBG+B++NkW07TbuqiwGXTdK+L7m2QtHvAtb7FRBrb3EikSlJp3CLf/cCHZMmW/Ejs1A32",
+	"vzomh/P4zYPDcb/SSKSZ4Mi1ooOvdIIQo7T/PEkQ5DmOJKrJO3GF/AL1iRBXDM23MapIskwzwemAnt5k",
+	"TGJMpFv+hzbrSWRXd2lAVTTBFMw+vIE0S5AOaG3tyxfkDPTkZQ8y1oNcT16QX+GmczzGl+EL8i+ts994",
+	"Mn1BLiDFC6bx5Vu4oQHV08yQUloyPqa3twFdk+GCYiPHREUiw5hoQQwryDWLwGwkyONMMK7VekKJDD7l",
+	"2C7as/DwKNxEvtuAZiAhRe2NVBV3XVnJvHWYWeU+0oBySBckqUnbpHSVp/gmNt9aYhnoSZWU/zqgEj/l",
+	"Bil0oGWOVaojIVPQdEDznMXNoktUmeAKreQ/QXyOn3JU2nyKBNfI7T8hyxJvr96fymigNJDdeCrle4XS",
+	"8PbanvmGX0PCLPPXkOTo6MVIB/2wH4ZHAY1BAx3wPEkCmqJSMDasFVSIY50wRZgj1XX8zoT7QeKIDujf",
+	"ejNv67lvVe9USiHPvWhuY91+nj8inbgBYTxK8pjxMWmThQCPif2Xx605Q3XpbUBPBB8lLLqH1k5vmHLR",
+	"okldP65UFyQSIZ4StHS2q6tXuRMDCabAEiIkyf25LXo7LbgI6Buuzd+SC5TXKO1Za2hpS5y7Q52lSIF0",
+	"y9a/hX4tch4/HC/esWxAVyKXEZJYoCJcaGc1y9c7IX4FPvWL1eaAaiCwgKgwDJ+1IeqdECQFPi08Y8tY",
+	"WuSwbpf33ERzIdkXjO8i/BVynzfbfOlJu+QmgqPb3bUxuCC5IpodLie5kwB2XE+iI2AJxoFPQylTivFx",
+	"8dHLFBjP1fMsFRxZHRqqZzBNBFhhMykylJo5BUMUoVJWpsWE2H/aSRnPNZJLBImSuNXuvO5i7gmoiSGr",
+	"1GD4MUGFulRV5LkPNV48qWF5hrj8EyNtzjD7Sy0aEZLktxEdfFh+6k+gcKb7YF4PzvJfKfI8pYMP4TCY",
+	"JVrG9ZODmbSMaxwb9guErBa3UP9tBUjlWbQiZaVWqGrGnrOoi6HXxnuv9bpINrDXqy6j03/6j91IpLQi",
+	"pVveYFPnIyvKDmcvV8dUT/wyAT5WYAyaws1b5GM9oYMnBwFNGS8+HqyS355YHhB4XtvAYdTxnQHE+cP2",
+	"0VETatAmU93rQ1OnEZVbb3xBuOCdLygFiUWUp8hNtnPJ12y3a02gyqUtkUvLhxvpZy6h+NtDR2UYsRGL",
+	"SOYcyEY7E5DtsUWxFlDzJ7g0x5pqua7HOdJppqd1ASd5CrxjSi1DgvitrYJRusoeVq0zHoI2AwX0RCJo",
+	"dLeCSpFet5JmOrGSVBzoKKw5UL+JpYXTrOx75hjLLLfcAxrQXk+wWxewQIAttvrbE7NElocAmV1dCUic",
+	"JfZ7BII3aSakXoE0uAYNcg5qPz414s77WEMCqJR1y7TteDjxi40hMc0S0P5aXBg9FTFK3sGYaSEZmMwU",
+	"JaAUizqZFCNUigkONgms5OxOHhTQa5SK+ZrUcdUfLhp5zgbFpuLUmV6aAsBbMWa81R7byuAZKPVZyLhO",
+	"qvhrv0qjXFrL1/2Do9XxpqqFgpWSXJPw5zhmSptc3SJ/JPiIyfRs2+wfNehob3V9tPVaKwNt7u90QP/3",
+	"4bjzX+h8CTvP//j4MT/EMOx8/Jg/H8HTzvAfP6wMOAslWVAVat58zRioRgMTg+KYaevaZxUsjCBRGMzB",
+	"wylSG8ZaN9YiwuxYE0KYiwkb7VMYmbX2eKYxVRtTSOHmjdv47LD8GqSE6YJ2CyYrxwZVodv1+Qq1R/N6",
+	"GdDtusjTFOS0MQXeLbT7fb/PAmnKOEtNLO2vjKRzm5cF0uGc5N9R9V8z2A5uAI7+W6Z0aw+gBHL5j02w",
+	"ModhEwEc+8tM7VZdsC9VQZ8F/YPg4HDYtFwLDUmNargSQE4cz1DlxIJau/8YdX13GKraeGdAuhBSV0nm",
+	"WQwa4z/MLcvc0f1HsJ8ie70pv7QFkf1q2JDTPH0NrsE5rzuT47TrAC6DQEBjCSO9ehnemIIY670NxvWz",
+	"Qxqs2HoXLLo9BXdBRaAKK+2AtGr57hDpjLk7LGrQuaoSXdTuEqT5CLaINYfaY12DhsF1RzNb6ywWj9aC",
+	"JyLn+g54moA6Lm9e/utLIRIEvkH/TeI1K7JsOwONsViVilzPprlavLft6hLmI8r61mhqHRZXMS9oRVlV",
+	"7dftGFSAUGWjyUnf228Xbtcp49WKsB9sqazCmwwjjfH5YzT5/E1yXtZF/bu6PJdMTy8M40657sniODen",
+	"FJ9eF0r65T/viqd662322xmWJlpn7oGG8ZFY7CIaW0iItG0Szo0+ALevgXmKJAUOY0yR624JwgH9Hcfg",
+	"FEuOz97QSp+Bht2Dbmg0JzLkkDE6oE+6YfeJrV70xMpVjkf0EjFm1vaZcHgz2LJMGPu43kLZXHZaRaV/",
+	"EvF0ay+ktf7Fbd12vtNVG0Y4CMOtnV17B2p4TXsrxmOMO4zbl21rl/n3q8oUzwXqzmwwpOlcv7jXPDlj",
+	"GTh04jXtLtXQqwxk2C391VtqL6hm08GTzR9Sj6PIBLa3Irpqf0l93vbs6XcTpoiJAkKCZMmUJJba1t+T",
+	"a7zWX5MPD56vVtj8i/ltQJ+uY5umyQYrWVEsOK8in5me+MkJg6tK00PDWJm4ZQPP0OytOazI9VKPFbmu",
+	"uGx1hqml1Jst6TXMON0Od+iA9feEVg8kItddYqfkVOvg2508ccnknXPHbwuVc7wWVzg3TWbgEhm+STlI",
+	"tgwyrsc3xga0/Iz6JJcSua4F+R1G29rDaoO9PTvVjIixjb7de4S6b2FDX05Yr6sWEh+GxqNmJv4ZNYm8",
+	"1LmzwDJreii0RwAPZrP3wj1x7H0UWJWGPT8eCEQ5sXaTffubZ8UqveUjQf2wLTee1zx8V+ONzczuVXI8",
+	"Fxp0U8RjSuVIgHD8XCvCVvqLeyFa5jBuxY7r3Pmnqj0rdQv2Cifb01p3a3nVSUtgRcx11zDVmkF9m9eu",
+	"WQizdj77U45yOhvQLj7OrDZ3s124yzbTKfsQ66Kveg1vJSqk3pSk2dJK0PfNZwRjHEGeaHtrX/6Q007Q",
+	"d+AbiD4LVj8E7DSTNfT+G3ztDMaMg5/5NZd4B0yGyhc5D3MFfJj6xiiD6AnWipy/KyJLrylczymPDm+D",
+	"lkhdnXXaUZRuGqd64Ejd+ArZVCq73qJX5CNEjhOQALlMgF8R25n30jahZi5k95idV2rP+9V5ph2hqWlk",
+	"ak/R5Fh9zHByEhIgle4p8mtMRIYElC8ti/eflfBSxTNj2826+oC1cwPXX/eWXKx99IXxWOLYVdouBWnQ",
+	"TGkWqe6e29FcmBeYtm30+Syzjhm/Fr+Yu3WVRIIaF835yv69Eiu+VT/M49bxGd+jJxIert5U/hrqwWzr",
+	"9EygMLD4zDEml9O1TBuscEW6B2G2tJ9ZqB6d/Yxv3tV4m/ao/A9dDQMZ6GiyaPnqm+qOMnzTs+2eZnjH",
+	"6jdJ8Buj9TBcowlV/rz2weDtVFi+zaKGGDQQIYn7+TkpDLpR4unNhubXyT/lqMF+IurRJaNq9PKWh8IE",
+	"G+egdY3HUhhj788Mx3WzlTMal4yDbYw0/Hi/bqVfzk5/9hyTy6nGh8s6m2aODTV9n4SRNxjpLF80UlvG",
+	"uJd9/soN++/855glEG3o/UtifCQyNyh4D9A2N8VENt2f+vZEZOzxZgSj61l9u3nPoIIHNyeodgKJc4yE",
+	"jN3CU3vOX9XCAwQMo3QCxa+CR3mSTInSYLtqZ69ek1h85na0fjOkVPqYW054Psb5hWkJlLtdk9abJ29s",
+	"iS6Mld97PHXzEdDhnqZmb6S/7m1bSObA3f+pw/i4COIjKdLmnnCjm9pTDRfOBXOZ+FnfQa+XiAiSiVB6",
+	"cBQehQZR/w8AAP//",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

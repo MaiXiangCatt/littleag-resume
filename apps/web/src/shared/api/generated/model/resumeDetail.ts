@@ -5,11 +5,11 @@
  * Contract for authentication and resume management.
  * OpenAPI spec version: 0.2.0
  */
-import type { ResumeDetailContent } from './resumeDetailContent';
+import type { ResumeContent } from './resumeContent';
 import type { ResumeSummary } from './resumeSummary';
 
 export type ResumeDetail = ResumeSummary & {
   /** @minimum 1 */
   contentVersion: number;
-  content: ResumeDetailContent;
+  content: ResumeContent;
 };

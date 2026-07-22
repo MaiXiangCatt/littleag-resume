@@ -102,7 +102,14 @@ func (h *ResumeHandler) ImportResume(c *gin.Context) {
 		}
 		return
 	}
-	resume, err := h.resumes.Import(c.Request.Context(), userID, int(body.Version), body.Title, body.Content)
+	content, err := contentMap(body.Content)
+	if err != nil {
+		writeError(c, model.ErrResumeInvalidSchema)
+		return
+	}
+	resume, err := h.resumes.Import(c.Request.Context(), userID, service.ImportResumeInput{
+		Version: int(body.Version), Title: body.Title, TemplateID: templateIDString(body.TemplateId), Content: content, Avatar: body.Avatar,
+	})
 	if err != nil {
 		writeError(c, err)
 		return
@@ -154,8 +161,102 @@ func (h *ResumeHandler) UpdateResume(c *gin.Context, resumeID generated.ResumeId
 		status = &value
 	}
 	resume, err := h.resumes.Update(c.Request.Context(), userID, uuid.UUID(resumeID), service.UpdateResumeInput{
-		Title: body.Title, Status: status, TemplateID: body.TemplateId, Content: body.Content,
+		ExpectedRevision: body.ExpectedRevision, Title: body.Title, Status: status, TemplateID: body.TemplateId,
+		Content: generatedContentMap(body.Content),
 	})
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	writeResume(c, resume)
+}
+
+func (h *ResumeHandler) ReplaceResumeImport(c *gin.Context, resumeID generated.ResumeId) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxImportBodyBytes)
+	var body generated.ReplaceResumeImportJSONRequestBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		writeError(c, model.ErrResumeInvalidSchema)
+		return
+	}
+	content, err := contentMap(body.Content)
+	if err != nil {
+		writeError(c, model.ErrResumeInvalidSchema)
+		return
+	}
+	resume, err := h.resumes.ReplaceImport(c.Request.Context(), userID, uuid.UUID(resumeID), service.ImportResumeInput{
+		Version: int(body.Version), Title: body.Title, TemplateID: replaceTemplateIDString(body.TemplateId),
+		Content: content, Avatar: body.Avatar, ExpectedRevision: &body.ExpectedRevision,
+	})
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	writeResume(c, resume)
+}
+
+func (h *ResumeHandler) RecordResumeExport(c *gin.Context, resumeID generated.ResumeId) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	resume, err := h.resumes.RecordExport(c.Request.Context(), userID, uuid.UUID(resumeID))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	writeResume(c, resume)
+}
+
+func (h *ResumeHandler) PutResumeAvatar(c *gin.Context, resumeID generated.ResumeId) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	if c.GetHeader("Content-Type") != "image/jpeg" {
+		writeError(c, model.ErrAvatarInvalid)
+		return
+	}
+	data, err := io.ReadAll(io.LimitReader(c.Request.Body, service.MaxAvatarBytes+1))
+	if err != nil {
+		writeError(c, model.ErrInvalidParam)
+		return
+	}
+	if len(data) > service.MaxAvatarBytes {
+		writeError(c, model.ErrFileTooLarge)
+		return
+	}
+	resume, err := h.resumes.PutAvatar(c.Request.Context(), userID, uuid.UUID(resumeID), data)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	writeResume(c, resume)
+}
+
+func (h *ResumeHandler) GetResumeAvatar(c *gin.Context, resumeID generated.ResumeId) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	data, err := h.resumes.GetAvatar(c.Request.Context(), userID, uuid.UUID(resumeID))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Header("Cache-Control", "private, max-age=300")
+	c.Data(http.StatusOK, "image/jpeg", data)
+}
+
+func (h *ResumeHandler) DeleteResumeAvatar(c *gin.Context, resumeID generated.ResumeId) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	resume, err := h.resumes.DeleteAvatar(c.Request.Context(), userID, uuid.UUID(resumeID))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -199,13 +300,13 @@ func currentUserID(c *gin.Context) (uuid.UUID, bool) {
 func resumeSummary(resume *model.Resume) generated.ResumeSummary {
 	return generated.ResumeSummary{
 		Id: resume.ID, Title: resume.Title, Status: generated.ResumeStatus(resume.Status),
-		TemplateId: resume.TemplateID, ExportCount: resume.ExportCount,
+		TemplateId: resume.TemplateID, Revision: resume.Revision, HasAvatar: resume.AvatarKey != nil, ExportCount: resume.ExportCount,
 		CreatedAt: resume.CreatedAt, UpdatedAt: resume.UpdatedAt,
 	}
 }
 
 func resumeDetail(resume *model.Resume) (generated.ResumeDetail, error) {
-	content := map[string]any{}
+	content := generated.ResumeContent{}
 	if len(resume.ContentJSON) > 0 {
 		if err := json.Unmarshal(resume.ContentJSON, &content); err != nil {
 			return generated.ResumeDetail{}, err
@@ -214,9 +315,48 @@ func resumeDetail(resume *model.Resume) (generated.ResumeDetail, error) {
 	summary := resumeSummary(resume)
 	return generated.ResumeDetail{
 		Id: summary.Id, Title: summary.Title, Status: summary.Status, TemplateId: summary.TemplateId,
-		ExportCount: summary.ExportCount, CreatedAt: summary.CreatedAt, UpdatedAt: summary.UpdatedAt,
+		Revision: summary.Revision, HasAvatar: summary.HasAvatar, ExportCount: summary.ExportCount, CreatedAt: summary.CreatedAt, UpdatedAt: summary.UpdatedAt,
 		ContentVersion: resume.ContentVersion, Content: content,
 	}, nil
+}
+
+func contentMap(content generated.ResumeContent) (map[string]any, error) {
+	data, err := json.Marshal(content)
+	if err != nil {
+		return nil, err
+	}
+	value := map[string]any{}
+	if err := json.Unmarshal(data, &value); err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+func generatedContentMap(content *generated.ResumeContent) *map[string]any {
+	if content == nil {
+		return nil
+	}
+	value, err := contentMap(*content)
+	if err != nil {
+		return nil
+	}
+	return &value
+}
+
+func templateIDString(value *generated.ImportResumeRequestTemplateId) *string {
+	if value == nil {
+		return nil
+	}
+	text := string(*value)
+	return &text
+}
+
+func replaceTemplateIDString(value *generated.ReplaceResumeImportJSONBodyTemplateId) *string {
+	if value == nil {
+		return nil
+	}
+	text := string(*value)
+	return &text
 }
 
 func writeResume(c *gin.Context, resume *model.Resume) {

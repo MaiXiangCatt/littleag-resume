@@ -38,6 +38,9 @@ func (s *MemoryStore) CreateResume(_ context.Context, resume *model.Resume) erro
 	if copy.UpdatedAt.IsZero() {
 		copy.UpdatedAt = now
 	}
+	if copy.Revision == 0 {
+		copy.Revision = 1
+	}
 	s.resumes[copy.ID] = copy
 	return nil
 }
@@ -93,17 +96,49 @@ func (s *MemoryStore) ListResumes(_ context.Context, userID uuid.UUID, options R
 	return items[start:end], total, nil
 }
 
-func (s *MemoryStore) UpdateResume(_ context.Context, resume *model.Resume) error {
+func (s *MemoryStore) UpdateResume(_ context.Context, resume *model.Resume, expectedRevision int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	existing, ok := s.resumes[resume.ID]
 	if !ok || existing.UserID != resume.UserID || existing.DeletedAt.Valid {
 		return ErrNotFound
 	}
+	if existing.Revision != expectedRevision {
+		return ErrConflict
+	}
 	copy := cloneResume(resume)
 	copy.UpdatedAt = time.Now().UTC()
 	s.resumes[copy.ID] = copy
 	resume.UpdatedAt = copy.UpdatedAt
+	return nil
+}
+
+func (s *MemoryStore) SetResumeAvatar(_ context.Context, userID, resumeID uuid.UUID, avatarKey *string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	resume, ok := s.resumes[resumeID]
+	if !ok || resume.UserID != userID || resume.DeletedAt.Valid {
+		return ErrNotFound
+	}
+	if avatarKey == nil {
+		resume.AvatarKey = nil
+	} else {
+		value := *avatarKey
+		resume.AvatarKey = &value
+	}
+	resume.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+func (s *MemoryStore) IncrementResumeExport(_ context.Context, userID, resumeID uuid.UUID, updatedAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	resume, ok := s.resumes[resumeID]
+	if !ok || resume.UserID != userID || resume.DeletedAt.Valid {
+		return ErrNotFound
+	}
+	resume.ExportCount++
+	resume.UpdatedAt = updatedAt
 	return nil
 }
 
@@ -144,6 +179,10 @@ func cloneResume(resume *model.Resume) *model.Resume {
 	if resume.TemplateID != nil {
 		templateID := *resume.TemplateID
 		copy.TemplateID = &templateID
+	}
+	if resume.AvatarKey != nil {
+		avatarKey := *resume.AvatarKey
+		copy.AvatarKey = &avatarKey
 	}
 	return &copy
 }

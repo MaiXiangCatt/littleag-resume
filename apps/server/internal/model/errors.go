@@ -42,5 +42,7 @@ var (
 	ErrRefreshTokenInvalid   = &AppError{Code: 101010, Message: "Refresh Token 无效或已失效", HTTPStatus: http.StatusUnauthorized}
 	ErrResumeNotFound        = &AppError{Code: 103001, Message: "简历不存在", HTTPStatus: http.StatusNotFound}
 	ErrResumeInvalidSchema   = &AppError{Code: 103004, Message: "简历数据结构不合法", HTTPStatus: http.StatusBadRequest}
+	ErrResumeConflict        = &AppError{Code: 103005, Message: "简历已在其他页面更新", HTTPStatus: http.StatusConflict}
+	ErrAvatarInvalid         = &AppError{Code: 105003, Message: "头像必须是 512×512 的 JPEG 图片", HTTPStatus: http.StatusBadRequest}
 	ErrFileTooLarge          = &AppError{Code: 105002, Message: "上传文件超过大小限制", HTTPStatus: http.StatusBadRequest}
 )

@@ -47,7 +47,7 @@ func TestResumeHandlersLifecycleAndStats(t *testing.T) {
 		t.Fatalf("new resume should be draft: %+v", createdData)
 	}
 
-	updated := performAuthorizedJSON(router, token, http.MethodPatch, "/api/resumes/"+resumeID, `{"title":"控制台简历","status":"completed"}`)
+	updated := performAuthorizedJSON(router, token, http.MethodPatch, "/api/resumes/"+resumeID, `{"expectedRevision":1,"title":"控制台简历","status":"completed"}`)
 	if updated.Code != http.StatusOK {
 		t.Fatalf("update status=%d body=%s", updated.Code, updated.Body.String())
 	}

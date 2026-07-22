@@ -2,6 +2,8 @@ import { Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { normalizeContent, parseImportEnvelope } from '@/pages/resume-editor/model/resume.model';
+import { resumeEditorService } from '@/pages/resume-editor/service/resume-editor.service';
 import type { ResumeSummary } from '@/shared/api/generated/model/resumeSummary';
 import type { ResumeSort } from '@/shared/api/generated/model/resumeSort';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
@@ -155,7 +157,9 @@ function AuthenticatedConsole({
   async function handleRename(resumeId: string, title: string) {
     setPendingAction(`rename:${resumeId}`);
     try {
-      await resumeService.update(resumeId, { title });
+      const current = consoleData.list.items.find((item) => item.id === resumeId);
+      if (!current) throw new Error('resume not found');
+      await resumeService.update(resumeId, { expectedRevision: current.revision, title });
       setRenameResume(null);
       setFeedback({ kind: 'success', message: '简历名称已更新' });
       consoleData.reload();
@@ -183,27 +187,55 @@ function AuthenticatedConsole({
     }
   }
 
+  async function handleExport(resume: ResumeSummary) {
+    setPendingAction(`export:${resume.id}`);
+    let avatarUrl: string | null = null;
+    try {
+      const detail = await resumeEditorService.get(resume.id);
+      if (detail.hasAvatar) {
+        avatarUrl = URL.createObjectURL(await resumeEditorService.getAvatar(resume.id));
+      }
+      const { createResumePdfBlob } = await import('@/pages/resume-editor/service/resume-pdf.service');
+      const blob = await createResumePdfBlob({ ...detail, content: normalizeContent(detail.content) }, avatarUrl);
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = `${detail.title.trim() || 'resume'}.pdf`;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      await resumeEditorService.recordExport(resume.id);
+      setFeedback({ kind: 'success', message: `已开始导出“${resume.title}”` });
+      consoleData.reload();
+    } catch (error) {
+      setFeedback({ kind: 'error', message: resumeErrorMessage(error) });
+    } finally {
+      if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+      setPendingAction(null);
+    }
+  }
+
   async function handleImport(file: File) {
     if (file.size > IMPORT_LIMIT_BYTES) {
       setFeedback({ kind: 'error', message: '简历文件不能超过 2 MB' });
       return;
     }
     setPendingAction('import');
+    let envelope;
     try {
       const parsed: unknown = JSON.parse(await file.text());
-      if (!isImportEnvelope(parsed)) {
-        throw new Error('invalid envelope');
-      }
-      await resumeService.import(parsed);
-      setFeedback({ kind: 'success', message: `已导入“${parsed.title.trim()}”` });
+      envelope = parseImportEnvelope(parsed);
+    } catch {
+      setFeedback({ kind: 'error', message: '文件格式不正确，需要 VegaResume v1 JSON 文件' });
+      setPendingAction(null);
+      if (importInputRef.current) importInputRef.current.value = '';
+      return;
+    }
+    try {
+      await resumeService.import(envelope);
+      setFeedback({ kind: 'success', message: `已导入“${envelope.title.trim()}”` });
       consoleData.reload();
     } catch (error) {
-      setFeedback({
-        kind: 'error',
-        message: error instanceof SyntaxError || error instanceof Error && error.message === 'invalid envelope'
-          ? '文件格式不正确，需要 VegaResume v1 JSON 文件'
-          : resumeErrorMessage(error),
-      });
+      setFeedback({ kind: 'error', message: resumeErrorMessage(error) });
     } finally {
       setPendingAction(null);
       if (importInputRef.current) {
@@ -297,6 +329,7 @@ function AuthenticatedConsole({
                   key={resume.id}
                   onCopy={() => void handleCopy(resume)}
                   onDelete={() => setDeleteResume(resume)}
+                  onExport={() => void handleExport(resume)}
                   onOpen={() => navigate(`/resumes/${resume.id}/edit`)}
                   onRename={() => setRenameResume(resume)}
                   ownerInitial={ownerInitial}
@@ -414,18 +447,4 @@ function DeleteResumeDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-function isImportEnvelope(value: unknown): value is { content: Record<string, unknown>; title: string; version: 1 } {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const envelope = value as Record<string, unknown>;
-  return envelope.version === 1
-    && typeof envelope.title === 'string'
-    && envelope.title.trim().length > 0
-    && envelope.title.trim().length <= 80
-    && typeof envelope.content === 'object'
-    && envelope.content !== null
-    && !Array.isArray(envelope.content);
 }
