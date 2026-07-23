@@ -141,7 +141,14 @@ export const resumeContentSchema = z
           })
           .strict(),
         sectionGapPx: integerBetween(0, 64),
-        accentColor: z.enum(['plum', 'navy', 'teal', 'rust', 'charcoal']),
+        fontFamily: z.enum(['source-han-sans', 'source-han-serif']),
+        accentColor: z.union([
+          z.enum(['plum', 'navy', 'teal', 'rust', 'charcoal', 'black']),
+          z
+            .string()
+            .regex(/^#[0-9a-f]{6}$/i)
+            .transform((value) => value as `#${string}`),
+        ]),
       })
       .strict(),
   })

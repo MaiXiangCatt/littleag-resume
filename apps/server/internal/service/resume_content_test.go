@@ -29,6 +29,18 @@ func TestResumeContentV2FormattingValidation(t *testing.T) {
 	if err := service.ValidateResumeContent(content); err == nil {
 		t.Fatal("negative page margin should be rejected")
 	}
+
+	margins["left"] = 33
+	formatting["fontFamily"] = "source-han-serif"
+	formatting["accentColor"] = "#123abc"
+	if err := service.ValidateResumeContent(content); err != nil {
+		t.Fatalf("supported font and custom accent should be accepted: %v", err)
+	}
+
+	formatting["accentColor"] = "#12xyz9"
+	if err := service.ValidateResumeContent(content); err == nil {
+		t.Fatal("invalid custom accent should be rejected")
+	}
 }
 
 func TestResumeContentV2RejectsLegacyFormatting(t *testing.T) {

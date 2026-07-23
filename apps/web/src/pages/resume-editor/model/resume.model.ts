@@ -2,8 +2,11 @@ import type { ResumeContent } from '@/shared/api/generated/model/resumeContent';
 
 import { importEnvelopeSchema, resumeContentSchema } from './resume.schema';
 import type {
+  AccentColor,
   CustomItem,
+  PresetAccentColor,
   ResumeContentV2,
+  ResumeFontFamily,
   ResumeFormatting,
   ResumeImportEnvelope,
   ResumeSection,
@@ -19,13 +22,34 @@ export const BUILTIN_TITLES: Record<Exclude<SectionType, 'custom'>, string> = {
   awards: '奖项荣誉',
 };
 
-export const ACCENT_COLORS = {
+export const ACCENT_COLORS: Record<PresetAccentColor, string> = {
   plum: '#850477',
   navy: '#1f3a5f',
   teal: '#147d73',
   rust: '#a3482b',
   charcoal: '#374151',
-} as const;
+  black: '#000000',
+};
+
+export const RESUME_FONT_FAMILIES: Record<
+  ResumeFontFamily,
+  { cssFamily: string; label: string; pdfFamily: string }
+> = {
+  'source-han-sans': {
+    cssFamily: "'Noto Sans SC', 'PingFang SC', sans-serif",
+    label: '思源黑体',
+    pdfFamily: 'NotoSansSC',
+  },
+  'source-han-serif': {
+    cssFamily: "'Noto Serif SC', 'Songti SC', serif",
+    label: '思源宋体',
+    pdfFamily: 'NotoSerifSC',
+  },
+};
+
+export function resolveAccentColor(value: AccentColor): string {
+  return value.startsWith('#') ? value : ACCENT_COLORS[value as PresetAccentColor];
+}
 
 export function createDefaultFormatting(): ResumeFormatting {
   return {
@@ -36,6 +60,7 @@ export function createDefaultFormatting(): ResumeFormatting {
     lineHeightRatio: 1.5,
     pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
     sectionGapPx: 8,
+    fontFamily: 'source-han-sans',
     accentColor: 'plum',
   };
 }

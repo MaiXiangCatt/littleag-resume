@@ -38,8 +38,8 @@ export function getEntryDisplay(
   switch (type) {
     case 'work':
       return {
-        title: joinText(value('role'), value('company')),
-        subtitle: value('location'),
+        title: joinHeadline(value('company'), value('role'), value('location')),
+        subtitle: '',
         date,
         description: value('description'),
       };
@@ -80,4 +80,8 @@ function dateRange(start: string, end: string): string {
 
 function joinText(...values: string[]): string {
   return values.filter(Boolean).join(' · ');
+}
+
+function joinHeadline(...values: string[]): string {
+  return values.filter(Boolean).join('　');
 }

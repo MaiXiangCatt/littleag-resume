@@ -1,5 +1,21 @@
 @import 'tailwindcss';
 
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/fonts/NotoSansSC-Regular.ttf') format('truetype');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('/fonts/NotoSerifSC-Variable.ttf') format('truetype');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 200 900;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

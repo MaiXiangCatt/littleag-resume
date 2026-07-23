@@ -23,6 +23,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
       lineHeightRatio: 1.5,
       pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
       sectionGapPx: 8,
+      fontFamily: 'source-han-sans',
       accentColor: 'plum',
     },
   };

@@ -14,6 +14,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { cn } from '@/shared/lib/utils';
@@ -43,10 +44,14 @@ import {
   createCustomSection,
   createDefaultFormatting,
   parseImportEnvelope,
+  RESUME_FONT_FAMILIES,
+  resolveAccentColor,
 } from '../model/resume.model';
 import type {
   AccentColor,
+  PresetAccentColor,
   ResumeDocument,
+  ResumeFontFamily,
   ResumeFormatting,
   ResumeImportEnvelope,
   ResumeSection,
@@ -79,7 +84,6 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
   const [issues, setIssues] = useState<{ mode: 'complete' | 'export'; values: string[] } | null>(
     null,
   );
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
   const avatarInput = useRef<HTMLInputElement>(null);
@@ -172,7 +176,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
     state.mergeServerMetadata(updated);
     setAvatar(await blobToDataURL(blob));
     setCropSource(null);
-    setFeedback('头像已更新');
+    toast.success('头像已更新');
   }
 
   async function deleteAvatar() {
@@ -182,9 +186,9 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
       const state = useResumeEditorStore.getState();
       state.mergeServerMetadata(updated);
       setAvatar(null);
-      setFeedback('头像已删除');
+      toast.success('头像已删除');
     } catch {
-      setFeedback('头像删除失败，请稍后重试');
+      toast.error('头像删除失败，请稍后重试');
     }
   }
 
@@ -192,7 +196,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
     try {
       setImportEnvelope(parseImportEnvelope(JSON.parse(await file.text())));
     } catch {
-      setFeedback('文件格式不正确，需要 VegaResume v1 JSON 文件');
+      toast.error('文件格式不正确，需要 VegaResume v2 JSON 文件');
     } finally {
       if (importInput.current) importInput.current.value = '';
     }
@@ -205,9 +209,9 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
       setImportEnvelope(null);
       setActiveId('profile');
       setAvatar(importEnvelope.avatar ?? null);
-      setFeedback('简历已导入');
+      toast.success('简历已导入');
     } catch {
-      setFeedback('导入失败，当前简历未被替换');
+      toast.error('导入失败，当前简历未被替换');
     }
   }
 
@@ -229,6 +233,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
   async function runPdfExport() {
     const current = useResumeEditorStore.getState().document;
     if (!current || exporting) return;
+    let downloaded = false;
     setIssues(null);
     setExporting(true);
     try {
@@ -238,16 +243,21 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
         await createResumePdfBlob(current, visibleAvatar),
         `${safeFileName(current.title)}.pdf`,
       );
+      downloaded = true;
       const updated = await resumeEditorService.recordExport(current.id);
       useResumeEditorStore.getState().mergeServerMetadata(updated);
       const finalSaveStatus = useResumeEditorStore.getState().saveStatus;
-      setFeedback(
-        finalSaveStatus === 'failed' || finalSaveStatus === 'conflict'
-          ? 'PDF 已导出；当前修改仍未保存'
-          : 'PDF 已开始下载',
-      );
+      if (finalSaveStatus === 'failed' || finalSaveStatus === 'conflict') {
+        toast.warning('PDF 已开始下载；当前修改仍未保存');
+      } else {
+        toast.success('PDF 已开始下载');
+      }
     } catch {
-      setFeedback('PDF 生成失败，请检查内容后重试');
+      if (downloaded) {
+        toast.warning('PDF 已开始下载，但导出记录更新失败');
+      } else {
+        toast.error('PDF 生成失败，请检查内容后重试');
+      }
     } finally {
       setExporting(false);
     }
@@ -385,14 +395,6 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
           </DropdownMenu>
         </div>
       </header>
-      {feedback ? (
-        <div className="fixed right-5 top-20 z-50 rounded-xl border border-[#e5dce1] bg-white px-4 py-3 text-sm shadow-xl">
-          <button className="sr-only" onClick={() => setFeedback(null)}>
-            关闭
-          </button>
-          {feedback}
-        </div>
-      ) : null}
       <main className="grid h-[calc(100vh-72px)] grid-cols-[236px_minmax(430px,0.9fr)_minmax(520px,1.1fr)] overflow-hidden">
         <StructurePanel
           activeId={activeId}
@@ -431,7 +433,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
             onChange={(event) => {
               const file = event.target.files?.[0];
               if (file && file.size <= 5 * 1024 * 1024) setCropSource(URL.createObjectURL(file));
-              else if (file) setFeedback('原图不能超过 5 MB');
+              else if (file) toast.error('原图不能超过 5 MB');
               event.target.value = '';
             }}
           />
@@ -564,6 +566,15 @@ function saveBadgeColor(status: ReturnType<typeof useResumeEditorStore.getState>
   return 'bg-amber-50 text-amber-700';
 }
 
+const ACCENT_COLOR_LABELS: Record<PresetAccentColor, string> = {
+  plum: '梅紫',
+  navy: '藏蓝',
+  teal: '青绿',
+  rust: '铁锈',
+  charcoal: '炭灰',
+  black: '纯黑',
+};
+
 export function FormattingDialog({
   document,
   onChange,
@@ -590,7 +601,7 @@ export function FormattingDialog({
       <DialogContent className="max-h-[88vh] w-[min(92vw,680px)] overflow-y-auto rounded-3xl p-7">
         <DialogTitle className="font-serif text-2xl">排版设置</DialogTitle>
         <DialogDescription>所有数值都会实时应用到预览与导出的 PDF。</DialogDescription>
-        <div className="mt-6 grid grid-cols-[1fr_auto] items-end gap-6 rounded-2xl border border-[#e8e0e5] bg-[#fbf9fa] p-4">
+        <div className="mt-6 grid grid-cols-2 gap-4 rounded-2xl border border-[#e8e0e5] bg-[#fbf9fa] p-4">
           <SelectField
             label="模板"
             value={document.templateId}
@@ -600,21 +611,50 @@ export function FormattingDialog({
               ['classic-professional', '经典专业'],
             ]}
           />
-          <div>
-            <Label>主题色</Label>
-            <div className="mt-2 flex gap-2">
-              {(Object.entries(ACCENT_COLORS) as [AccentColor, string][]).map(([key, color]) => (
-                <Button
-                  aria-label={`选择 ${key} 主题色`}
-                  className={cn(
-                    'size-8 rounded-full border-[3px] p-0',
-                    formatting.accentColor === key ? 'border-[#241b21]' : 'border-white',
-                  )}
-                  key={key}
-                  onClick={() => update({ accentColor: key })}
-                  style={{ backgroundColor: color }}
+          <SelectField
+            label="字体"
+            value={formatting.fontFamily}
+            onChange={(value) => update({ fontFamily: value as ResumeFontFamily })}
+            options={[
+              ['source-han-sans', RESUME_FONT_FAMILIES['source-han-sans'].label],
+              ['source-han-serif', RESUME_FONT_FAMILIES['source-han-serif'].label],
+            ]}
+          />
+          <div className="col-span-2">
+            <div className="flex items-center justify-between gap-4">
+              <Label>主题色</Label>
+              <span className="font-mono text-xs uppercase text-[#766a72]">
+                {resolveAccentColor(formatting.accentColor)}
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {(Object.entries(ACCENT_COLORS) as [PresetAccentColor, string][]).map(
+                ([key, color]) => (
+                  <Button
+                    aria-label={`选择${ACCENT_COLOR_LABELS[key]}主题色`}
+                    className={cn(
+                      'size-8 rounded-full border-[3px] p-0',
+                      resolveAccentColor(formatting.accentColor).toLowerCase() ===
+                        color.toLowerCase()
+                        ? 'border-[#241b21]'
+                        : 'border-white',
+                    )}
+                    key={key}
+                    onClick={() => update({ accentColor: key })}
+                    style={{ backgroundColor: color }}
+                  />
+                ),
+              )}
+              <div className="ml-1 flex items-center gap-2 border-l border-[#ddd4d9] pl-3">
+                <Input
+                  aria-label="自定义主题色"
+                  className="h-8 w-11 cursor-pointer rounded-lg border-0 bg-transparent p-0 shadow-none"
+                  onChange={(event) => update({ accentColor: event.target.value as AccentColor })}
+                  type="color"
+                  value={resolveAccentColor(formatting.accentColor)}
                 />
-              ))}
+                <span className="text-xs text-[#766a72]">自定义</span>
+              </div>
             </div>
           </div>
         </div>

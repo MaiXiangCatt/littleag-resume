@@ -4,7 +4,7 @@ import { Card } from '@/shared/ui/card';
 import { Link } from '@/shared/ui/link';
 import { cn } from '@/shared/lib/utils';
 
-import { ACCENT_COLORS } from '../model/resume.model';
+import { RESUME_FONT_FAMILIES, resolveAccentColor } from '../model/resume.model';
 import {
   getEntryDisplay,
   itemHasPrintableContent,
@@ -26,10 +26,11 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   const formatting = resume.content.formatting;
   const profile = resume.content.profile;
   const isClassic = resume.templateId === 'classic-professional';
-  const accent = ACCENT_COLORS[formatting.accentColor];
+  const accent = resolveAccentColor(formatting.accentColor);
   const style = {
     '--resume-accent': accent,
     containerType: 'inline-size',
+    fontFamily: RESUME_FONT_FAMILIES[formatting.fontFamily].cssFamily,
     fontSize: `${formatting.bodyFontSizePx}px`,
     lineHeight: formatting.lineHeightRatio,
   } as CSSProperties;
@@ -70,7 +71,7 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
             <div className={cn('min-w-0 flex-1', isClassic ? 'text-center' : 'text-left')}>
               {profile.fullName ? (
                 <h1
-                  className="font-serif font-bold leading-[1.08] tracking-[-0.02em]"
+                  className="font-bold leading-[1.08] tracking-[-0.02em]"
                   style={{
                     color: isClassic ? '#202027' : accent,
                     fontSize: formatting.nameFontSizePx,
@@ -214,8 +215,8 @@ function HtmlSection({
                     )}
                     {display.date ? (
                       <time
-                        className="shrink-0 text-[#6f6972]"
-                        style={{ fontSize: formatting.bodyFontSizePx * 0.82 }}
+                        className="shrink-0"
+                        style={{ fontSize: formatting.entryTitleFontSizePx }}
                       >
                         {display.date}
                       </time>

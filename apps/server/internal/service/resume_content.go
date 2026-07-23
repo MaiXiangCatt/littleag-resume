@@ -34,7 +34,7 @@ func DefaultResumeContent() map[string]any {
 			"nameFontSizePx": 20, "sectionTitleFontSizePx": 16, "entryTitleFontSizePx": 14,
 			"bodyFontSizePx": 14, "lineHeightRatio": 1.5,
 			"pageMarginPx": map[string]any{"top": 33, "right": 33, "bottom": 33, "left": 33},
-			"sectionGapPx": 8, "accentColor": "plum",
+			"sectionGapPx": 8, "fontFamily": "source-han-sans", "accentColor": "plum",
 		},
 	}
 }
@@ -85,7 +85,7 @@ func validateFormatting(formatting map[string]any) bool {
 	allowed := map[string]bool{
 		"nameFontSizePx": true, "sectionTitleFontSizePx": true, "entryTitleFontSizePx": true,
 		"bodyFontSizePx": true, "lineHeightRatio": true, "pageMarginPx": true,
-		"sectionGapPx": true, "accentColor": true,
+		"sectionGapPx": true, "fontFamily": true, "accentColor": true,
 	}
 	if !onlyAllowed(formatting, allowed) ||
 		!integerBetween(formatting["nameFontSizePx"], 12, 48) ||
@@ -94,7 +94,8 @@ func validateFormatting(formatting map[string]any) bool {
 		!integerBetween(formatting["bodyFontSizePx"], 8, 24) ||
 		!numberBetween(formatting["lineHeightRatio"], 1, 2.5) ||
 		!integerBetween(formatting["sectionGapPx"], 0, 64) ||
-		!oneOf(formatting["accentColor"], "plum", "navy", "teal", "rust", "charcoal") {
+		!oneOf(formatting["fontFamily"], "source-han-sans", "source-han-serif") ||
+		!validAccentColor(formatting["accentColor"]) {
 		return false
 	}
 	margins, ok := formatting["pageMarginPx"].(map[string]any)
@@ -103,6 +104,25 @@ func validateFormatting(formatting map[string]any) bool {
 	}
 	for _, key := range []string{"top", "right", "bottom", "left"} {
 		if !integerBetween(margins[key], 0, 160) {
+			return false
+		}
+	}
+	return true
+}
+
+func validAccentColor(value any) bool {
+	color, ok := value.(string)
+	if !ok {
+		return false
+	}
+	if oneOf(color, "plum", "navy", "teal", "rust", "charcoal", "black") {
+		return true
+	}
+	if len(color) != 7 || color[0] != '#' {
+		return false
+	}
+	for _, char := range color[1:] {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", char) {
 			return false
 		}
 	}

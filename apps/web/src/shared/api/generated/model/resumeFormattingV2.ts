@@ -5,7 +5,7 @@
  * Contract for authentication and resume management.
  * OpenAPI spec version: 0.2.0
  */
-import type { ResumeFormattingV2AccentColor } from './resumeFormattingV2AccentColor';
+import type { ResumeFormattingV2FontFamily } from './resumeFormattingV2FontFamily';
 import type { ResumeFormattingV2PageMarginPx } from './resumeFormattingV2PageMarginPx';
 
 export interface ResumeFormattingV2 {
@@ -40,5 +40,7 @@ export interface ResumeFormattingV2 {
      * @maximum 64
      */
   sectionGapPx: number;
-  accentColor: ResumeFormattingV2AccentColor;
+  fontFamily: ResumeFormattingV2FontFamily;
+  /** @pattern ^(plum|navy|teal|rust|charcoal|black|#[0-9A-Fa-f]{6})$ */
+  accentColor: string;
 }

@@ -1,6 +1,6 @@
 import { Document, Font, Image, Link, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
-import { ACCENT_COLORS } from '../model/resume.model';
+import { RESUME_FONT_FAMILIES, resolveAccentColor } from '../model/resume.model';
 import {
   getEntryDisplay,
   itemHasPrintableContent,
@@ -20,6 +20,16 @@ Font.register({
   ],
 });
 
+Font.register({
+  family: 'NotoSerifSC',
+  fonts: [
+    { fontWeight: 400, src: '/fonts/NotoSerifSC-Variable.ttf' },
+    { fontWeight: 700, src: '/fonts/NotoSerifSC-Variable.ttf' },
+    { fontStyle: 'italic', fontWeight: 400, src: '/fonts/NotoSerifSC-Variable.ttf' },
+    { fontStyle: 'italic', fontWeight: 700, src: '/fonts/NotoSerifSC-Variable.ttf' },
+  ],
+});
+
 const pxToPt = (value: number) => value * 0.75;
 
 export function ResumePdfDocument({
@@ -29,7 +39,7 @@ export function ResumePdfDocument({
   avatar: string | null;
   resume: ResumeDocument;
 }) {
-  const accent = ACCENT_COLORS[resume.content.formatting.accentColor];
+  const accent = resolveAccentColor(resume.content.formatting.accentColor);
   const isClassic = resume.templateId === 'classic-professional';
   const formatting = resume.content.formatting;
   const base = pxToPt(formatting.bodyFontSizePx);
@@ -37,7 +47,7 @@ export function ResumePdfDocument({
     page: {
       backgroundColor: '#ffffff',
       color: '#242126',
-      fontFamily: 'NotoSansSC',
+      fontFamily: RESUME_FONT_FAMILIES[formatting.fontFamily].pdfFamily,
       fontSize: base,
       lineHeight: formatting.lineHeightRatio,
       paddingBottom: pxToPt(formatting.pageMarginPx.bottom),
@@ -92,6 +102,7 @@ export function ResumePdfDocument({
     entry: { marginTop: 7 },
     entryHead: { flexDirection: 'row', justifyContent: 'space-between' },
     entryTitle: { fontSize: pxToPt(formatting.entryTitleFontSizePx), fontWeight: 700 },
+    entryDate: { fontSize: pxToPt(formatting.entryTitleFontSizePx) },
     entryMeta: { color: '#6f6972', fontSize: base * 0.82 },
     skills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7 },
     skill: {
@@ -197,7 +208,7 @@ function PdfSection({
           <View key={item.id} style={styles.entry}>
             <View style={styles.entryHead}>
               <Text style={styles.entryTitle}>{display.title}</Text>
-              <Text style={styles.entryMeta}>{display.date}</Text>
+              <Text style={styles.entryDate}>{display.date}</Text>
             </View>
             {display.subtitle ? <Text style={styles.entryMeta}>{display.subtitle}</Text> : null}
             {display.description.trim() ? (

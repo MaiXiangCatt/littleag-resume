@@ -41,7 +41,7 @@ export * from './resumeDetailResponse';
 export * from './resumeDetailResponseCode';
 export * from './resumeDetailResponseMessage';
 export * from './resumeFormattingV2';
-export * from './resumeFormattingV2AccentColor';
+export * from './resumeFormattingV2FontFamily';
 export * from './resumeFormattingV2PageMarginPx';
 export * from './resumeListPayload';
 export * from './resumeListPayloadPageSize';

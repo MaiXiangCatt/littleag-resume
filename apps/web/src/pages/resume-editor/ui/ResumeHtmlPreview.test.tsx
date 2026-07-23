@@ -59,7 +59,10 @@ describe('ResumeHtmlPreview', () => {
     expect(screen.getByRole('heading', { name: '工作经历' })).toHaveStyle({
       fontSize: '16px',
     });
-    expect(screen.getByRole('heading', { name: '前端工程师 · Vega Resume' })).toHaveStyle({
+    const workHeading = screen.getByRole('heading', {
+      name: /Vega Resume\s+前端工程师\s+上海/,
+    });
+    expect(workHeading).toHaveStyle({
       fontSize: '14px',
     });
     expect(screen.getByText('复杂编辑体验').tagName).toBe('STRONG');
@@ -68,8 +71,8 @@ describe('ResumeHtmlPreview', () => {
       'href',
       'https://example.com',
     );
-    expect(screen.getByText('前端工程师 · Vega Resume')).toBeVisible();
-    expect(screen.getByText('2025-01 – 至今')).toBeVisible();
+    expect(workHeading).toBeVisible();
+    expect(screen.getByText('2025-01 – 至今')).toHaveStyle({ fontSize: '14px' });
     expect(screen.getByText('消除 PDF iframe 闪烁')).toBeVisible();
     expect(screen.queryByText('教育背景')).not.toBeInTheDocument();
     expect(screen.queryByText('奖项荣誉')).not.toBeInTheDocument();
@@ -78,6 +81,9 @@ describe('ResumeHtmlPreview', () => {
       paddingRight: '33px',
       paddingBottom: '33px',
       paddingLeft: '33px',
+    });
+    expect(screen.getByLabelText('测试简历 A4 实时预览')).toHaveStyle({
+      fontFamily: "'Noto Sans SC', 'PingFang SC', sans-serif",
     });
   });
 

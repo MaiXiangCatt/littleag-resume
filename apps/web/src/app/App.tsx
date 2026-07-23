@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from '
 import { useAuthBootstrap } from '@/shared/auth/hooks/useAuthBootstrap';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { authService } from '@/shared/auth/api/auth.service';
+import { Toaster } from '@/shared/ui/sonner';
 import { AuthModal } from '@/pages/home/ui/components/AuthModal/AuthModal';
 import { ConsolePage } from '@/pages/console/ui/ConsolePage';
 import { HomePage } from '@/pages/home/ui/HomePage';
@@ -18,9 +19,12 @@ type AuthMode = 'login' | 'register';
 
 export function App() {
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+      <Toaster />
+    </>
   );
 }
 

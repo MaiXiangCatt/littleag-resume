@@ -10,6 +10,7 @@ import { createResumePdfBlob } from './resume-pdf.service';
 
 beforeAll(() => {
   const fontPath = resolve(process.cwd(), 'public/fonts/NotoSansSC-Regular.ttf');
+  const serifFontPath = resolve(process.cwd(), 'public/fonts/NotoSerifSC-Variable.ttf');
   Font.clear();
   Font.register({
     family: 'Helvetica',
@@ -29,11 +30,21 @@ beforeAll(() => {
       { fontStyle: 'italic', fontWeight: 700, src: fontPath },
     ],
   });
+  Font.register({
+    family: 'NotoSerifSC',
+    fonts: [
+      { fontWeight: 400, src: serifFontPath },
+      { fontWeight: 700, src: serifFontPath },
+      { fontStyle: 'italic', fontWeight: 400, src: serifFontPath },
+      { fontStyle: 'italic', fontWeight: 700, src: serifFontPath },
+    ],
+  });
 });
 
 describe('resume PDF service', () => {
   it('generates a PDF containing formatted Markdown', async () => {
     const content = createDefaultContent();
+    content.formatting.fontFamily = 'source-han-serif';
     const summary = content.sections.find((section) => section.type === 'summary');
     if (summary?.type === 'summary') {
       summary.text = '负责**设计系统**\n\n- 建立规范\n- 推动交付';

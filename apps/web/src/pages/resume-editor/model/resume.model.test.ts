@@ -29,6 +29,7 @@ describe('resume editor model', () => {
       lineHeightRatio: 1.5,
       pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
       sectionGapPx: 8,
+      fontFamily: 'source-han-sans',
       accentColor: 'plum',
     });
   });
@@ -53,6 +54,22 @@ describe('resume editor model', () => {
         formatting: { ...content.formatting, bodyFontSizePx: 25 },
       }),
     ).toThrow();
+    expect(() =>
+      parseResumeContent({
+        ...content,
+        formatting: { ...content.formatting, accentColor: '#12xyz9' },
+      }),
+    ).toThrow();
+    expect(
+      parseResumeContent({
+        ...content,
+        formatting: {
+          ...content.formatting,
+          fontFamily: 'source-han-serif',
+          accentColor: '#123abc',
+        },
+      }).formatting,
+    ).toMatchObject({ fontFamily: 'source-han-serif', accentColor: '#123abc' });
   });
 
   it('strictly rejects unknown import fields and malformed dates', () => {

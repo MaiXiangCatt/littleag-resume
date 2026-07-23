@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -64,5 +64,20 @@ describe('FormattingDialog', () => {
     await user.click(screen.getByRole('button', { name: '恢复默认' }));
     expect(screen.getByRole('spinbutton', { name: '姓名' })).toHaveValue(20);
     expect(screen.getByRole('spinbutton', { name: '左' })).toHaveValue(33);
+  });
+
+  it('exposes the resume font selector and supports preset and custom colors', async () => {
+    const user = userEvent.setup();
+    render(<FormattingFixture />);
+
+    expect(screen.getByRole('combobox', { name: '字体' })).toHaveTextContent('思源黑体');
+
+    await user.click(screen.getByRole('button', { name: '选择纯黑主题色' }));
+    expect(screen.getByLabelText('自定义主题色')).toHaveValue('#000000');
+
+    fireEvent.change(screen.getByLabelText('自定义主题色'), {
+      target: { value: '#123456' },
+    });
+    expect(screen.getByLabelText('自定义主题色')).toHaveValue('#123456');
   });
 });

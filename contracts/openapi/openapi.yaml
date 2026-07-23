@@ -911,6 +911,7 @@ components:
         - lineHeightRatio
         - pageMarginPx
         - sectionGapPx
+        - fontFamily
         - accentColor
       properties:
         nameFontSizePx:
@@ -962,14 +963,14 @@ components:
           type: integer
           minimum: 0
           maximum: 64
-        accentColor:
+        fontFamily:
           type: string
           enum:
-            - plum
-            - navy
-            - teal
-            - rust
-            - charcoal
+            - source-han-sans
+            - source-han-serif
+        accentColor:
+          type: string
+          pattern: "^(plum|navy|teal|rust|charcoal|black|#[0-9A-Fa-f]{6})$"
     ResumeListResponse:
       allOf:
         - $ref: "#/components/schemas/BaseResponse"

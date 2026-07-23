@@ -3,7 +3,9 @@ export type ResumeStatus = 'draft' | 'completed';
 export type SectionType =
   'summary' | 'work' | 'education' | 'project' | 'skills' | 'awards' | 'custom';
 export type SkillLevel = '' | 'aware' | 'familiar' | 'proficient' | 'expert';
-export type AccentColor = 'plum' | 'navy' | 'teal' | 'rust' | 'charcoal';
+export type ResumeFontFamily = 'source-han-sans' | 'source-han-serif';
+export type PresetAccentColor = 'plum' | 'navy' | 'teal' | 'rust' | 'charcoal' | 'black';
+export type AccentColor = PresetAccentColor | `#${string}`;
 
 export type ContactLink = { id: string; label: string; url: string };
 
@@ -89,6 +91,7 @@ export type ResumeFormatting = {
     left: number;
   };
   sectionGapPx: number;
+  fontFamily: ResumeFontFamily;
   accentColor: AccentColor;
 };
 
