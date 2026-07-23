@@ -54,3 +54,22 @@ func TestResumeContentV2RejectsLegacyFormatting(t *testing.T) {
 		t.Fatal("legacy formatting should be rejected")
 	}
 }
+
+func TestResumeContentV2SkillsUseMarkdownDescription(t *testing.T) {
+	content := service.DefaultResumeContent()
+	sections := content["sections"].([]any)
+	skills := sections[4].(map[string]any)
+
+	skills["description"] = "- **TypeScript**：熟练"
+	if err := service.ValidateResumeContent(content); err != nil {
+		t.Fatalf("Markdown skills description should be accepted: %v", err)
+	}
+
+	delete(skills, "description")
+	skills["items"] = []any{
+		map[string]any{"id": "skill-1", "name": "TypeScript", "level": "proficient"},
+	}
+	if err := service.ValidateResumeContent(content); err == nil {
+		t.Fatal("legacy structured skills should be rejected")
+	}
+}

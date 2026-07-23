@@ -73,7 +73,7 @@ export function createDefaultContent(): ResumeContentV2 {
       { id: 'work', type: 'work', title: '工作经历', enabled: true, items: [] },
       { id: 'education', type: 'education', title: '教育背景', enabled: true, items: [] },
       { id: 'project', type: 'project', title: '项目经历', enabled: true, items: [] },
-      { id: 'skills', type: 'skills', title: '技能', enabled: true, items: [] },
+      { id: 'skills', type: 'skills', title: '技能', enabled: true, description: '' },
       { id: 'awards', type: 'awards', title: '奖项荣誉', enabled: false, items: [] },
     ],
     formatting: createDefaultFormatting(),
@@ -98,7 +98,7 @@ export function createCustomSection(title: string): ResumeSection {
   };
 }
 
-export function createSectionItem(type: Exclude<SectionType, 'summary'>) {
+export function createSectionItem(type: Exclude<SectionType, 'summary' | 'skills'>) {
   const id = crypto.randomUUID();
   switch (type) {
     case 'work':
@@ -124,8 +124,6 @@ export function createSectionItem(type: Exclude<SectionType, 'summary'>) {
         isCurrent: false,
         description: '',
       };
-    case 'skills':
-      return { id, name: '', level: '' as const };
     case 'awards':
       return { id, title: '', issuer: '', date: '', description: '' };
     case 'custom':
@@ -157,10 +155,8 @@ export function completionIssues(content: ResumeContentV2) {
   if (!content.profile.fullName.trim()) issues.push('请填写姓名');
   if (!content.profile.targetRole.trim()) issues.push('请填写目标岗位');
   for (const section of content.sections) {
-    if (!section.enabled || section.type === 'summary') continue;
+    if (!section.enabled || section.type === 'summary' || section.type === 'skills') continue;
     for (const item of section.items) {
-      if (section.type === 'skills' && !('name' in item && item.name.trim()))
-        issues.push(`${section.title}中有空技能`);
       if (
         section.type === 'work' &&
         !('company' in item && item.company.trim() && item.role.trim())

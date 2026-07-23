@@ -22,7 +22,6 @@ import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 
 import { createSectionItem, moveById } from '../model/resume.model';
 import type { ResumeProfile, ResumeSection } from '../model/resume.types';
@@ -222,6 +221,32 @@ export function SectionEditor({
       </EditorPanel>
     );
   }
+  if (section.type === 'skills') {
+    return (
+      <EditorPanel
+        eyebrow="Expertise"
+        title={section.title}
+        description="使用 Markdown 自由组织技能、工具和熟练程度，右侧会实时显示最终效果。"
+      >
+        <Field label="板块标题">
+          <Input
+            aria-label="板块标题"
+            value={section.title}
+            onChange={(event) => onChange({ ...section, title: event.target.value })}
+          />
+        </Field>
+        <Field label="技能内容">
+          <MarkdownEditor
+            ariaLabel="技能内容"
+            className="min-h-56"
+            placeholder={'- TypeScript：熟练\n- React：熟悉组件设计与性能优化'}
+            value={section.description}
+            onChange={(description) => onChange({ ...section, description })}
+          />
+        </Field>
+      </EditorPanel>
+    );
+  }
   const items = section.items as Array<{ id: string } & Record<string, unknown>>;
   const setItems = (nextItems: Array<{ id: string } & Record<string, unknown>>) =>
     onChange({ ...section, items: nextItems } as ResumeSection);
@@ -288,7 +313,7 @@ export function SectionEditor({
 }
 
 function renderItemFields(
-  type: Exclude<ResumeSection['type'], 'summary'>,
+  type: Exclude<ResumeSection['type'], 'summary' | 'skills'>,
   item: Record<string, string | boolean>,
   update: (id: string, key: string, value: string | boolean) => void,
 ) {
@@ -324,29 +349,6 @@ function renderItemFields(
       </Field>
     </div>
   );
-  if (type === 'skills')
-    return (
-      <div className="grid grid-cols-2 gap-4">
-        {input('name', '技能名称')}
-        <Field label="熟练度">
-          <Select
-            value={String(item.level ?? '') || 'none'}
-            onValueChange={(value) => update(id, 'level', value === 'none' ? '' : value)}
-          >
-            <SelectTrigger aria-label="熟练度">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">不展示</SelectItem>
-              <SelectItem value="aware">了解</SelectItem>
-              <SelectItem value="familiar">熟悉</SelectItem>
-              <SelectItem value="proficient">熟练</SelectItem>
-              <SelectItem value="expert">精通</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-      </div>
-    );
   if (type === 'awards')
     return (
       <div className="grid grid-cols-2 gap-4">

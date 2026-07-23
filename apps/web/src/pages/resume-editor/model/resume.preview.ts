@@ -1,22 +1,15 @@
 import type { ResumeSection, SectionType } from './resume.types';
 
-export const SKILL_LEVEL_LABELS = {
-  aware: '了解',
-  familiar: '熟悉',
-  proficient: '熟练',
-  expert: '精通',
-} as const;
-
 export type ResumeEntryDisplay = {
   date: string;
   description: string;
-  subtitle: string;
   title: string;
 };
 
 export function sectionHasPrintableContent(section: ResumeSection): boolean {
   if (!section.enabled) return false;
   if (section.type === 'summary') return Boolean(section.text.trim());
+  if (section.type === 'skills') return Boolean(section.description.trim());
   return section.items.some(itemHasPrintableContent);
 }
 
@@ -39,35 +32,30 @@ export function getEntryDisplay(
     case 'work':
       return {
         title: joinHeadline(value('company'), value('role'), value('location')),
-        subtitle: '',
         date,
         description: value('description'),
       };
     case 'education':
       return {
-        title: joinText(value('school'), value('degree')),
-        subtitle: value('major'),
+        title: joinHeadline(value('school'), value('major'), value('degree')),
         date,
         description: value('description'),
       };
     case 'project':
       return {
-        title: value('name'),
-        subtitle: value('role'),
+        title: joinHeadline(value('name'), value('role')),
         date,
         description: value('description'),
       };
     case 'awards':
       return {
-        title: value('title'),
-        subtitle: value('issuer'),
+        title: joinHeadline(value('title'), value('issuer')),
         date: value('date'),
         description: value('description'),
       };
     case 'custom':
       return {
-        title: value('title'),
-        subtitle: joinText(value('subtitle'), value('location')),
+        title: joinHeadline(value('title'), value('subtitle'), value('location')),
         date,
         description: value('description'),
       };
@@ -76,10 +64,6 @@ export function getEntryDisplay(
 
 function dateRange(start: string, end: string): string {
   return [start, end].filter(Boolean).join(' – ');
-}
-
-function joinText(...values: string[]): string {
-  return values.filter(Boolean).join(' · ');
 }
 
 function joinHeadline(...values: string[]): string {

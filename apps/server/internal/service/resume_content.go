@@ -27,7 +27,7 @@ func DefaultResumeContent() map[string]any {
 			map[string]any{"id": "work", "type": "work", "title": "工作经历", "enabled": true, "items": []any{}},
 			map[string]any{"id": "education", "type": "education", "title": "教育背景", "enabled": true, "items": []any{}},
 			map[string]any{"id": "project", "type": "project", "title": "项目经历", "enabled": true, "items": []any{}},
-			map[string]any{"id": "skills", "type": "skills", "title": "技能", "enabled": true, "items": []any{}},
+			map[string]any{"id": "skills", "type": "skills", "title": "技能", "enabled": true, "description": ""},
 			map[string]any{"id": "awards", "type": "awards", "title": "奖项荣誉", "enabled": false, "items": []any{}},
 		},
 		"formatting": map[string]any{
@@ -151,7 +151,12 @@ func validateSections(sections []any) bool {
 				return false
 			}
 			builtins[typeName] = true
-		case "work", "education", "project", "skills", "awards":
+		case "skills":
+			if builtins[typeName] || id != "skills" || !stringFields(section, []string{"id", "type", "title", "description"}, []string{"enabled"}) {
+				return false
+			}
+			builtins[typeName] = true
+		case "work", "education", "project", "awards":
 			if builtins[typeName] || id != typeName || !validateItemSection(section, typeName) {
 				return false
 			}
@@ -174,8 +179,6 @@ func validateItemSection(section map[string]any, typeName string) bool {
 	}
 	allowed := map[string]bool{"id": true}
 	switch typeName {
-	case "skills":
-		allowed["name"], allowed["level"] = true, true
 	case "awards":
 		allowed["title"], allowed["issuer"], allowed["date"], allowed["description"] = true, true, true, true
 	case "education":

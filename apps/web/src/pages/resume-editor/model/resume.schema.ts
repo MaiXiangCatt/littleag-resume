@@ -42,13 +42,6 @@ const projectItem = z
     description: text,
   })
   .strict();
-const skillItem = z
-  .object({
-    ...baseItem,
-    name: text,
-    level: z.enum(['', 'aware', 'familiar', 'proficient', 'expert']),
-  })
-  .strict();
 const awardItem = z
   .object({ ...baseItem, title: text, issuer: text, date: month, description: text })
   .strict();
@@ -96,7 +89,7 @@ const sectionSchema = z.discriminatedUnion('type', [
       ...baseSection,
       id: z.literal('skills'),
       type: z.literal('skills'),
-      items: z.array(skillItem).max(100),
+      description: text,
     })
     .strict(),
   z

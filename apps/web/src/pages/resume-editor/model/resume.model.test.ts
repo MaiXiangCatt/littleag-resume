@@ -21,6 +21,9 @@ describe('resume editor model', () => {
       ['skills', true],
       ['awards', false],
     ]);
+    expect(content.sections.find((section) => section.type === 'skills')).toMatchObject({
+      description: '',
+    });
     expect(content.formatting).toEqual({
       nameFontSizePx: 20,
       sectionTitleFontSizePx: 16,
@@ -91,6 +94,26 @@ describe('resume editor model', () => {
       description: '',
     });
     expect(() => parseImportEnvelope(envelope)).toThrow();
+  });
+
+  it('rejects the legacy structured skills format', () => {
+    const content = createDefaultContent();
+    const legacySkills = {
+      id: 'skills',
+      type: 'skills',
+      title: '技能',
+      enabled: true,
+      items: [{ id: 'skill-1', name: 'TypeScript', level: 'proficient' }],
+    };
+
+    expect(() =>
+      parseResumeContent({
+        ...content,
+        sections: content.sections.map((section) =>
+          section.type === 'skills' ? legacySkills : section,
+        ),
+      }),
+    ).toThrow();
   });
 
   it('supports multiple custom sections and stable reordering', () => {

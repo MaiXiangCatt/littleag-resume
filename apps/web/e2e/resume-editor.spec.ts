@@ -12,7 +12,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
       { id: 'work', type: 'work', title: '工作经历', enabled: true, items: [] },
       { id: 'education', type: 'education', title: '教育背景', enabled: true, items: [] },
       { id: 'project', type: 'project', title: '项目经历', enabled: true, items: [] },
-      { id: 'skills', type: 'skills', title: '技能', enabled: true, items: [] },
+      { id: 'skills', type: 'skills', title: '技能', enabled: true, description: '' },
       { id: 'awards', type: 'awards', title: '奖项荣誉', enabled: false, items: [] },
     ],
     formatting: {

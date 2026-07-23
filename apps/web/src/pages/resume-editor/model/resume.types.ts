@@ -2,7 +2,6 @@ export type TemplateId = 'modern-editorial' | 'classic-professional';
 export type ResumeStatus = 'draft' | 'completed';
 export type SectionType =
   'summary' | 'work' | 'education' | 'project' | 'skills' | 'awards' | 'custom';
-export type SkillLevel = '' | 'aware' | 'familiar' | 'proficient' | 'expert';
 export type ResumeFontFamily = 'source-han-sans' | 'source-han-serif';
 export type PresetAccentColor = 'plum' | 'navy' | 'teal' | 'rust' | 'charcoal' | 'black';
 export type AccentColor = PresetAccentColor | `#${string}`;
@@ -44,7 +43,6 @@ export type ProjectItem = BaseItem & {
   isCurrent: boolean;
   description: string;
 };
-export type SkillItem = BaseItem & { name: string; level: SkillLevel };
 export type AwardItem = BaseItem & {
   title: string;
   issuer: string;
@@ -66,7 +64,7 @@ export type SummarySection = SectionBase<'summary'> & { text: string };
 export type WorkSection = SectionBase<'work'> & { items: WorkItem[] };
 export type EducationSection = SectionBase<'education'> & { items: EducationItem[] };
 export type ProjectSection = SectionBase<'project'> & { items: ProjectItem[] };
-export type SkillsSection = SectionBase<'skills'> & { items: SkillItem[] };
+export type SkillsSection = SectionBase<'skills'> & { description: string };
 export type AwardsSection = SectionBase<'awards'> & { items: AwardItem[] };
 export type CustomSection = SectionBase<'custom'> & { items: CustomItem[] };
 export type ResumeSection =

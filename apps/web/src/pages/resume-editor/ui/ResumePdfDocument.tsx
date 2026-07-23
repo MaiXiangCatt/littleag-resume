@@ -5,7 +5,6 @@ import {
   getEntryDisplay,
   itemHasPrintableContent,
   sectionHasPrintableContent,
-  SKILL_LEVEL_LABELS,
 } from '../model/resume.preview';
 import type { ResumeDocument, ResumeSection } from '../model/resume.types';
 import { ResumeMarkdownPdf } from './ResumeMarkdownPdf';
@@ -71,12 +70,12 @@ export function ResumePdfDocument({
       letterSpacing: isClassic ? 1.3 : -0.4,
       lineHeight: 1.15,
     },
-    role: { color: '#5d5962', fontSize: base * 1.18, lineHeight: 1.3, marginTop: 5 },
+    role: { color: '#242126', fontSize: base, lineHeight: 1.3, marginTop: 5 },
     contacts: {
-      color: '#77717a',
+      color: '#242126',
       flexDirection: 'row',
       flexWrap: 'wrap',
-      fontSize: base * 0.82,
+      fontSize: base,
       gap: 8,
       justifyContent: isClassic ? 'center' : 'flex-start',
       marginTop: 7,
@@ -103,20 +102,7 @@ export function ResumePdfDocument({
     entryHead: { flexDirection: 'row', justifyContent: 'space-between' },
     entryTitle: { fontSize: pxToPt(formatting.entryTitleFontSizePx), fontWeight: 700 },
     entryDate: { fontSize: pxToPt(formatting.entryTitleFontSizePx) },
-    entryMeta: { color: '#6f6972', fontSize: base * 0.82 },
-    skills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7 },
-    skill: {
-      backgroundColor: isClassic ? '#f3f1f2' : `${accent}12`,
-      borderColor: `${accent}44`,
-      borderRadius: isClassic ? 2 : 10,
-      borderWidth: 0.5,
-      color: isClassic ? '#38343a' : accent,
-      flexDirection: 'row',
-      gap: 4,
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-    },
-    link: { color: '#66616a', textDecoration: 'none' },
+    link: { color: '#242126', textDecoration: 'none' },
   });
 
   const profile = resume.content.profile;
@@ -172,29 +158,13 @@ function PdfSection({
   styles: ReturnType<typeof StyleSheet.create>;
 }) {
   if (!sectionHasPrintableContent(section)) return null;
-  if (section.type === 'summary') {
+  if (section.type === 'summary' || section.type === 'skills') {
+    const markdown = section.type === 'summary' ? section.text : section.description;
     return (
       <View style={styles.section} minPresenceAhead={40}>
         <Text style={styles.sectionTitle}>{section.title}</Text>
         <View style={{ marginTop: 7 }}>
-          <ResumeMarkdownPdf accent={accent} value={section.text} />
-        </View>
-      </View>
-    );
-  }
-  if (section.type === 'skills') {
-    return (
-      <View style={styles.section} minPresenceAhead={40}>
-        <Text style={styles.sectionTitle}>{section.title}</Text>
-        <View style={styles.skills}>
-          {section.items
-            .filter((item) => item.name.trim())
-            .map((item) => (
-              <View key={item.id} style={styles.skill}>
-                <Text>{item.name}</Text>
-                {item.level ? <Text>· {SKILL_LEVEL_LABELS[item.level]}</Text> : null}
-              </View>
-            ))}
+          <ResumeMarkdownPdf accent={accent} value={markdown} />
         </View>
       </View>
     );
@@ -210,7 +180,6 @@ function PdfSection({
               <Text style={styles.entryTitle}>{display.title}</Text>
               <Text style={styles.entryDate}>{display.date}</Text>
             </View>
-            {display.subtitle ? <Text style={styles.entryMeta}>{display.subtitle}</Text> : null}
             {display.description.trim() ? (
               <ResumeMarkdownPdf accent={accent} value={display.description} />
             ) : null}

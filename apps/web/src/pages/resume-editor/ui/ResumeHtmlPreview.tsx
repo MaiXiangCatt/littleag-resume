@@ -9,7 +9,6 @@ import {
   getEntryDisplay,
   itemHasPrintableContent,
   sectionHasPrintableContent,
-  SKILL_LEVEL_LABELS,
 } from '../model/resume.preview';
 import type { ResumeDocument, ResumeFormatting, ResumeSection } from '../model/resume.types';
 import { ResumeMarkdownHtml } from './ResumeMarkdownHtml';
@@ -82,19 +81,19 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
               ) : null}
               {profile.targetRole ? (
                 <p
-                  className="mt-[0.45em] text-[#5d5962]"
-                  style={{ fontSize: formatting.bodyFontSizePx * 1.18 }}
+                  className="mt-[0.45em]"
+                  style={{ color: '#242126', fontSize: formatting.bodyFontSizePx }}
                 >
-                  {profile.targetRole}
+                  {`求职意向：${profile.targetRole}`}
                 </p>
               ) : null}
               {contacts.length || printableLinks.length ? (
                 <div
                   className={cn(
-                    'mt-[0.8em] flex flex-wrap gap-x-[1em] gap-y-[0.35em] text-[#77717a]',
+                    'mt-[0.8em] flex flex-wrap gap-x-[1em] gap-y-[0.35em]',
                     isClassic ? 'justify-center' : 'justify-start',
                   )}
-                  style={{ fontSize: formatting.bodyFontSizePx * 0.82 }}
+                  style={{ color: '#242126', fontSize: formatting.bodyFontSizePx }}
                 >
                   {contacts.map((value) => (
                     <span key={value}>{value}</span>
@@ -166,31 +165,7 @@ function HtmlSection({
         <ResumeMarkdownHtml className="mt-[0.8em]" value={section.text} />
       ) : null}
       {section.type === 'skills' ? (
-        <div className="mt-[0.8em] flex flex-wrap gap-[0.65em]">
-          {section.items
-            .filter((item) => item.name.trim())
-            .map((item) => (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-[0.4em] border px-[0.8em] py-[0.35em]',
-                  isClassic
-                    ? 'rounded-sm border-[#d6d2d5] bg-[#f3f1f2] text-[#38343a]'
-                    : 'rounded-full bg-[color-mix(in_srgb,var(--resume-accent)_7%,white)] text-[var(--resume-accent)]',
-                )}
-                key={item.id}
-                style={
-                  isClassic
-                    ? undefined
-                    : { borderColor: 'color-mix(in srgb, var(--resume-accent) 28%, white)' }
-                }
-              >
-                <span>{item.name}</span>
-                {item.level ? (
-                  <span className="opacity-75">· {SKILL_LEVEL_LABELS[item.level]}</span>
-                ) : null}
-              </span>
-            ))}
-        </div>
+        <ResumeMarkdownHtml className="mt-[0.8em]" value={section.description} />
       ) : null}
       {section.type !== 'summary' && section.type !== 'skills' ? (
         <div className="space-y-[1em] pt-[0.8em]">
@@ -222,14 +197,6 @@ function HtmlSection({
                       </time>
                     ) : null}
                   </div>
-                ) : null}
-                {display.subtitle ? (
-                  <p
-                    className="mt-[0.15em] text-[#6f6972]"
-                    style={{ fontSize: formatting.bodyFontSizePx * 0.82 }}
-                  >
-                    {display.subtitle}
-                  </p>
                 ) : null}
                 {display.description.trim() ? (
                   <ResumeMarkdownHtml className="mt-[0.45em]" value={display.description} />

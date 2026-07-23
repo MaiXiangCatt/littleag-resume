@@ -30,6 +30,34 @@ function createResume(): ResumeDocument {
       description: '- 构建**实时简历预览**\n- 消除 PDF iframe 闪烁',
     });
   }
+  const education = content.sections.find((section) => section.type === 'education');
+  if (education?.type === 'education') {
+    education.items.push({
+      id: 'education-1',
+      school: '国立中央大学',
+      major: '如何退休',
+      degree: '硕士',
+      startDate: '2026-01',
+      endDate: '2026-07',
+      description: '获得超级奖学金。',
+    });
+  }
+  const project = content.sections.find((section) => section.type === 'project');
+  if (project?.type === 'project') {
+    project.items.push({
+      id: 'project-1',
+      name: '中药奶茶',
+      role: '主理人',
+      startDate: '2026-01',
+      endDate: '2026-02',
+      isCurrent: false,
+      description: '来原地转一圈。',
+    });
+  }
+  const skills = content.sections.find((section) => section.type === 'skills');
+  if (skills?.type === 'skills') {
+    skills.description = '- **TypeScript**：熟练\n- React：熟悉组件设计';
+  }
   return {
     id: 'resume-1',
     title: '测试简历',
@@ -66,7 +94,14 @@ describe('ResumeHtmlPreview', () => {
       fontSize: '14px',
     });
     expect(screen.getByText('复杂编辑体验').tagName).toBe('STRONG');
-    expect(screen.getByText('前端开发工程师')).toBeVisible();
+    expect(screen.getByText('求职意向：前端开发工程师')).toHaveStyle({
+      color: '#242126',
+      fontSize: '14px',
+    });
+    expect(screen.getByText('qingqing@example.com').parentElement).toHaveStyle({
+      color: '#242126',
+      fontSize: '14px',
+    });
     expect(screen.getByRole('link', { name: '作品集' })).toHaveAttribute(
       'href',
       'https://example.com',
@@ -74,7 +109,18 @@ describe('ResumeHtmlPreview', () => {
     expect(workHeading).toBeVisible();
     expect(screen.getByText('2025-01 – 至今')).toHaveStyle({ fontSize: '14px' });
     expect(screen.getByText('消除 PDF iframe 闪烁')).toBeVisible();
-    expect(screen.queryByText('教育背景')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        name: /国立中央大学\s+如何退休\s+硕士/,
+      }),
+    ).toHaveStyle({ fontSize: '14px' });
+    expect(
+      screen.getByRole('heading', {
+        name: /中药奶茶\s+主理人/,
+      }),
+    ).toHaveStyle({ fontSize: '14px' });
+    expect(screen.getByText('TypeScript').tagName).toBe('STRONG');
+    expect(screen.getByText('React：熟悉组件设计')).toBeVisible();
     expect(screen.queryByText('奖项荣誉')).not.toBeInTheDocument();
     expect(screen.getByLabelText('测试简历 A4 实时预览').querySelector('article')).toHaveStyle({
       paddingTop: '33px',

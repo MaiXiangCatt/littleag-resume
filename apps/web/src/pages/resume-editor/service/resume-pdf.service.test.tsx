@@ -49,6 +49,10 @@ describe('resume PDF service', () => {
     if (summary?.type === 'summary') {
       summary.text = '负责**设计系统**\n\n- 建立规范\n- 推动交付';
     }
+    const skills = content.sections.find((section) => section.type === 'skills');
+    if (skills?.type === 'skills') {
+      skills.description = '- **TypeScript**：熟练\n- React：熟悉组件设计';
+    }
     const resume: ResumeDocument = {
       id: 'resume-1',
       title: 'Markdown 简历',
