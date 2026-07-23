@@ -49,7 +49,11 @@ export function useConsoleData(query: ConsoleQueryState) {
         }
       } catch (error: unknown) {
         if (!controller.signal.aborted && requestId === listRequestId.current) {
-          setListState((current) => ({ ...current, error: resumeErrorMessage(error), key: listQueryKey }));
+          setListState((current) => ({
+            ...current,
+            error: resumeErrorMessage(error),
+            key: listQueryKey,
+          }));
         }
       }
     };
@@ -67,7 +71,11 @@ export function useConsoleData(query: ConsoleQueryState) {
         setStatsState({ data: stats, error: null, key: reloadVersion });
       } catch (error: unknown) {
         if (!controller.signal.aborted) {
-          setStatsState((current) => ({ ...current, error: resumeErrorMessage(error), key: reloadVersion }));
+          setStatsState((current) => ({
+            ...current,
+            error: resumeErrorMessage(error),
+            key: reloadVersion,
+          }));
         }
       }
     };

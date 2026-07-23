@@ -33,13 +33,12 @@ export function AuthModal({ defaultMode, onAuthenticated, onOpenChange, open }: 
   );
 }
 
-type AuthModalContentProps = Pick<AuthModalProps, 'defaultMode' | 'onAuthenticated' | 'onOpenChange'>;
+type AuthModalContentProps = Pick<
+  AuthModalProps,
+  'defaultMode' | 'onAuthenticated' | 'onOpenChange'
+>;
 
-function AuthModalContent({
-  defaultMode,
-  onAuthenticated,
-  onOpenChange,
-}: AuthModalContentProps) {
+function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthModalContentProps) {
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
@@ -77,9 +76,7 @@ function AuthModalContent({
   return (
     <DialogContent>
       <DialogTitle>账号登录</DialogTitle>
-      <DialogDescription>
-        登录或注册后进入 Console。
-      </DialogDescription>
+      <DialogDescription>登录或注册后进入 Console。</DialogDescription>
 
       {formError ? (
         <Alert className="mt-4">
@@ -87,11 +84,7 @@ function AuthModalContent({
         </Alert>
       ) : null}
 
-      <Tabs
-        className="mt-5"
-        onValueChange={(value) => setMode(value as AuthMode)}
-        value={mode}
-      >
+      <Tabs className="mt-5" onValueChange={(value) => setMode(value as AuthMode)} value={mode}>
         <TabsList>
           <TabsTrigger value="login">登录</TabsTrigger>
           <TabsTrigger value="register">注册</TabsTrigger>

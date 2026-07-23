@@ -70,9 +70,7 @@ export function RegisterForm({ isSubmitting, onSubmit }: RegisterFormProps) {
       <Field
         error={errors.confirmPassword}
         label="确认密码"
-        onChange={(confirmPassword) =>
-          setValues((current) => ({ ...current, confirmPassword }))
-        }
+        onChange={(confirmPassword) => setValues((current) => ({ ...current, confirmPassword }))}
         type="password"
         value={values.confirmPassword}
       />

@@ -45,7 +45,9 @@ describe('auth hooks', () => {
   });
 
   it('preserves a retryable error state when bootstrap hits a server failure', async () => {
-    authServiceMock.refresh.mockRejectedValueOnce(new ApiError(200002, 'database unavailable', 500));
+    authServiceMock.refresh.mockRejectedValueOnce(
+      new ApiError(200002, 'database unavailable', 500),
+    );
 
     renderHook(() => useAuthBootstrap());
 

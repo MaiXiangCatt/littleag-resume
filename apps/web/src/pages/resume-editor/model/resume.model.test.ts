@@ -40,7 +40,16 @@ describe('resume editor model', () => {
     expect(() => parseImportEnvelope({ ...envelope, unknown: true })).toThrow();
     const work = content.sections.find((section) => section.type === 'work');
     if (!work || work.type !== 'work') throw new Error('missing work section');
-    work.items.push({ id: crypto.randomUUID(), company: '', role: '', location: '', startDate: '2026-13', endDate: '', isCurrent: false, description: '' });
+    work.items.push({
+      id: crypto.randomUUID(),
+      company: '',
+      role: '',
+      location: '',
+      startDate: '2026-13',
+      endDate: '',
+      isCurrent: false,
+      description: '',
+    });
     expect(() => parseImportEnvelope(envelope)).toThrow();
   });
 
@@ -49,7 +58,10 @@ describe('resume editor model', () => {
     const second = createCustomSection('出版作品');
 
     expect(first.id).not.toBe(second.id);
-    expect(moveById([first, second], second.id, first.id).map((section) => section.id)).toEqual([second.id, first.id]);
+    expect(moveById([first, second], second.id, first.id).map((section) => section.id)).toEqual([
+      second.id,
+      first.id,
+    ]);
     expect(descriptionLines('  first\n\n second  \r\n')).toEqual(['first', 'second']);
   });
 

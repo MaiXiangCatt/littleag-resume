@@ -18,17 +18,18 @@ describe('auth bootstrap in StrictMode', () => {
 
   it('shares one refresh request across concurrent bootstrap consumers', async () => {
     const fetchMock = vi.fn().mockImplementation(
-      async () => new Response(
-        JSON.stringify({
-          code: 0,
-          message: '',
-          data: {
-            accessToken: 'access-token',
-            user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
-          },
-        }),
-        { status: 200 },
-      ),
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: 0,
+            message: '',
+            data: {
+              accessToken: 'access-token',
+              user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+            },
+          }),
+          { status: 200 },
+        ),
     );
     vi.stubGlobal('fetch', fetchMock);
 

@@ -60,7 +60,6 @@ async function requestWithRetry<T>(
 }
 
 async function sendRequest<T>(input: string, options: RequestOptions): Promise<T> {
-
   const response = await sendRawRequest(input, options);
   const envelope = await parseEnvelope<T>(response);
 
@@ -71,7 +70,11 @@ async function sendRequest<T>(input: string, options: RequestOptions): Promise<T
   return envelope.data;
 }
 
-async function rawRequestWithRetry(input: string, options: RequestOptions, hasRetried: boolean): Promise<Blob> {
+async function rawRequestWithRetry(
+  input: string,
+  options: RequestOptions,
+  hasRetried: boolean,
+): Promise<Blob> {
   try {
     const response = await sendRawRequest(input, options);
     if (!response.ok) {

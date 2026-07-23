@@ -28,7 +28,9 @@ export function useResumeEditor(resumeId: string) {
     useResumeEditorStore.getState().setLoading();
     try {
       const loaded = await resumeEditorService.get(resumeId);
-      useResumeEditorStore.getState().load({ ...loaded, content: normalizeContent(loaded.content) });
+      useResumeEditorStore
+        .getState()
+        .load({ ...loaded, content: normalizeContent(loaded.content) });
     } catch (error) {
       useResumeEditorStore.getState().loadFailed(editorError(error));
     }
@@ -60,7 +62,8 @@ export function useResumeEditor(resumeId: string) {
       const saved = await resumeEditorService.update(snapshot);
       useResumeEditorStore.getState().applySaved(saved, snapshotVersion);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409) useResumeEditorStore.getState().setConflict();
+      if (error instanceof ApiError && error.status === 409)
+        useResumeEditorStore.getState().setConflict();
       else useResumeEditorStore.getState().setSaveFailed(editorError(error));
     } finally {
       savingRef.current = false;
@@ -74,7 +77,9 @@ export function useResumeEditor(resumeId: string) {
   useEffect(() => {
     if (!document || saveStatus !== 'dirty') return;
     timerRef.current = window.setTimeout(() => void flushSave(), 1000);
-    return () => { if (timerRef.current) window.clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+    };
   }, [changeVersion, document, flushSave, saveStatus]);
 
   useEffect(() => {
@@ -88,10 +93,13 @@ export function useResumeEditor(resumeId: string) {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
-  const edit = useCallback((updater: (document: ResumeDocument) => ResumeDocument, immediate = false) => {
-    useResumeEditorStore.getState().updateDraft(updater);
-    if (immediate) window.setTimeout(() => void flushSave(), 0);
-  }, [flushSave]);
+  const edit = useCallback(
+    (updater: (document: ResumeDocument) => ResumeDocument, immediate = false) => {
+      useResumeEditorStore.getState().updateDraft(updater);
+      if (immediate) window.setTimeout(() => void flushSave(), 0);
+    },
+    [flushSave],
+  );
 
   const reloadServer = useCallback(() => void load(), [load]);
   const overwriteServer = useCallback(async () => {
@@ -106,12 +114,21 @@ export function useResumeEditor(resumeId: string) {
     }
   }, [flushSave, resumeId]);
 
-  const replaceImport = useCallback(async (envelope: ResumeImportEnvelope) => {
-    const current = useResumeEditorStore.getState().document;
-    if (!current) return;
-    const imported = await resumeEditorService.replaceImport(resumeId, current.revision, envelope);
-    useResumeEditorStore.getState().replaceDocument({ ...imported, content: normalizeContent(imported.content) });
-  }, [resumeId]);
+  const replaceImport = useCallback(
+    async (envelope: ResumeImportEnvelope) => {
+      const current = useResumeEditorStore.getState().document;
+      if (!current) return;
+      const imported = await resumeEditorService.replaceImport(
+        resumeId,
+        current.revision,
+        envelope,
+      );
+      useResumeEditorStore
+        .getState()
+        .replaceDocument({ ...imported, content: normalizeContent(imported.content) });
+    },
+    [resumeId],
+  );
 
   return { edit, flushSave, load, overwriteServer, reloadServer, replaceImport };
 }

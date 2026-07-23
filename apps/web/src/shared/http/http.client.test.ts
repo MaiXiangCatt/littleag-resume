@@ -126,10 +126,9 @@ describe('http client', () => {
 
       const headers = init?.headers as Record<string, string> | undefined;
       if (headers?.Authorization === 'Bearer old-token') {
-        return new Response(
-          JSON.stringify({ code: 101003, message: 'Expired', data: null }),
-          { status: 401 },
-        );
+        return new Response(JSON.stringify({ code: 101003, message: 'Expired', data: null }), {
+          status: 401,
+        });
       }
 
       return new Response(JSON.stringify({ code: 0, message: '', data: { ok: true } }), {

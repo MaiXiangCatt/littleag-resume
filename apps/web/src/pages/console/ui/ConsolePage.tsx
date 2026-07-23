@@ -8,12 +8,7 @@ import type { ResumeSummary } from '@/shared/api/generated/model/resumeSummary';
 import type { ResumeSort } from '@/shared/api/generated/model/resumeSort';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/shared/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 
@@ -58,7 +53,11 @@ export function ConsolePage({ onLogout }: ConsolePageProps) {
   const authError = useAuthStore((state) => state.error);
 
   if (status === 'loading' || status === 'idle') {
-    return <main className="grid min-h-screen place-items-center bg-[#fbfafc] text-[#746b78]">正在加载账号信息</main>;
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#fbfafc] text-[#746b78]">
+        正在加载账号信息
+      </main>
+    );
   }
 
   if (status === 'error') {
@@ -70,7 +69,11 @@ export function ConsolePage({ onLogout }: ConsolePageProps) {
   }
 
   if (!user) {
-    return <main className="grid min-h-screen place-items-center bg-[#fbfafc] text-[#746b78]">请先登录</main>;
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#fbfafc] text-[#746b78]">
+        请先登录
+      </main>
+    );
   }
 
   return <AuthenticatedConsole onLogout={onLogout} user={user} />;
@@ -97,7 +100,9 @@ function AuthenticatedConsole({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setQuery((current) => (current.query === queryInput ? current : { ...current, page: 1, query: queryInput }));
+      setQuery((current) =>
+        current.query === queryInput ? current : { ...current, page: 1, query: queryInput },
+      );
     }, 250);
     return () => window.clearTimeout(timer);
   }, [queryInput]);
@@ -195,8 +200,12 @@ function AuthenticatedConsole({
       if (detail.hasAvatar) {
         avatarUrl = URL.createObjectURL(await resumeEditorService.getAvatar(resume.id));
       }
-      const { createResumePdfBlob } = await import('@/pages/resume-editor/service/resume-pdf.service');
-      const blob = await createResumePdfBlob({ ...detail, content: normalizeContent(detail.content) }, avatarUrl);
+      const { createResumePdfBlob } =
+        await import('@/pages/resume-editor/service/resume-pdf.service');
+      const blob = await createResumePdfBlob(
+        { ...detail, content: normalizeContent(detail.content) },
+        avatarUrl,
+      );
       const downloadUrl = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = downloadUrl;
@@ -254,7 +263,9 @@ function AuthenticatedConsole({
 
   function updatePage(page: number) {
     setQuery((current) => ({ ...current, page }));
-    window.requestAnimationFrame(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    window.requestAnimationFrame(() =>
+      gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
   }
 
   function updatePageSize(pageSize: ConsolePageSize) {
@@ -284,9 +295,15 @@ function AuthenticatedConsole({
       <main className="mx-auto max-w-[1560px] px-5 py-9 lg:px-10 lg:py-11">
         <section className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b4c91]">Workspace</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] text-[#1f1722] sm:text-4xl">我的简历</h1>
-            <p className="mt-2 text-sm leading-6 text-[#716976] sm:text-base">管理你的简历文档，随时编辑与导出</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b4c91]">
+              Workspace
+            </p>
+            <h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] text-[#1f1722] sm:text-4xl">
+              我的简历
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-[#716976] sm:text-base">
+              管理你的简历文档，随时编辑与导出
+            </p>
           </div>
           <Button
             className="h-11 rounded-xl bg-[#850477] px-5 text-white shadow-[0_10px_26px_rgba(133,4,119,0.22)] hover:bg-[#6f0364]"
@@ -312,17 +329,33 @@ function AuthenticatedConsole({
         </section>
 
         <div className="mt-8 grid gap-5 xl:grid-cols-[1.35fr_1fr]">
-          <ResumeStatsPanel error={consoleData.statsError} isLoading={consoleData.isStatsLoading} stats={consoleData.stats} />
-          <ResumeToolbar onSortChange={updateSort} onStatusChange={updateStatus} sort={query.sort} status={query.status} />
+          <ResumeStatsPanel
+            error={consoleData.statsError}
+            isLoading={consoleData.isStatsLoading}
+            stats={consoleData.stats}
+          />
+          <ResumeToolbar
+            onSortChange={updateSort}
+            onStatusChange={updateStatus}
+            sort={query.sort}
+            status={query.status}
+          />
         </div>
 
         <section className="relative mt-7 scroll-mt-28" ref={gridRef}>
-          {consoleData.isListRefreshing ? <div className="absolute -top-2 left-0 h-0.5 w-full overflow-hidden rounded-full bg-[#eaddea] before:block before:h-full before:w-1/3 before:animate-[console-progress_1s_ease-in-out_infinite] before:rounded-full before:bg-[#850477]" /> : null}
+          {consoleData.isListRefreshing ? (
+            <div className="absolute -top-2 left-0 h-0.5 w-full overflow-hidden rounded-full bg-[#eaddea] before:block before:h-full before:w-1/3 before:animate-[console-progress_1s_ease-in-out_infinite] before:rounded-full before:bg-[#850477]" />
+          ) : null}
           {consoleData.isListLoading ? <ResumeGridSkeleton /> : null}
-          {!consoleData.isListLoading && consoleData.listError ? <ListError message={consoleData.listError} onRetry={consoleData.reload} /> : null}
+          {!consoleData.isListLoading && consoleData.listError ? (
+            <ListError message={consoleData.listError} onRetry={consoleData.reload} />
+          ) : null}
           {!consoleData.isListLoading && !consoleData.listError ? (
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-3">
-              <CreateResumeCard isPending={pendingAction === 'create'} onCreate={() => void handleCreate()} />
+              <CreateResumeCard
+                isPending={pendingAction === 'create'}
+                onCreate={() => void handleCreate()}
+              />
               {consoleData.list.items.map((resume) => (
                 <ResumeCard
                   isPending={pendingAction?.endsWith(resume.id) ?? false}
@@ -336,7 +369,9 @@ function AuthenticatedConsole({
                   resume={resume}
                 />
               ))}
-              {consoleData.list.items.length === 0 ? <EmptyResults hasFilters={hasFilters} onReset={resetFilters} /> : null}
+              {consoleData.list.items.length === 0 ? (
+                <EmptyResults hasFilters={hasFilters} onReset={resetFilters} />
+              ) : null}
             </div>
           ) : null}
         </section>
@@ -388,7 +423,12 @@ function RenameResumeDialog({
   const normalizedTitle = title.trim();
 
   return (
-    <Dialog onOpenChange={(open) => { if (!open && !isPending) onClose(); }} open>
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open && !isPending) onClose();
+      }}
+      open
+    >
       <DialogContent className="rounded-2xl p-6">
         <DialogTitle>重命名简历</DialogTitle>
         <DialogDescription>名称用于在控制台中识别这份简历，不会修改简历正文。</DialogDescription>
@@ -401,7 +441,9 @@ function RenameResumeDialog({
             }
           }}
         >
-          <Label className="text-[#433747]" htmlFor="resume-title">简历名称</Label>
+          <Label className="text-[#433747]" htmlFor="resume-title">
+            简历名称
+          </Label>
           <Input
             autoFocus
             className="mt-2 focus:border-[#850477] focus-visible:ring-[#850477]"
@@ -411,8 +453,14 @@ function RenameResumeDialog({
             value={title}
           />
           <div className="mt-6 flex justify-end gap-3">
-            <Button disabled={isPending} onClick={onClose} type="button" variant="outline">取消</Button>
-            <Button className="bg-[#850477] hover:bg-[#6f0364]" disabled={!normalizedTitle || isPending} type="submit">
+            <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
+              取消
+            </Button>
+            <Button
+              className="bg-[#850477] hover:bg-[#6f0364]"
+              disabled={!normalizedTitle || isPending}
+              type="submit"
+            >
               {isPending ? '保存中…' : '保存名称'}
             </Button>
           </div>
@@ -434,12 +482,19 @@ function DeleteResumeDialog({
   resume: ResumeSummary;
 }) {
   return (
-    <Dialog onOpenChange={(open) => { if (!open && !isPending) onClose(); }} open>
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open && !isPending) onClose();
+      }}
+      open
+    >
       <DialogContent className="rounded-2xl p-6">
         <DialogTitle>确认删除“{resume.title}”？</DialogTitle>
         <DialogDescription>删除后无法在控制台恢复，请确认不再需要这份简历。</DialogDescription>
         <div className="mt-6 flex justify-end gap-3">
-          <Button disabled={isPending} onClick={onClose} type="button" variant="outline">取消</Button>
+          <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
+            取消
+          </Button>
           <Button disabled={isPending} onClick={onDelete} type="button" variant="destructive">
             {isPending ? '删除中…' : '确认删除'}
           </Button>

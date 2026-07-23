@@ -50,10 +50,16 @@ describe('ResumeHtmlPreview', () => {
     const resume = createResume();
     render(<ResumeHtmlPreview avatar={null} resume={resume} />);
 
-    expect(screen.getByLabelText('测试简历 A4 实时预览')).toHaveAttribute('data-template', 'modern-editorial');
+    expect(screen.getByLabelText('测试简历 A4 实时预览')).toHaveAttribute(
+      'data-template',
+      'modern-editorial',
+    );
     expect(screen.getByRole('heading', { name: '林清清' })).toBeVisible();
     expect(screen.getByText('前端开发工程师')).toBeVisible();
-    expect(screen.getByRole('link', { name: '作品集' })).toHaveAttribute('href', 'https://example.com');
+    expect(screen.getByRole('link', { name: '作品集' })).toHaveAttribute(
+      'href',
+      'https://example.com',
+    );
     expect(screen.getByText('前端工程师 · Vega Resume')).toBeVisible();
     expect(screen.getByText('2025-01 – 至今')).toBeVisible();
     expect(screen.getByText('消除 PDF iframe 闪烁')).toBeVisible();
@@ -65,9 +71,17 @@ describe('ResumeHtmlPreview', () => {
     const resume = createResume();
     const { rerender } = render(<ResumeHtmlPreview avatar={null} resume={resume} />);
 
-    rerender(<ResumeHtmlPreview avatar={null} resume={{ ...resume, templateId: 'classic-professional' }} />);
+    rerender(
+      <ResumeHtmlPreview
+        avatar={null}
+        resume={{ ...resume, templateId: 'classic-professional' }}
+      />,
+    );
 
-    expect(screen.getByLabelText('测试简历 A4 实时预览')).toHaveAttribute('data-template', 'classic-professional');
+    expect(screen.getByLabelText('测试简历 A4 实时预览')).toHaveAttribute(
+      'data-template',
+      'classic-professional',
+    );
     expect(screen.getByRole('heading', { name: '林清清' })).toBeVisible();
   });
 });

@@ -22,7 +22,8 @@ export function HeroSection({ onRegister, onViewExample }: HeroSectionProps) {
         </h1>
         <p className="mt-5 text-2xl font-medium text-slate-800">用一页好简历，开始下一次机会</p>
         <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600">
-          从结构化信息、风格选择到导出准备，VegaResume 帮你把求职材料收束成清晰、可信、方便迭代的一页。
+          从结构化信息、风格选择到导出准备，VegaResume
+          帮你把求职材料收束成清晰、可信、方便迭代的一页。
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button onClick={onRegister} size="lg" type="button">

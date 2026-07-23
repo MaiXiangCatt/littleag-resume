@@ -82,7 +82,9 @@ export function Field({ error, label, onChange, type, value }: FieldProps) {
   );
 }
 
-function formErrors<T extends Record<string, unknown>>(issues: { message: string; path: PropertyKey[] }[]) {
+function formErrors<T extends Record<string, unknown>>(
+  issues: { message: string; path: PropertyKey[] }[],
+) {
   return issues.reduce<Partial<Record<keyof T, string>>>((acc, issue) => {
     const key = issue.path[0] as keyof T;
     if (key && !acc[key]) {

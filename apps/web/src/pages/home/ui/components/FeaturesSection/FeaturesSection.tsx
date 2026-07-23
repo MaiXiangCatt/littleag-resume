@@ -11,11 +11,7 @@ export function FeaturesSection() {
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <div className="grid gap-4 md:grid-cols-3">
         {features.map(([title, description]) => (
-          <Card
-            className="shadow-sm"
-            data-testid="home-feature-card"
-            key={title}
-          >
+          <Card className="shadow-sm" data-testid="home-feature-card" key={title}>
             <CardHeader className="p-5 pb-0">
               <CardTitle className="text-lg">{title}</CardTitle>
             </CardHeader>

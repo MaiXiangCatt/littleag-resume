@@ -21,30 +21,56 @@ export function sectionHasPrintableContent(section: ResumeSection): boolean {
 }
 
 export function itemHasPrintableContent(item: { id: string }): boolean {
-  return Object.entries(item).some(([key, value]) => (
-    key !== 'id' && key !== 'isCurrent' && typeof value === 'string' && Boolean(value.trim())
-  ));
+  return Object.entries(item).some(
+    ([key, value]) =>
+      key !== 'id' && key !== 'isCurrent' && typeof value === 'string' && Boolean(value.trim()),
+  );
 }
 
 export function getEntryDisplay(
   type: Exclude<SectionType, 'summary' | 'skills'>,
   item: Record<string, unknown>,
 ): ResumeEntryDisplay {
-  const value = (key: string) => typeof item[key] === 'string' ? item[key] as string : '';
+  const value = (key: string) => (typeof item[key] === 'string' ? (item[key] as string) : '');
   const current = item.isCurrent === true;
   const date = dateRange(value('startDate'), current ? '至今' : value('endDate'));
 
   switch (type) {
     case 'work':
-      return { title: joinText(value('role'), value('company')), subtitle: value('location'), date, description: value('description') };
+      return {
+        title: joinText(value('role'), value('company')),
+        subtitle: value('location'),
+        date,
+        description: value('description'),
+      };
     case 'education':
-      return { title: joinText(value('school'), value('degree')), subtitle: value('major'), date, description: value('description') };
+      return {
+        title: joinText(value('school'), value('degree')),
+        subtitle: value('major'),
+        date,
+        description: value('description'),
+      };
     case 'project':
-      return { title: value('name'), subtitle: value('role'), date, description: value('description') };
+      return {
+        title: value('name'),
+        subtitle: value('role'),
+        date,
+        description: value('description'),
+      };
     case 'awards':
-      return { title: value('title'), subtitle: value('issuer'), date: value('date'), description: value('description') };
+      return {
+        title: value('title'),
+        subtitle: value('issuer'),
+        date: value('date'),
+        description: value('description'),
+      };
     case 'custom':
-      return { title: value('title'), subtitle: joinText(value('subtitle'), value('location')), date, description: value('description') };
+      return {
+        title: value('title'),
+        subtitle: joinText(value('subtitle'), value('location')),
+        date,
+        description: value('description'),
+      };
   }
 }
 

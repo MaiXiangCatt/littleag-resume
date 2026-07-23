@@ -29,7 +29,10 @@ export function HomePage({ currentUser, onLogin, onRegister, onViewExample }: Ho
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f6f3ee] text-slate-950" data-testid="home-page">
+    <div
+      className="min-h-screen overflow-x-hidden bg-[#f6f3ee] text-slate-950"
+      data-testid="home-page"
+    >
       <AppHeader
         actions={
           currentUser ? null : (
@@ -38,11 +41,7 @@ export function HomePage({ currentUser, onLogin, onRegister, onViewExample }: Ho
                 <LogIn aria-hidden="true" size={16} />
                 登录
               </Button>
-              <Button
-                aria-label="顶部免费开始"
-                onClick={onRegister}
-                type="button"
-              >
+              <Button aria-label="顶部免费开始" onClick={onRegister} type="button">
                 <Rocket aria-hidden="true" size={16} />
                 免费开始
               </Button>

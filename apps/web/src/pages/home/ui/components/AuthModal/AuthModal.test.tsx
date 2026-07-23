@@ -83,7 +83,12 @@ describe('AuthModal', () => {
     });
 
     render(
-      <AuthModal defaultMode="login" onAuthenticated={onAuthenticated} onOpenChange={vi.fn()} open />,
+      <AuthModal
+        defaultMode="login"
+        onAuthenticated={onAuthenticated}
+        onOpenChange={vi.fn()}
+        open
+      />,
     );
 
     await user.type(screen.getByLabelText('邮箱'), 'user@example.com');

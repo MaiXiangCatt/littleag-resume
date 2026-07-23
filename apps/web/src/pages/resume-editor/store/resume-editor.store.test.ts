@@ -42,7 +42,12 @@ describe('resume editor store', () => {
     store.mergeServerMetadata({ ...document, revision: 2, hasAvatar: true, exportCount: 1 });
 
     const state = useResumeEditorStore.getState();
-    expect(state.document).toMatchObject({ title: 'local', revision: 2, hasAvatar: true, exportCount: 1 });
+    expect(state.document).toMatchObject({
+      title: 'local',
+      revision: 2,
+      hasAvatar: true,
+      exportCount: 1,
+    });
     expect(state.saveStatus).toBe('dirty');
   });
 });

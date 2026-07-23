@@ -1,6 +1,7 @@
 export type TemplateId = 'modern-editorial' | 'classic-professional';
 export type ResumeStatus = 'draft' | 'completed';
-export type SectionType = 'summary' | 'work' | 'education' | 'project' | 'skills' | 'awards' | 'custom';
+export type SectionType =
+  'summary' | 'work' | 'education' | 'project' | 'skills' | 'awards' | 'custom';
 export type SkillLevel = '' | 'aware' | 'familiar' | 'proficient' | 'expert';
 export type FormattingSize = 'small' | 'standard' | 'large';
 export type FormattingDensity = 'compact' | 'standard' | 'relaxed';
@@ -18,12 +19,47 @@ export type ResumeProfile = {
 };
 
 export type BaseItem = { id: string };
-export type WorkItem = BaseItem & { company: string; role: string; location: string; startDate: string; endDate: string; isCurrent: boolean; description: string };
-export type EducationItem = BaseItem & { school: string; major: string; degree: string; startDate: string; endDate: string; description: string };
-export type ProjectItem = BaseItem & { name: string; role: string; startDate: string; endDate: string; isCurrent: boolean; description: string };
+export type WorkItem = BaseItem & {
+  company: string;
+  role: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  description: string;
+};
+export type EducationItem = BaseItem & {
+  school: string;
+  major: string;
+  degree: string;
+  startDate: string;
+  endDate: string;
+  description: string;
+};
+export type ProjectItem = BaseItem & {
+  name: string;
+  role: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  description: string;
+};
 export type SkillItem = BaseItem & { name: string; level: SkillLevel };
-export type AwardItem = BaseItem & { title: string; issuer: string; date: string; description: string };
-export type CustomItem = BaseItem & { title: string; subtitle: string; location: string; startDate: string; endDate: string; isCurrent: boolean; description: string };
+export type AwardItem = BaseItem & {
+  title: string;
+  issuer: string;
+  date: string;
+  description: string;
+};
+export type CustomItem = BaseItem & {
+  title: string;
+  subtitle: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  description: string;
+};
 
 type SectionBase<T extends SectionType> = { id: string; type: T; title: string; enabled: boolean };
 export type SummarySection = SectionBase<'summary'> & { text: string };
@@ -33,7 +69,14 @@ export type ProjectSection = SectionBase<'project'> & { items: ProjectItem[] };
 export type SkillsSection = SectionBase<'skills'> & { items: SkillItem[] };
 export type AwardsSection = SectionBase<'awards'> & { items: AwardItem[] };
 export type CustomSection = SectionBase<'custom'> & { items: CustomItem[] };
-export type ResumeSection = SummarySection | WorkSection | EducationSection | ProjectSection | SkillsSection | AwardsSection | CustomSection;
+export type ResumeSection =
+  | SummarySection
+  | WorkSection
+  | EducationSection
+  | ProjectSection
+  | SkillsSection
+  | AwardsSection
+  | CustomSection;
 
 export type ResumeFormatting = {
   fontSize: FormattingSize;
@@ -72,4 +115,3 @@ export type ResumeImportEnvelope = {
 };
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'failed' | 'conflict';
-

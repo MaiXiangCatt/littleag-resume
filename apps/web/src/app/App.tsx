@@ -8,7 +8,11 @@ import { AuthModal } from '@/pages/home/ui/components/AuthModal/AuthModal';
 import { ConsolePage } from '@/pages/console/ui/ConsolePage';
 import { HomePage } from '@/pages/home/ui/HomePage';
 
-const ResumeEditorPage = lazy(() => import('@/pages/resume-editor/ui/ResumeEditorPage').then((module) => ({ default: module.ResumeEditorPage })));
+const ResumeEditorPage = lazy(() =>
+  import('@/pages/resume-editor/ui/ResumeEditorPage').then((module) => ({
+    default: module.ResumeEditorPage,
+  })),
+);
 
 type AuthMode = 'login' | 'register';
 
@@ -38,7 +42,9 @@ function ResumeEditorRoute() {
   const { resumeId } = useParams<{ resumeId: string }>();
 
   if (status === 'idle' || status === 'loading') {
-    return <main className="grid min-h-screen place-items-center text-slate-600">正在加载账号信息</main>;
+    return (
+      <main className="grid min-h-screen place-items-center text-slate-600">正在加载账号信息</main>
+    );
   }
 
   if (status !== 'authenticated') {
@@ -49,7 +55,17 @@ function ResumeEditorRoute() {
     return <Navigate replace to="/console" />;
   }
 
-  return <Suspense fallback={<main className="grid min-h-screen place-items-center text-slate-600">正在加载简历编辑器</main>}><ResumeEditorPage resumeId={resumeId} /></Suspense>;
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center text-slate-600">
+          正在加载简历编辑器
+        </main>
+      }
+    >
+      <ResumeEditorPage resumeId={resumeId} />
+    </Suspense>
+  );
 }
 
 function HomeRoute() {

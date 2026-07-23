@@ -3,7 +3,7 @@
 # 命令分类：环境/契约/静态/测试/构建/部署/工具
 # ==========================================
 
-.PHONY: help install dev clean
+.PHONY: help install dev clean format format-check
 .DEFAULT_GOAL := help
 
 help: ## 列出所有可用命令
@@ -27,8 +27,12 @@ generate:          ## 从 OpenAPI 契约生成 TS client 与 Go stub
 	cd apps/server && go tool oapi-codegen -config oapi-codegen.yaml ../../contracts/openapi/openapi.yaml
 
 # ---- 静态检查 ----
+format:             ## 使用 Prettier 格式化 Web App
+	pnpm --filter web format
+format-check:       ## 检查 Web App 的 Prettier 格式
+	pnpm --filter web format:check
 lint: lint-web lint-server lint-cli  ## 全量 lint
-lint-web:          ## ESLint + tsc
+lint-web:          ## ESLint + Prettier
 	pnpm --filter web lint
 lint-server:       ## go vet
 	$(MAKE) -C apps/server lint

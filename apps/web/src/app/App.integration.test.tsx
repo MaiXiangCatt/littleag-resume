@@ -39,7 +39,9 @@ describe('app auth flow integration', () => {
   it('renders unauthenticated home after failed bootstrap', async () => {
     renderApp('/');
 
-    expect(await screen.findByRole('heading', { level: 1, name: /VegaResume/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /VegaResume/ }),
+    ).toBeInTheDocument();
   });
 
   it('registers from home and lands on console', async () => {
@@ -101,7 +103,9 @@ describe('app auth flow integration', () => {
 
     await user.click(await screen.findByRole('button', { name: /zhangsan/ }));
     await user.click(await screen.findByRole('menuitem', { name: /退出登录/ }));
-    expect(await screen.findByRole('heading', { level: 1, name: /VegaResume/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /VegaResume/ }),
+    ).toBeInTheDocument();
     expect(authServiceMock.logout).toHaveBeenCalledTimes(1);
   });
 

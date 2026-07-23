@@ -105,13 +105,20 @@ export function ConsoleHeader({
                 <span className="grid size-9 place-items-center rounded-full bg-[#efe4ed] text-sm font-bold text-[#7d176f] ring-2 ring-white">
                   {initial}
                 </span>
-                <span className="hidden max-w-28 truncate text-sm font-semibold text-[#2f2632] sm:block">{user.username}</span>
+                <span className="hidden max-w-28 truncate text-sm font-semibold text-[#2f2632] sm:block">
+                  {user.username}
+                </span>
                 <ChevronDown aria-hidden="true" className="text-[#837b86]" size={16} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 rounded-2xl border-[#e9e3eb] p-2 shadow-[0_18px_55px_rgba(49,30,52,0.16)]">
+            <DropdownMenuContent
+              align="end"
+              className="w-64 rounded-2xl border-[#e9e3eb] p-2 shadow-[0_18px_55px_rgba(49,30,52,0.16)]"
+            >
               <DropdownMenuLabel className="px-3 py-2.5">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#9a5191]">当前账号</p>
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#9a5191]">
+                  当前账号
+                </p>
                 <p className="mt-1 truncate text-sm font-normal text-[#817985]">{user.email}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-[#eee9f0]" />

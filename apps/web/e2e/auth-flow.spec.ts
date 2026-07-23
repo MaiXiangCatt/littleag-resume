@@ -17,21 +17,37 @@ test('unauthenticated home and login to console', async ({ page }) => {
         message: '',
         data: {
           accessToken: 'access-token',
-          user: { id: '00000000-0000-0000-0000-000000000001', username: 'zhangsan', email: 'user@example.com' },
+          user: {
+            id: '00000000-0000-0000-0000-000000000001',
+            username: 'zhangsan',
+            email: 'user@example.com',
+          },
         },
       }),
     });
   });
-  await page.route('**/api/resumes/stats', (route) => route.fulfill({
-    contentType: 'application/json',
-    status: 200,
-    body: JSON.stringify({ code: 0, message: '', data: { total: 0, draft: 0, completed: 0, exported: 0 } }),
-  }));
-  await page.route('**/api/resumes?**', (route) => route.fulfill({
-    contentType: 'application/json',
-    status: 200,
-    body: JSON.stringify({ code: 0, message: '', data: { items: [], page: 1, pageSize: 6, total: 0 } }),
-  }));
+  await page.route('**/api/resumes/stats', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      status: 200,
+      body: JSON.stringify({
+        code: 0,
+        message: '',
+        data: { total: 0, draft: 0, completed: 0, exported: 0 },
+      }),
+    }),
+  );
+  await page.route('**/api/resumes?**', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      status: 200,
+      body: JSON.stringify({
+        code: 0,
+        message: '',
+        data: { items: [], page: 1, pageSize: 6, total: 0 },
+      }),
+    }),
+  );
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /VegaResume/ })).toBeVisible();

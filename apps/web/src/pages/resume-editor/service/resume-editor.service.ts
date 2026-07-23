@@ -2,7 +2,13 @@ import type { ResumeDetail } from '@/shared/api/generated/model/resumeDetail';
 import type { ResumeContent } from '@/shared/api/generated/model/resumeContent';
 import { httpBlobRequest, httpRequest } from '@/shared/http/http.client';
 
-import type { ResumeContentV1, ResumeDocument, ResumeImportEnvelope, ResumeStatus, TemplateId } from '../model/resume.types';
+import type {
+  ResumeContentV1,
+  ResumeDocument,
+  ResumeImportEnvelope,
+  ResumeStatus,
+  TemplateId,
+} from '../model/resume.types';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -58,12 +64,15 @@ export const resumeEditorService = {
   },
 
   async deleteAvatar(resumeId: string) {
-    const detail = await httpRequest<ResumeDetail>(`/api/resumes/${resumeId}/avatar`, { method: 'DELETE' });
+    const detail = await httpRequest<ResumeDetail>(`/api/resumes/${resumeId}/avatar`, {
+      method: 'DELETE',
+    });
     return toDocument(detail);
   },
 
   async recordExport(resumeId: string) {
-    return toDocument(await httpRequest<ResumeDetail>(`/api/resumes/${resumeId}/exports`, { method: 'POST' }));
+    return toDocument(
+      await httpRequest<ResumeDetail>(`/api/resumes/${resumeId}/exports`, { method: 'POST' }),
+    );
   },
 };
-
