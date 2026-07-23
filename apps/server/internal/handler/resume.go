@@ -316,7 +316,7 @@ func resumeDetail(resume *model.Resume) (generated.ResumeDetail, error) {
 	return generated.ResumeDetail{
 		Id: summary.Id, Title: summary.Title, Status: summary.Status, TemplateId: summary.TemplateId,
 		Revision: summary.Revision, HasAvatar: summary.HasAvatar, ExportCount: summary.ExportCount, CreatedAt: summary.CreatedAt, UpdatedAt: summary.UpdatedAt,
-		ContentVersion: resume.ContentVersion, Content: content,
+		ContentVersion: generated.ResumeDetailContentVersion(resume.ContentVersion), Content: content,
 	}, nil
 }
 

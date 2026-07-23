@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { ResumeContent } from './resumeContent';
+import type { ResumeDetailContentVersion } from './resumeDetailContentVersion';
 import type { ResumeSummary } from './resumeSummary';
 
 export type ResumeDetail = ResumeSummary & {
-  /** @minimum 1 */
-  contentVersion: number;
+  contentVersion: ResumeDetailContentVersion;
   content: ResumeContent;
 };

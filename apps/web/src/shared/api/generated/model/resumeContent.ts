@@ -5,13 +5,13 @@
  * Contract for authentication and resume management.
  * OpenAPI spec version: 0.2.0
  */
-import type { ResumeContentFormatting } from './resumeContentFormatting';
 import type { ResumeContentProfile } from './resumeContentProfile';
 import type { ResumeContentSectionsItem } from './resumeContentSectionsItem';
+import type { ResumeFormattingV2 } from './resumeFormattingV2';
 
 export interface ResumeContent {
   profile: ResumeContentProfile;
   /** @maxItems 64 */
   sections: ResumeContentSectionsItem[];
-  formatting: ResumeContentFormatting;
+  formatting: ResumeFormattingV2;
 }

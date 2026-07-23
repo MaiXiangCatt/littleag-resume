@@ -3,21 +3,30 @@ import type { ResumeContent } from '@/shared/api/generated/model/resumeContent';
 import { httpBlobRequest, httpRequest } from '@/shared/http/http.client';
 
 import type {
-  ResumeContentV1,
   ResumeDocument,
   ResumeImportEnvelope,
   ResumeStatus,
   TemplateId,
 } from '../model/resume.types';
+import { parseResumeContent } from '../model/resume.model';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+export class UnsupportedResumeContentError extends Error {
+  constructor() {
+    super('这份简历使用旧版内容格式，请删除后重新创建');
+    this.name = 'UnsupportedResumeContentError';
+  }
+}
+
 function toDocument(detail: ResumeDetail): ResumeDocument {
+  if (detail.contentVersion !== 2) throw new UnsupportedResumeContentError();
   return {
     ...detail,
     templateId: (detail.templateId ?? 'modern-editorial') as TemplateId,
     status: detail.status as ResumeStatus,
-    content: detail.content as unknown as ResumeContentV1,
+    contentVersion: 2,
+    content: parseResumeContent(detail.content),
   };
 }
 

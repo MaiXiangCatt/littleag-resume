@@ -83,7 +83,7 @@ func (s *ResumeService) Create(ctx context.Context, userID uuid.UUID, title stri
 		Title:          validatedTitle,
 		Status:         model.ResumeStatusDraft,
 		TemplateID:     &templateID,
-		ContentVersion: ContentVersionV1,
+		ContentVersion: ContentVersionV2,
 		ContentJSON:    model.JSONDocument(contentJSON),
 		Revision:       1,
 		CreatedAt:      now,
@@ -96,7 +96,7 @@ func (s *ResumeService) Create(ctx context.Context, userID uuid.UUID, title stri
 }
 
 func (s *ResumeService) Import(ctx context.Context, userID uuid.UUID, input ImportResumeInput) (*model.Resume, error) {
-	if input.Version != ContentVersionV1 || ValidateResumeContent(input.Content) != nil {
+	if input.Version != ContentVersionV2 || ValidateResumeContent(input.Content) != nil {
 		return nil, model.ErrResumeInvalidSchema
 	}
 	validatedTitle, err := validateResumeTitle(input.Title)
@@ -180,6 +180,9 @@ func (s *ResumeService) Update(ctx context.Context, userID, resumeID uuid.UUID, 
 	resume, err := s.Get(ctx, userID, resumeID)
 	if err != nil {
 		return nil, err
+	}
+	if resume.ContentVersion != ContentVersionV2 {
+		return nil, model.ErrResumeInvalidSchema
 	}
 	if input.Title != nil {
 		resume.Title, err = validateResumeTitle(*input.Title)
@@ -272,7 +275,7 @@ func (s *ResumeService) Delete(ctx context.Context, userID, resumeID uuid.UUID) 
 }
 
 func (s *ResumeService) ReplaceImport(ctx context.Context, userID, resumeID uuid.UUID, input ImportResumeInput) (*model.Resume, error) {
-	if input.ExpectedRevision == nil || input.Version != ContentVersionV1 || ValidateResumeContent(input.Content) != nil {
+	if input.ExpectedRevision == nil || input.Version != ContentVersionV2 || ValidateResumeContent(input.Content) != nil {
 		return nil, model.ErrResumeInvalidSchema
 	}
 	var avatarBytes []byte

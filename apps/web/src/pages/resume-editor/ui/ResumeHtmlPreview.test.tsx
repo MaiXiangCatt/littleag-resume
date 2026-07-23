@@ -16,7 +16,7 @@ function createResume(): ResumeDocument {
     links: [{ id: 'portfolio', label: '作品集', url: 'https://example.com' }],
   };
   const summary = content.sections.find((section) => section.type === 'summary');
-  if (summary?.type === 'summary') summary.text = '专注于复杂编辑体验。';
+  if (summary?.type === 'summary') summary.text = '专注于**复杂编辑体验**。';
   const work = content.sections.find((section) => section.type === 'work');
   if (work?.type === 'work') {
     work.items.push({
@@ -27,7 +27,7 @@ function createResume(): ResumeDocument {
       startDate: '2025-01',
       endDate: '',
       isCurrent: true,
-      description: '构建实时简历预览\n消除 PDF iframe 闪烁',
+      description: '- 构建**实时简历预览**\n- 消除 PDF iframe 闪烁',
     });
   }
   return {
@@ -38,7 +38,7 @@ function createResume(): ResumeDocument {
     hasAvatar: false,
     templateId: 'modern-editorial',
     exportCount: 0,
-    contentVersion: 1,
+    contentVersion: 2,
     content,
     createdAt: '2026-07-22T00:00:00Z',
     updatedAt: '2026-07-22T00:00:00Z',
@@ -55,6 +55,14 @@ describe('ResumeHtmlPreview', () => {
       'modern-editorial',
     );
     expect(screen.getByRole('heading', { name: '林清清' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '林清清' })).toHaveStyle({ fontSize: '20px' });
+    expect(screen.getByRole('heading', { name: '工作经历' })).toHaveStyle({
+      fontSize: '16px',
+    });
+    expect(screen.getByRole('heading', { name: '前端工程师 · Vega Resume' })).toHaveStyle({
+      fontSize: '14px',
+    });
+    expect(screen.getByText('复杂编辑体验').tagName).toBe('STRONG');
     expect(screen.getByText('前端开发工程师')).toBeVisible();
     expect(screen.getByRole('link', { name: '作品集' })).toHaveAttribute(
       'href',
@@ -65,6 +73,12 @@ describe('ResumeHtmlPreview', () => {
     expect(screen.getByText('消除 PDF iframe 闪烁')).toBeVisible();
     expect(screen.queryByText('教育背景')).not.toBeInTheDocument();
     expect(screen.queryByText('奖项荣誉')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('测试简历 A4 实时预览').querySelector('article')).toHaveStyle({
+      paddingTop: '33px',
+      paddingRight: '33px',
+      paddingBottom: '33px',
+      paddingLeft: '33px',
+    });
   });
 
   it('switches template presentation without changing content', () => {

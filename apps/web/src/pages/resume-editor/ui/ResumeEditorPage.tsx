@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -41,13 +41,13 @@ import {
   BUILTIN_TITLES,
   completionIssues,
   createCustomSection,
+  createDefaultFormatting,
   parseImportEnvelope,
 } from '../model/resume.model';
 import type {
   AccentColor,
-  FormattingDensity,
-  FormattingSize,
   ResumeDocument,
+  ResumeFormatting,
   ResumeImportEnvelope,
   ResumeSection,
   TemplateId,
@@ -214,7 +214,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
   function exportJson() {
     if (!document) return;
     const envelope: ResumeImportEnvelope = {
-      version: 1,
+      version: 2,
       title: document.title,
       templateId: document.templateId,
       content: document.content,
@@ -446,12 +446,15 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
       {formatOpen ? (
         <FormattingDialog
           document={document}
-          onChange={(key, value) =>
+          onChange={(formatting) =>
             mutate((draft) => {
-              (draft.content.formatting as unknown as Record<string, string>)[key] = value;
-            }, true)
+              draft.content.formatting = formatting;
+            })
           }
-          onClose={() => setFormatOpen(false)}
+          onClose={() => {
+            setFormatOpen(false);
+            void flushSave();
+          }}
           onTemplate={(templateId) =>
             mutate((draft) => {
               draft.templateId = templateId;
@@ -561,18 +564,22 @@ function saveBadgeColor(status: ReturnType<typeof useResumeEditorStore.getState>
   return 'bg-amber-50 text-amber-700';
 }
 
-function FormattingDialog({
+export function FormattingDialog({
   document,
   onChange,
   onClose,
   onTemplate,
 }: {
   document: ResumeDocument;
-  onChange: (key: string, value: string) => void;
+  onChange: (formatting: ResumeFormatting) => void;
   onClose: () => void;
   onTemplate: (value: TemplateId) => void;
 }) {
   const formatting = document.content.formatting;
+  const [fieldRevision, setFieldRevision] = useState(0);
+  const update = (changes: Partial<ResumeFormatting>) => onChange({ ...formatting, ...changes });
+  const updateMargin = (side: keyof ResumeFormatting['pageMarginPx'], value: number) =>
+    update({ pageMarginPx: { ...formatting.pageMarginPx, [side]: value } });
   return (
     <Dialog
       onOpenChange={(open) => {
@@ -580,10 +587,10 @@ function FormattingDialog({
       }}
       open
     >
-      <DialogContent className="w-[min(92vw,560px)] rounded-3xl p-7">
+      <DialogContent className="max-h-[88vh] w-[min(92vw,680px)] overflow-y-auto rounded-3xl p-7">
         <DialogTitle className="font-serif text-2xl">排版设置</DialogTitle>
-        <DialogDescription>模板控制整体气质，排版参数只影响当前简历。</DialogDescription>
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        <DialogDescription>所有数值都会实时应用到预览与导出的 PDF。</DialogDescription>
+        <div className="mt-6 grid grid-cols-[1fr_auto] items-end gap-6 rounded-2xl border border-[#e8e0e5] bg-[#fbf9fa] p-4">
           <SelectField
             label="模板"
             value={document.templateId}
@@ -593,69 +600,226 @@ function FormattingDialog({
               ['classic-professional', '经典专业'],
             ]}
           />
-          <SelectField
-            label="字号"
-            value={formatting.fontSize}
-            onChange={(value) => onChange('fontSize', value as FormattingSize)}
-            options={[
-              ['small', '小'],
-              ['standard', '标准'],
-              ['large', '大'],
-            ]}
-          />
-          <SelectField
-            label="行距"
-            value={formatting.lineHeight}
-            onChange={(value) => onChange('lineHeight', value as FormattingDensity)}
-            options={[
-              ['compact', '紧凑'],
-              ['standard', '标准'],
-              ['relaxed', '舒展'],
-            ]}
-          />
-          <SelectField
-            label="页边距"
-            value={formatting.pageMargin}
-            onChange={(value) => onChange('pageMargin', value)}
-            options={[
-              ['narrow', '窄'],
-              ['standard', '标准'],
-              ['wide', '宽'],
-            ]}
-          />
-          <SelectField
-            label="板块间距"
-            value={formatting.sectionGap}
-            onChange={(value) => onChange('sectionGap', value)}
-            options={[
-              ['compact', '紧凑'],
-              ['standard', '标准'],
-              ['relaxed', '舒展'],
-            ]}
-          />
-        </div>
-        <div className="mt-5">
-          <Label>主题色</Label>
-          <div className="mt-3 flex gap-3">
-            {(Object.entries(ACCENT_COLORS) as [AccentColor, string][]).map(([key, color]) => (
-              <Button
-                aria-label={`选择 ${key} 主题色`}
-                className={cn(
-                  'size-10 rounded-full border-4 p-0',
-                  formatting.accentColor === key ? 'border-[#241b21]' : 'border-white',
-                )}
-                key={key}
-                onClick={() => onChange('accentColor', key)}
-                style={{ backgroundColor: color }}
-              />
-            ))}
+          <div>
+            <Label>主题色</Label>
+            <div className="mt-2 flex gap-2">
+              {(Object.entries(ACCENT_COLORS) as [AccentColor, string][]).map(([key, color]) => (
+                <Button
+                  aria-label={`选择 ${key} 主题色`}
+                  className={cn(
+                    'size-8 rounded-full border-[3px] p-0',
+                    formatting.accentColor === key ? 'border-[#241b21]' : 'border-white',
+                  )}
+                  key={key}
+                  onClick={() => update({ accentColor: key })}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
           </div>
         </div>
+        <div key={fieldRevision}>
+          <FormattingSection
+            description="四类文字角色全局生效，模板切换不会覆盖这些数值。"
+            title="字号"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <NumericField
+                label="姓名"
+                maximum={48}
+                minimum={12}
+                onChange={(value) => update({ nameFontSizePx: value })}
+                suffix="px"
+                value={formatting.nameFontSizePx}
+              />
+              <NumericField
+                label="模块标题"
+                maximum={32}
+                minimum={10}
+                onChange={(value) => update({ sectionTitleFontSizePx: value })}
+                suffix="px"
+                value={formatting.sectionTitleFontSizePx}
+              />
+              <NumericField
+                label="条目标题"
+                maximum={28}
+                minimum={8}
+                onChange={(value) => update({ entryTitleFontSizePx: value })}
+                suffix="px"
+                value={formatting.entryTitleFontSizePx}
+              />
+              <NumericField
+                label="正文"
+                maximum={24}
+                minimum={8}
+                onChange={(value) => update({ bodyFontSizePx: value })}
+                suffix="px"
+                value={formatting.bodyFontSizePx}
+              />
+            </div>
+          </FormattingSection>
+          <FormattingSection
+            description="行高使用倍数；模块间距控制相邻内容板块的留白。"
+            title="阅读节奏"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <NumericField
+                label="行高"
+                maximum={2.5}
+                minimum={1}
+                onChange={(value) => update({ lineHeightRatio: value })}
+                step={0.05}
+                suffix="×"
+                value={formatting.lineHeightRatio}
+              />
+              <NumericField
+                label="模块间距"
+                maximum={64}
+                minimum={0}
+                onChange={(value) => update({ sectionGapPx: value })}
+                suffix="px"
+                value={formatting.sectionGapPx}
+              />
+            </div>
+          </FormattingSection>
+          <FormattingSection
+            description="四个方向独立控制，数值对应 A4 纸张内容到纸边的距离。"
+            title="页边距"
+          >
+            <div className="grid grid-cols-[1fr_110px_1fr] grid-rows-[auto_76px_auto] items-center gap-3">
+              <div className="col-start-2">
+                <NumericField
+                  label="上"
+                  maximum={160}
+                  minimum={0}
+                  onChange={(value) => updateMargin('top', value)}
+                  suffix="px"
+                  value={formatting.pageMarginPx.top}
+                />
+              </div>
+              <div className="col-start-1 row-start-2">
+                <NumericField
+                  label="左"
+                  maximum={160}
+                  minimum={0}
+                  onChange={(value) => updateMargin('left', value)}
+                  suffix="px"
+                  value={formatting.pageMarginPx.left}
+                />
+              </div>
+              <div
+                aria-hidden="true"
+                className="col-start-2 row-start-2 mx-auto h-16 w-11 rounded-sm border border-[#d8ccd4] bg-white shadow-[0_7px_18px_rgba(54,39,49,0.12)]"
+              />
+              <div className="col-start-3 row-start-2">
+                <NumericField
+                  label="右"
+                  maximum={160}
+                  minimum={0}
+                  onChange={(value) => updateMargin('right', value)}
+                  suffix="px"
+                  value={formatting.pageMarginPx.right}
+                />
+              </div>
+              <div className="col-start-2 row-start-3">
+                <NumericField
+                  label="下"
+                  maximum={160}
+                  minimum={0}
+                  onChange={(value) => updateMargin('bottom', value)}
+                  suffix="px"
+                  value={formatting.pageMarginPx.bottom}
+                />
+              </div>
+            </div>
+          </FormattingSection>
+        </div>
         <DialogFooter>
+          <Button
+            onClick={() => {
+              onChange(createDefaultFormatting());
+              setFieldRevision((revision) => revision + 1);
+            }}
+            variant="outline"
+          >
+            恢复默认
+          </Button>
           <Button onClick={onClose}>完成</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function FormattingSection({
+  children,
+  description,
+  title,
+}: {
+  children: ReactNode;
+  description: string;
+  title: string;
+}) {
+  return (
+    <section className="mt-5 rounded-2xl border border-[#e8e0e5] bg-white p-4">
+      <h3 className="text-sm font-semibold text-[#3d3038]">{title}</h3>
+      <p className="mt-1 text-xs leading-5 text-[#8a7d86]">{description}</p>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function NumericField({
+  label,
+  maximum,
+  minimum,
+  onChange,
+  step = 1,
+  suffix,
+  value,
+}: {
+  label: string;
+  maximum: number;
+  minimum: number;
+  onChange: (value: number) => void;
+  step?: number;
+  suffix: string;
+  value: number;
+}) {
+  function commit(input: HTMLInputElement) {
+    const rawValue = input.value;
+    const parsed = rawValue === '' ? Number.NaN : Number(rawValue);
+    const next = Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : value;
+    const normalized = step === 1 ? Math.round(next) : Math.round(next / step) * step;
+    input.value = String(normalized);
+    onChange(normalized);
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="relative">
+        <Input
+          aria-label={label}
+          className="pr-10 font-mono tabular-nums"
+          inputMode="decimal"
+          max={maximum}
+          min={minimum}
+          defaultValue={value}
+          onBlur={(event) => commit(event.currentTarget)}
+          onChange={(event) => {
+            const rawValue = event.target.value;
+            const parsed = Number(rawValue);
+            if (rawValue && parsed >= minimum && parsed <= maximum) onChange(parsed);
+          }}
+          step={step}
+          type="number"
+        />
+        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-[#a0929b]">
+          {suffix}
+        </span>
+      </div>
+    </div>
   );
 }
 

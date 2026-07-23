@@ -16,10 +16,13 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
       { id: 'awards', type: 'awards', title: '奖项荣誉', enabled: false, items: [] },
     ],
     formatting: {
-      fontSize: 'standard',
-      lineHeight: 'standard',
-      pageMargin: 'standard',
-      sectionGap: 'standard',
+      nameFontSizePx: 20,
+      sectionTitleFontSizePx: 16,
+      entryTitleFontSizePx: 14,
+      bodyFontSizePx: 14,
+      lineHeightRatio: 1.5,
+      pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
+      sectionGapPx: 8,
       accentColor: 'plum',
     },
   };
@@ -34,7 +37,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     hasAvatar: false,
     templateId,
     exportCount: 0,
-    contentVersion: 1,
+    contentVersion: 2,
     content,
     createdAt: '2026-07-22T00:00:00Z',
     updatedAt: '2026-07-22T00:00:00Z',
@@ -111,6 +114,8 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   await (await modernDownload).saveAs('test-results/resume-modern-editorial.pdf');
 
   await page.getByRole('button', { name: '排版设置' }).click();
+  await page.getByRole('dialog').getByLabel('姓名', { exact: true }).fill('24');
+  await expect(preview.getByRole('heading', { name: '林清清' })).toHaveCSS('font-size', '24px');
   await page.getByRole('combobox', { name: '模板' }).click();
   await page.getByRole('option', { name: '经典专业' }).click();
   await page.getByRole('button', { name: '完成' }).click();

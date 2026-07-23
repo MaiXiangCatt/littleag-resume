@@ -3,6 +3,8 @@ import { z } from 'zod';
 const id = z.string().min(1);
 const text = z.string().max(10_000);
 const month = z.string().regex(/^$|^\d{4}-(0[1-9]|1[0-2])$/);
+const integerBetween = (minimum: number, maximum: number) =>
+  z.number().int().min(minimum).max(maximum);
 const baseSection = { id, title: z.string().trim().min(1).max(40), enabled: z.boolean() };
 const baseItem = { id };
 
@@ -125,10 +127,20 @@ export const resumeContentSchema = z
     sections: z.array(sectionSchema).max(64),
     formatting: z
       .object({
-        fontSize: z.enum(['small', 'standard', 'large']),
-        lineHeight: z.enum(['compact', 'standard', 'relaxed']),
-        pageMargin: z.enum(['narrow', 'standard', 'wide']),
-        sectionGap: z.enum(['compact', 'standard', 'relaxed']),
+        nameFontSizePx: integerBetween(12, 48),
+        sectionTitleFontSizePx: integerBetween(10, 32),
+        entryTitleFontSizePx: integerBetween(8, 28),
+        bodyFontSizePx: integerBetween(8, 24),
+        lineHeightRatio: z.number().min(1).max(2.5),
+        pageMarginPx: z
+          .object({
+            top: integerBetween(0, 160),
+            right: integerBetween(0, 160),
+            bottom: integerBetween(0, 160),
+            left: integerBetween(0, 160),
+          })
+          .strict(),
+        sectionGapPx: integerBetween(0, 64),
         accentColor: z.enum(['plum', 'navy', 'teal', 'rust', 'charcoal']),
       })
       .strict(),
@@ -150,7 +162,7 @@ export const resumeContentSchema = z
 
 export const importEnvelopeSchema = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
     title: z.string().trim().min(1).max(80),
     templateId: z.enum(['modern-editorial', 'classic-professional']),
     avatar: z.string().startsWith('data:image/jpeg;base64,').max(750_000).nullish(),

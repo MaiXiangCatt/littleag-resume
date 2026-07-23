@@ -3,7 +3,8 @@ import type { ResumeContent } from '@/shared/api/generated/model/resumeContent';
 import { importEnvelopeSchema, resumeContentSchema } from './resume.schema';
 import type {
   CustomItem,
-  ResumeContentV1,
+  ResumeContentV2,
+  ResumeFormatting,
   ResumeImportEnvelope,
   ResumeSection,
   SectionType,
@@ -26,7 +27,20 @@ export const ACCENT_COLORS = {
   charcoal: '#374151',
 } as const;
 
-export function createDefaultContent(): ResumeContentV1 {
+export function createDefaultFormatting(): ResumeFormatting {
+  return {
+    nameFontSizePx: 20,
+    sectionTitleFontSizePx: 16,
+    entryTitleFontSizePx: 14,
+    bodyFontSizePx: 14,
+    lineHeightRatio: 1.5,
+    pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
+    sectionGapPx: 8,
+    accentColor: 'plum',
+  };
+}
+
+export function createDefaultContent(): ResumeContentV2 {
   return {
     profile: { fullName: '', targetRole: '', phone: '', email: '', location: '', links: [] },
     sections: [
@@ -37,19 +51,12 @@ export function createDefaultContent(): ResumeContentV1 {
       { id: 'skills', type: 'skills', title: '技能', enabled: true, items: [] },
       { id: 'awards', type: 'awards', title: '奖项荣誉', enabled: false, items: [] },
     ],
-    formatting: {
-      fontSize: 'standard',
-      lineHeight: 'standard',
-      pageMargin: 'standard',
-      sectionGap: 'standard',
-      accentColor: 'plum',
-    },
+    formatting: createDefaultFormatting(),
   };
 }
 
-export function normalizeContent(value: ResumeContent | unknown): ResumeContentV1 {
-  const parsed = resumeContentSchema.safeParse(value);
-  return parsed.success ? parsed.data : createDefaultContent();
+export function parseResumeContent(value: ResumeContent | unknown): ResumeContentV2 {
+  return resumeContentSchema.parse(value);
 }
 
 export function parseImportEnvelope(value: unknown): ResumeImportEnvelope {
@@ -120,14 +127,7 @@ export function moveById<T extends { id: string }>(items: T[], activeId: string,
   return next;
 }
 
-export function descriptionLines(value: string) {
-  return value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-export function completionIssues(content: ResumeContentV1) {
+export function completionIssues(content: ResumeContentV2) {
   const issues: string[] = [];
   if (!content.profile.fullName.trim()) issues.push('请填写姓名');
   if (!content.profile.targetRole.trim()) issues.push('请填写目标岗位');

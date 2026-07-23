@@ -134,13 +134,28 @@ func (e ImportResumeRequestTemplateId) Valid() bool {
 
 // Defines values for ImportResumeRequestVersion.
 const (
-	ImportResumeRequestVersionN1 ImportResumeRequestVersion = 1
+	ImportResumeRequestVersionN2 ImportResumeRequestVersion = 2
 )
 
 // Valid indicates whether the value is a known member of the ImportResumeRequestVersion enum.
 func (e ImportResumeRequestVersion) Valid() bool {
 	switch e {
-	case ImportResumeRequestVersionN1:
+	case ImportResumeRequestVersionN2:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResumeDetailContentVersion.
+const (
+	ResumeDetailContentVersionN2 ResumeDetailContentVersion = 2
+)
+
+// Valid indicates whether the value is a known member of the ResumeDetailContentVersion enum.
+func (e ResumeDetailContentVersion) Valid() bool {
+	switch e {
+	case ResumeDetailContentVersionN2:
 		return true
 	default:
 		return false
@@ -171,6 +186,33 @@ const (
 func (e ResumeDetailResponseMessage) Valid() bool {
 	switch e {
 	case ResumeDetailResponseMessageEmpty:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResumeFormattingV2AccentColor.
+const (
+	Charcoal ResumeFormattingV2AccentColor = "charcoal"
+	Navy     ResumeFormattingV2AccentColor = "navy"
+	Plum     ResumeFormattingV2AccentColor = "plum"
+	Rust     ResumeFormattingV2AccentColor = "rust"
+	Teal     ResumeFormattingV2AccentColor = "teal"
+)
+
+// Valid indicates whether the value is a known member of the ResumeFormattingV2AccentColor enum.
+func (e ResumeFormattingV2AccentColor) Valid() bool {
+	switch e {
+	case Charcoal:
+		return true
+	case Navy:
+		return true
+	case Plum:
+		return true
+	case Rust:
+		return true
+	case Teal:
 		return true
 	default:
 		return false
@@ -341,13 +383,13 @@ func (e ReplaceResumeImportJSONBodyTemplateId) Valid() bool {
 
 // Defines values for ReplaceResumeImportJSONBodyVersion.
 const (
-	ReplaceResumeImportJSONBodyVersionN1 ReplaceResumeImportJSONBodyVersion = 1
+	N2 ReplaceResumeImportJSONBodyVersion = 2
 )
 
 // Valid indicates whether the value is a known member of the ReplaceResumeImportJSONBodyVersion enum.
 func (e ReplaceResumeImportJSONBodyVersion) Valid() bool {
 	switch e {
-	case ReplaceResumeImportJSONBodyVersionN1:
+	case N2:
 		return true
 	default:
 		return false
@@ -462,25 +504,28 @@ type RegisterRequest struct {
 
 // ResumeContent defines model for ResumeContent.
 type ResumeContent struct {
-	Formatting map[string]interface{}   `json:"formatting"`
+	Formatting ResumeFormattingV2       `json:"formatting"`
 	Profile    map[string]interface{}   `json:"profile"`
 	Sections   []map[string]interface{} `json:"sections"`
 }
 
 // ResumeDetail defines model for ResumeDetail.
 type ResumeDetail struct {
-	Content        ResumeContent      `json:"content"`
-	ContentVersion int                `json:"contentVersion"`
-	CreatedAt      time.Time          `json:"createdAt"`
-	ExportCount    int64              `json:"exportCount"`
-	HasAvatar      bool               `json:"hasAvatar"`
-	Id             openapi_types.UUID `json:"id"`
-	Revision       int64              `json:"revision"`
-	Status         ResumeStatus       `json:"status"`
-	TemplateId     *string            `json:"templateId,omitempty"`
-	Title          string             `json:"title"`
-	UpdatedAt      time.Time          `json:"updatedAt"`
+	Content        ResumeContent              `json:"content"`
+	ContentVersion ResumeDetailContentVersion `json:"contentVersion"`
+	CreatedAt      time.Time                  `json:"createdAt"`
+	ExportCount    int64                      `json:"exportCount"`
+	HasAvatar      bool                       `json:"hasAvatar"`
+	Id             openapi_types.UUID         `json:"id"`
+	Revision       int64                      `json:"revision"`
+	Status         ResumeStatus               `json:"status"`
+	TemplateId     *string                    `json:"templateId,omitempty"`
+	Title          string                     `json:"title"`
+	UpdatedAt      time.Time                  `json:"updatedAt"`
 }
+
+// ResumeDetailContentVersion defines model for ResumeDetail.ContentVersion.
+type ResumeDetailContentVersion int
 
 // ResumeDetailResponse defines model for ResumeDetailResponse.
 type ResumeDetailResponse struct {
@@ -494,6 +539,26 @@ type ResumeDetailResponseCode int32
 
 // ResumeDetailResponseMessage defines model for ResumeDetailResponse.Message.
 type ResumeDetailResponseMessage string
+
+// ResumeFormattingV2 defines model for ResumeFormattingV2.
+type ResumeFormattingV2 struct {
+	AccentColor          ResumeFormattingV2AccentColor `json:"accentColor"`
+	BodyFontSizePx       int                           `json:"bodyFontSizePx"`
+	EntryTitleFontSizePx int                           `json:"entryTitleFontSizePx"`
+	LineHeightRatio      float32                       `json:"lineHeightRatio"`
+	NameFontSizePx       int                           `json:"nameFontSizePx"`
+	PageMarginPx         struct {
+		Bottom int `json:"bottom"`
+		Left   int `json:"left"`
+		Right  int `json:"right"`
+		Top    int `json:"top"`
+	} `json:"pageMarginPx"`
+	SectionGapPx           int `json:"sectionGapPx"`
+	SectionTitleFontSizePx int `json:"sectionTitleFontSizePx"`
+}
+
+// ResumeFormattingV2AccentColor defines model for ResumeFormattingV2.AccentColor.
+type ResumeFormattingV2AccentColor string
 
 // ResumeListPayload defines model for ResumeListPayload.
 type ResumeListPayload struct {
@@ -1230,56 +1295,59 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"cBQehQZR/w8AAP//",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

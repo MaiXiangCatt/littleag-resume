@@ -4,10 +4,9 @@ import {
   completionIssues,
   createCustomSection,
   createDefaultContent,
-  descriptionLines,
   moveById,
-  normalizeContent,
   parseImportEnvelope,
+  parseResumeContent,
 } from './resume.model';
 
 describe('resume editor model', () => {
@@ -22,22 +21,46 @@ describe('resume editor model', () => {
       ['skills', true],
       ['awards', false],
     ]);
-    expect(content.formatting.accentColor).toBe('plum');
+    expect(content.formatting).toEqual({
+      nameFontSizePx: 20,
+      sectionTitleFontSizePx: 16,
+      entryTitleFontSizePx: 14,
+      bodyFontSizePx: 14,
+      lineHeightRatio: 1.5,
+      pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
+      sectionGapPx: 8,
+      accentColor: 'plum',
+    });
   });
 
-  it('normalizes legacy empty content without sharing mutable defaults', () => {
-    const first = normalizeContent({});
-    const second = normalizeContent({});
-
-    first.profile.fullName = 'Ada';
-    expect(second.profile.fullName).toBe('');
+  it('rejects legacy and out-of-range formatting', () => {
+    const content = createDefaultContent();
+    expect(() =>
+      parseResumeContent({
+        ...content,
+        formatting: {
+          fontSize: 'standard',
+          lineHeight: 'standard',
+          pageMargin: 'standard',
+          sectionGap: 'standard',
+          accentColor: 'plum',
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      parseResumeContent({
+        ...content,
+        formatting: { ...content.formatting, bodyFontSizePx: 25 },
+      }),
+    ).toThrow();
   });
 
   it('strictly rejects unknown import fields and malformed dates', () => {
     const content = createDefaultContent();
-    const envelope = { version: 1, title: 'Resume', templateId: 'modern-editorial', content };
+    const envelope = { version: 2, title: 'Resume', templateId: 'modern-editorial', content };
 
     expect(() => parseImportEnvelope({ ...envelope, unknown: true })).toThrow();
+    expect(() => parseImportEnvelope({ ...envelope, version: 1 })).toThrow();
     const work = content.sections.find((section) => section.type === 'work');
     if (!work || work.type !== 'work') throw new Error('missing work section');
     work.items.push({
@@ -53,7 +76,7 @@ describe('resume editor model', () => {
     expect(() => parseImportEnvelope(envelope)).toThrow();
   });
 
-  it('supports multiple custom sections, stable reordering and line bullets', () => {
+  it('supports multiple custom sections and stable reordering', () => {
     const first = createCustomSection('志愿经历');
     const second = createCustomSection('出版作品');
 
@@ -62,7 +85,6 @@ describe('resume editor model', () => {
       second.id,
       first.id,
     ]);
-    expect(descriptionLines('  first\n\n second  \r\n')).toEqual(['first', 'second']);
   });
 
   it('allows drafts but reports completion requirements', () => {

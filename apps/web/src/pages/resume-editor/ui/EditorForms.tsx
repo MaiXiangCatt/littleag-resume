@@ -23,10 +23,10 @@ import { Card } from '@/shared/ui/card';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
-import { Textarea } from '@/shared/ui/textarea';
 
 import { createSectionItem, moveById } from '../model/resume.model';
 import type { ResumeProfile, ResumeSection } from '../model/resume.types';
+import { MarkdownEditor } from './MarkdownEditor';
 import { MonthPicker } from './MonthPicker';
 
 export function ProfileEditor({
@@ -201,7 +201,7 @@ export function SectionEditor({
       <EditorPanel
         eyebrow="Narrative"
         title={section.title}
-        description="每个非空行会作为独立要点进入成品。"
+        description="使用 Markdown 组织简介内容，右侧会实时显示最终效果。"
       >
         <Field label="板块标题">
           <Input
@@ -211,12 +211,12 @@ export function SectionEditor({
           />
         </Field>
         <Field label="简介内容">
-          <Textarea
-            aria-label="简介内容"
+          <MarkdownEditor
+            ariaLabel="简介内容"
             className="min-h-56"
             placeholder="概括你的经验、优势和求职方向"
             value={section.text}
-            onChange={(event) => onChange({ ...section, text: event.target.value })}
+            onChange={(text) => onChange({ ...section, text })}
           />
         </Field>
       </EditorPanel>
@@ -315,11 +315,11 @@ function renderItemFields(
   const description = () => (
     <div className="col-span-2">
       <Field label="描述">
-        <Textarea
-          aria-label="描述"
-          placeholder="每行输入一条要点"
+        <MarkdownEditor
+          ariaLabel="描述"
+          placeholder="使用 Markdown 输入工作内容或成果"
           value={String(item.description ?? '')}
-          onChange={(event) => update(id, 'description', event.target.value)}
+          onChange={(value) => update(id, 'description', value)}
         />
       </Field>
     </div>

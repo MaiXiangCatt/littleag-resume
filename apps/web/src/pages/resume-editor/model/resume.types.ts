@@ -3,8 +3,6 @@ export type ResumeStatus = 'draft' | 'completed';
 export type SectionType =
   'summary' | 'work' | 'education' | 'project' | 'skills' | 'awards' | 'custom';
 export type SkillLevel = '' | 'aware' | 'familiar' | 'proficient' | 'expert';
-export type FormattingSize = 'small' | 'standard' | 'large';
-export type FormattingDensity = 'compact' | 'standard' | 'relaxed';
 export type AccentColor = 'plum' | 'navy' | 'teal' | 'rust' | 'charcoal';
 
 export type ContactLink = { id: string; label: string; url: string };
@@ -79,14 +77,22 @@ export type ResumeSection =
   | CustomSection;
 
 export type ResumeFormatting = {
-  fontSize: FormattingSize;
-  lineHeight: FormattingDensity;
-  pageMargin: 'narrow' | 'standard' | 'wide';
-  sectionGap: FormattingDensity;
+  nameFontSizePx: number;
+  sectionTitleFontSizePx: number;
+  entryTitleFontSizePx: number;
+  bodyFontSizePx: number;
+  lineHeightRatio: number;
+  pageMarginPx: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  };
+  sectionGapPx: number;
   accentColor: AccentColor;
 };
 
-export type ResumeContentV1 = {
+export type ResumeContentV2 = {
   profile: ResumeProfile;
   sections: ResumeSection[];
   formatting: ResumeFormatting;
@@ -100,17 +106,17 @@ export type ResumeDocument = {
   hasAvatar: boolean;
   templateId: TemplateId;
   exportCount: number;
-  contentVersion: number;
-  content: ResumeContentV1;
+  contentVersion: 2;
+  content: ResumeContentV2;
   createdAt: string;
   updatedAt: string;
 };
 
 export type ResumeImportEnvelope = {
-  version: 1;
+  version: 2;
   title: string;
   templateId: TemplateId;
-  content: ResumeContentV1;
+  content: ResumeContentV2;
   avatar?: string | null;
 };
 

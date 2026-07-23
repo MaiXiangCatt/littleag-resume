@@ -2,12 +2,15 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import { ApiError } from '@/shared/http/http.client';
 
-import { normalizeContent } from '../model/resume.model';
 import type { ResumeDocument, ResumeImportEnvelope } from '../model/resume.types';
-import { resumeEditorService } from '../service/resume-editor.service';
+import {
+  resumeEditorService,
+  UnsupportedResumeContentError,
+} from '../service/resume-editor.service';
 import { useResumeEditorStore } from '../store/resume-editor.store';
 
 function editorError(error: unknown) {
+  if (error instanceof UnsupportedResumeContentError) return error.message;
   if (error instanceof ApiError) {
     if (error.code === 103001) return '这份简历不存在或已被删除';
     if (error.code === 103004) return '简历内容格式不正确';
@@ -28,9 +31,7 @@ export function useResumeEditor(resumeId: string) {
     useResumeEditorStore.getState().setLoading();
     try {
       const loaded = await resumeEditorService.get(resumeId);
-      useResumeEditorStore
-        .getState()
-        .load({ ...loaded, content: normalizeContent(loaded.content) });
+      useResumeEditorStore.getState().load(loaded);
     } catch (error) {
       useResumeEditorStore.getState().loadFailed(editorError(error));
     }
@@ -123,9 +124,7 @@ export function useResumeEditor(resumeId: string) {
         current.revision,
         envelope,
       );
-      useResumeEditorStore
-        .getState()
-        .replaceDocument({ ...imported, content: normalizeContent(imported.content) });
+      useResumeEditorStore.getState().replaceDocument(imported);
     },
     [resumeId],
   );

@@ -2,8 +2,11 @@ import { Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { normalizeContent, parseImportEnvelope } from '@/pages/resume-editor/model/resume.model';
-import { resumeEditorService } from '@/pages/resume-editor/service/resume-editor.service';
+import { parseImportEnvelope } from '@/pages/resume-editor/model/resume.model';
+import {
+  resumeEditorService,
+  UnsupportedResumeContentError,
+} from '@/pages/resume-editor/service/resume-editor.service';
 import type { ResumeSummary } from '@/shared/api/generated/model/resumeSummary';
 import type { ResumeSort } from '@/shared/api/generated/model/resumeSort';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
@@ -202,10 +205,7 @@ function AuthenticatedConsole({
       }
       const { createResumePdfBlob } =
         await import('@/pages/resume-editor/service/resume-pdf.service');
-      const blob = await createResumePdfBlob(
-        { ...detail, content: normalizeContent(detail.content) },
-        avatarUrl,
-      );
+      const blob = await createResumePdfBlob(detail, avatarUrl);
       const downloadUrl = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = downloadUrl;
@@ -216,7 +216,13 @@ function AuthenticatedConsole({
       setFeedback({ kind: 'success', message: `已开始导出“${resume.title}”` });
       consoleData.reload();
     } catch (error) {
-      setFeedback({ kind: 'error', message: resumeErrorMessage(error) });
+      setFeedback({
+        kind: 'error',
+        message:
+          error instanceof UnsupportedResumeContentError
+            ? error.message
+            : resumeErrorMessage(error),
+      });
     } finally {
       if (avatarUrl) URL.revokeObjectURL(avatarUrl);
       setPendingAction(null);

@@ -36,6 +36,9 @@ func TestResumeServiceLifecycleAndOwnership(t *testing.T) {
 	if created.Title != "产品经理简历" || created.Status != model.ResumeStatusDraft {
 		t.Fatalf("unexpected created resume: %+v", created)
 	}
+	if created.ContentVersion != 2 {
+		t.Fatalf("new resumes must use content version 2, got %d", created.ContentVersion)
+	}
 	if _, err := resumes.Get(ctx, otherUserID, created.ID); !errors.Is(err, model.ErrResumeNotFound) {
 		t.Fatalf("cross-user read must look missing, got %v", err)
 	}
@@ -164,15 +167,35 @@ func TestResumeServiceImportsVersionedOpaqueContent(t *testing.T) {
 	userID := uuid.New()
 
 	imported, err := resumes.Import(context.Background(), userID, service.ImportResumeInput{
-		Version: 1, Title: "导入简历", Content: service.DefaultResumeContent(),
+		Version: 2, Title: "导入简历", Content: service.DefaultResumeContent(),
 	})
 	if err != nil {
 		t.Fatalf("import resume: %v", err)
 	}
-	if imported.ContentVersion != 1 || string(imported.ContentJSON) == "{}" {
+	if imported.ContentVersion != 2 || string(imported.ContentJSON) == "{}" {
 		t.Fatalf("opaque content was not preserved: %+v", imported)
 	}
-	if _, err := resumes.Import(context.Background(), userID, service.ImportResumeInput{Version: 2, Title: "未知版本", Content: service.DefaultResumeContent()}); !errors.Is(err, model.ErrResumeInvalidSchema) {
+	if _, err := resumes.Import(context.Background(), userID, service.ImportResumeInput{Version: 1, Title: "旧版本", Content: service.DefaultResumeContent()}); !errors.Is(err, model.ErrResumeInvalidSchema) {
 		t.Fatalf("expected unsupported version error, got %v", err)
+	}
+}
+
+func TestResumeServiceRejectsLegacyResumeUpdates(t *testing.T) {
+	store := repository.NewMemoryStore()
+	resumes := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
+	userID := uuid.New()
+	legacy := &model.Resume{
+		ID: uuid.New(), UserID: userID, Title: "旧简历", Status: model.ResumeStatusDraft,
+		ContentVersion: 1, ContentJSON: model.JSONDocument(`{}`), Revision: 1,
+	}
+	if err := store.CreateResume(context.Background(), legacy); err != nil {
+		t.Fatalf("create legacy resume: %v", err)
+	}
+	title := "不能更新"
+	if _, err := resumes.Update(context.Background(), userID, legacy.ID, service.UpdateResumeInput{
+		ExpectedRevision: 1,
+		Title:            &title,
+	}); !errors.Is(err, model.ErrResumeInvalidSchema) {
+		t.Fatalf("expected legacy format error, got %v", err)
 	}
 }

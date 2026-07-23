@@ -2,12 +2,13 @@ package service
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
 const (
 	DefaultTemplateID = "modern-editorial"
-	ContentVersionV1  = 1
+	ContentVersionV2  = 2
 )
 
 var validTemplateIDs = map[string]struct{}{
@@ -30,8 +31,10 @@ func DefaultResumeContent() map[string]any {
 			map[string]any{"id": "awards", "type": "awards", "title": "奖项荣誉", "enabled": false, "items": []any{}},
 		},
 		"formatting": map[string]any{
-			"fontSize": "standard", "lineHeight": "standard", "pageMargin": "standard",
-			"sectionGap": "standard", "accentColor": "plum",
+			"nameFontSizePx": 20, "sectionTitleFontSizePx": 16, "entryTitleFontSizePx": 14,
+			"bodyFontSizePx": 14, "lineHeightRatio": 1.5,
+			"pageMarginPx": map[string]any{"top": 33, "right": 33, "bottom": 33, "left": 33},
+			"sectionGapPx": 8, "accentColor": "plum",
 		},
 	}
 }
@@ -79,14 +82,31 @@ func validateProfile(profile map[string]any) bool {
 }
 
 func validateFormatting(formatting map[string]any) bool {
-	if !stringFields(formatting, []string{"fontSize", "lineHeight", "pageMargin", "sectionGap", "accentColor"}, nil) {
+	allowed := map[string]bool{
+		"nameFontSizePx": true, "sectionTitleFontSizePx": true, "entryTitleFontSizePx": true,
+		"bodyFontSizePx": true, "lineHeightRatio": true, "pageMarginPx": true,
+		"sectionGapPx": true, "accentColor": true,
+	}
+	if !onlyAllowed(formatting, allowed) ||
+		!integerBetween(formatting["nameFontSizePx"], 12, 48) ||
+		!integerBetween(formatting["sectionTitleFontSizePx"], 10, 32) ||
+		!integerBetween(formatting["entryTitleFontSizePx"], 8, 28) ||
+		!integerBetween(formatting["bodyFontSizePx"], 8, 24) ||
+		!numberBetween(formatting["lineHeightRatio"], 1, 2.5) ||
+		!integerBetween(formatting["sectionGapPx"], 0, 64) ||
+		!oneOf(formatting["accentColor"], "plum", "navy", "teal", "rust", "charcoal") {
 		return false
 	}
-	return oneOf(formatting["fontSize"], "small", "standard", "large") &&
-		oneOf(formatting["lineHeight"], "compact", "standard", "relaxed") &&
-		oneOf(formatting["pageMargin"], "narrow", "standard", "wide") &&
-		oneOf(formatting["sectionGap"], "compact", "standard", "relaxed") &&
-		oneOf(formatting["accentColor"], "plum", "navy", "teal", "rust", "charcoal")
+	margins, ok := formatting["pageMarginPx"].(map[string]any)
+	if !ok || !onlyAllowed(margins, map[string]bool{"top": true, "right": true, "bottom": true, "left": true}) {
+		return false
+	}
+	for _, key := range []string{"top", "right", "bottom", "left"} {
+		if !integerBetween(margins[key], 0, 160) {
+			return false
+		}
+	}
+	return true
 }
 
 func validateSections(sections []any) bool {
@@ -223,4 +243,27 @@ func oneOf(value any, choices ...string) bool {
 		}
 	}
 	return false
+}
+
+func integerBetween(value any, minimum, maximum float64) bool {
+	number, ok := numericValue(value)
+	return ok && math.Trunc(number) == number && number >= minimum && number <= maximum
+}
+
+func numberBetween(value any, minimum, maximum float64) bool {
+	number, ok := numericValue(value)
+	return ok && number >= minimum && number <= maximum
+}
+
+func numericValue(value any) (float64, bool) {
+	switch number := value.(type) {
+	case int:
+		return float64(number), true
+	case int64:
+		return float64(number), true
+	case float64:
+		return number, true
+	default:
+		return 0, false
+	}
 }

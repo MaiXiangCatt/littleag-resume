@@ -1,6 +1,6 @@
 import { Document, Font, Image, Link, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
-import { ACCENT_COLORS, descriptionLines } from '../model/resume.model';
+import { ACCENT_COLORS } from '../model/resume.model';
 import {
   getEntryDisplay,
   itemHasPrintableContent,
@@ -8,19 +8,19 @@ import {
   SKILL_LEVEL_LABELS,
 } from '../model/resume.preview';
 import type { ResumeDocument, ResumeSection } from '../model/resume.types';
+import { ResumeMarkdownPdf } from './ResumeMarkdownPdf';
 
 Font.register({
   family: 'NotoSansSC',
   fonts: [
     { fontWeight: 400, src: '/fonts/NotoSansSC-Regular.ttf' },
     { fontWeight: 700, src: '/fonts/NotoSansSC-Regular.ttf' },
+    { fontStyle: 'italic', fontWeight: 400, src: '/fonts/NotoSansSC-Regular.ttf' },
+    { fontStyle: 'italic', fontWeight: 700, src: '/fonts/NotoSansSC-Regular.ttf' },
   ],
 });
 
-const sizeMap = { small: 8.4, standard: 9.2, large: 10 } as const;
-const lineMap = { compact: 1.25, standard: 1.42, relaxed: 1.62 } as const;
-const marginMap = { narrow: 28, standard: 38, wide: 50 } as const;
-const gapMap = { compact: 9, standard: 13, relaxed: 18 } as const;
+const pxToPt = (value: number) => value * 0.75;
 
 export function ResumePdfDocument({
   avatar,
@@ -31,15 +31,19 @@ export function ResumePdfDocument({
 }) {
   const accent = ACCENT_COLORS[resume.content.formatting.accentColor];
   const isClassic = resume.templateId === 'classic-professional';
-  const base = sizeMap[resume.content.formatting.fontSize];
+  const formatting = resume.content.formatting;
+  const base = pxToPt(formatting.bodyFontSizePx);
   const styles = StyleSheet.create({
     page: {
       backgroundColor: '#ffffff',
       color: '#242126',
       fontFamily: 'NotoSansSC',
       fontSize: base,
-      lineHeight: lineMap[resume.content.formatting.lineHeight],
-      padding: marginMap[resume.content.formatting.pageMargin],
+      lineHeight: formatting.lineHeightRatio,
+      paddingBottom: pxToPt(formatting.pageMarginPx.bottom),
+      paddingLeft: pxToPt(formatting.pageMarginPx.left),
+      paddingRight: pxToPt(formatting.pageMarginPx.right),
+      paddingTop: pxToPt(formatting.pageMarginPx.top),
     },
     header: {
       alignItems: avatar ? 'flex-start' : 'stretch',
@@ -52,7 +56,7 @@ export function ResumePdfDocument({
     identity: { ...(avatar ? { flexGrow: 1 } : {}), textAlign: isClassic ? 'center' : 'left' },
     name: {
       color: isClassic ? '#202027' : accent,
-      fontSize: base * 2.65,
+      fontSize: pxToPt(formatting.nameFontSizePx),
       fontWeight: 700,
       letterSpacing: isClassic ? 1.3 : -0.4,
       lineHeight: 1.15,
@@ -74,12 +78,12 @@ export function ResumePdfDocument({
       objectFit: 'cover',
       width: 66,
     },
-    section: { marginTop: gapMap[resume.content.formatting.sectionGap] },
+    section: { marginTop: pxToPt(formatting.sectionGapPx) },
     sectionTitle: {
       borderBottomColor: isClassic ? '#b9b4bc' : accent,
       borderBottomWidth: 0.65,
       color: isClassic ? '#27242a' : accent,
-      fontSize: base * 1.18,
+      fontSize: pxToPt(formatting.sectionTitleFontSizePx),
       fontWeight: 700,
       letterSpacing: 0.5,
       paddingBottom: 3,
@@ -87,11 +91,8 @@ export function ResumePdfDocument({
     },
     entry: { marginTop: 7 },
     entryHead: { flexDirection: 'row', justifyContent: 'space-between' },
-    entryTitle: { fontSize: base * 1.03, fontWeight: 700 },
+    entryTitle: { fontSize: pxToPt(formatting.entryTitleFontSizePx), fontWeight: 700 },
     entryMeta: { color: '#6f6972', fontSize: base * 0.82 },
-    bulletRow: { flexDirection: 'row', marginTop: 2, paddingRight: 4 },
-    bullet: { color: accent, marginRight: 5 },
-    bulletText: { flex: 1 },
     skills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7 },
     skill: {
       backgroundColor: isClassic ? '#f3f1f2' : `${accent}12`,
@@ -143,7 +144,7 @@ export function ResumePdfDocument({
           </View>
         ) : null}
         {resume.content.sections.filter(sectionHasPrintableContent).map((section) => (
-          <PdfSection key={section.id} section={section} styles={styles} />
+          <PdfSection accent={accent} key={section.id} section={section} styles={styles} />
         ))}
       </Page>
     </Document>
@@ -151,9 +152,11 @@ export function ResumePdfDocument({
 }
 
 function PdfSection({
+  accent,
   section,
   styles,
 }: {
+  accent: string;
   section: ResumeSection;
   styles: ReturnType<typeof StyleSheet.create>;
 }) {
@@ -162,7 +165,9 @@ function PdfSection({
     return (
       <View style={styles.section} minPresenceAhead={40}>
         <Text style={styles.sectionTitle}>{section.title}</Text>
-        <Text style={{ marginTop: 7 }}>{section.text}</Text>
+        <View style={{ marginTop: 7 }}>
+          <ResumeMarkdownPdf accent={accent} value={section.text} />
+        </View>
       </View>
     );
   }
@@ -195,12 +200,9 @@ function PdfSection({
               <Text style={styles.entryMeta}>{display.date}</Text>
             </View>
             {display.subtitle ? <Text style={styles.entryMeta}>{display.subtitle}</Text> : null}
-            {descriptionLines(display.description).map((line) => (
-              <View key={line} style={styles.bulletRow}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>{line}</Text>
-              </View>
-            ))}
+            {display.description.trim() ? (
+              <ResumeMarkdownPdf accent={accent} value={display.description} />
+            ) : null}
           </View>
         );
       })}

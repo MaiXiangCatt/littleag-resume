@@ -4,43 +4,20 @@ import { Card } from '@/shared/ui/card';
 import { Link } from '@/shared/ui/link';
 import { cn } from '@/shared/lib/utils';
 
-import { ACCENT_COLORS, descriptionLines } from '../model/resume.model';
+import { ACCENT_COLORS } from '../model/resume.model';
 import {
   getEntryDisplay,
   itemHasPrintableContent,
   sectionHasPrintableContent,
   SKILL_LEVEL_LABELS,
 } from '../model/resume.preview';
-import type { ResumeDocument, ResumeSection } from '../model/resume.types';
+import type { ResumeDocument, ResumeFormatting, ResumeSection } from '../model/resume.types';
+import { ResumeMarkdownHtml } from './ResumeMarkdownHtml';
 
 type ResumeHtmlPreviewProps = {
   avatar: string | null;
   resume: ResumeDocument;
 };
-
-const fontSizeClasses = {
-  small: 'text-[10px]',
-  standard: 'text-[11px]',
-  large: 'text-xs',
-} as const;
-
-const lineHeightClasses = {
-  compact: 'leading-[1.25]',
-  standard: 'leading-[1.42]',
-  relaxed: 'leading-[1.62]',
-} as const;
-
-const marginClasses = {
-  narrow: 'p-[4.8%]',
-  standard: 'p-[6.4%]',
-  wide: 'p-[8.4%]',
-} as const;
-
-const sectionGapClasses = {
-  compact: 'mt-[1.5em]',
-  standard: 'mt-[2.15em]',
-  relaxed: 'mt-[3em]',
-} as const;
 
 export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   avatar,
@@ -50,7 +27,12 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   const profile = resume.content.profile;
   const isClassic = resume.templateId === 'classic-professional';
   const accent = ACCENT_COLORS[formatting.accentColor];
-  const style = { '--resume-accent': accent, containerType: 'inline-size' } as CSSProperties;
+  const style = {
+    '--resume-accent': accent,
+    containerType: 'inline-size',
+    fontSize: `${formatting.bodyFontSizePx}px`,
+    lineHeight: formatting.lineHeightRatio,
+  } as CSSProperties;
   const contacts = [profile.phone, profile.email, profile.location].filter(Boolean);
   const printableLinks = profile.links.filter((link) => link.label && link.url);
 
@@ -59,13 +41,19 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
       aria-label={`${resume.title} A4 实时预览`}
       className={cn(
         'mx-auto w-full max-w-[794px] shrink-0 gap-0 rounded-[2px] border-0 bg-white py-0 text-[#242126] shadow-[0_26px_70px_rgba(31,24,29,0.24)]',
-        fontSizeClasses[formatting.fontSize],
-        lineHeightClasses[formatting.lineHeight],
       )}
       data-template={resume.templateId}
       style={style}
     >
-      <article className={cn('min-h-[141.428cqw]', marginClasses[formatting.pageMargin])}>
+      <article
+        className="min-h-[141.428cqw]"
+        style={{
+          paddingBottom: formatting.pageMarginPx.bottom,
+          paddingLeft: formatting.pageMarginPx.left,
+          paddingRight: formatting.pageMarginPx.right,
+          paddingTop: formatting.pageMarginPx.top,
+        }}
+      >
         {profile.fullName ||
         profile.targetRole ||
         contacts.length ||
@@ -82,21 +70,30 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
             <div className={cn('min-w-0 flex-1', isClassic ? 'text-center' : 'text-left')}>
               {profile.fullName ? (
                 <h1
-                  className="font-serif text-[2.65em] font-bold leading-[1.08] tracking-[-0.02em]"
-                  style={{ color: isClassic ? '#202027' : accent }}
+                  className="font-serif font-bold leading-[1.08] tracking-[-0.02em]"
+                  style={{
+                    color: isClassic ? '#202027' : accent,
+                    fontSize: formatting.nameFontSizePx,
+                  }}
                 >
                   {profile.fullName}
                 </h1>
               ) : null}
               {profile.targetRole ? (
-                <p className="mt-[0.45em] text-[1.18em] text-[#5d5962]">{profile.targetRole}</p>
+                <p
+                  className="mt-[0.45em] text-[#5d5962]"
+                  style={{ fontSize: formatting.bodyFontSizePx * 1.18 }}
+                >
+                  {profile.targetRole}
+                </p>
               ) : null}
               {contacts.length || printableLinks.length ? (
                 <div
                   className={cn(
-                    'mt-[0.8em] flex flex-wrap gap-x-[1em] gap-y-[0.35em] text-[0.82em] text-[#77717a]',
+                    'mt-[0.8em] flex flex-wrap gap-x-[1em] gap-y-[0.35em] text-[#77717a]',
                     isClassic ? 'justify-center' : 'justify-start',
                   )}
+                  style={{ fontSize: formatting.bodyFontSizePx * 0.82 }}
                 >
                   {contacts.map((value) => (
                     <span key={value}>{value}</span>
@@ -133,7 +130,7 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
             isClassic={isClassic}
             key={section.id}
             section={section}
-            sectionGap={formatting.sectionGap}
+            formatting={formatting}
           />
         ))}
       </article>
@@ -144,25 +141,28 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
 function HtmlSection({
   isClassic,
   section,
-  sectionGap,
+  formatting,
 }: {
   isClassic: boolean;
   section: ResumeSection;
-  sectionGap: keyof typeof sectionGapClasses;
+  formatting: ResumeFormatting;
 }) {
   return (
-    <section className={cn('break-inside-avoid', sectionGapClasses[sectionGap])}>
+    <section className="break-inside-avoid" style={{ marginTop: formatting.sectionGapPx }}>
       <h2
         className={cn(
-          'border-b pb-[0.35em] text-[1.18em] font-bold tracking-[0.04em]',
+          'border-b pb-[0.35em] font-bold tracking-[0.04em]',
           isClassic ? 'text-[#27242a]' : 'text-[var(--resume-accent)]',
         )}
-        style={{ borderColor: isClassic ? '#b9b4bc' : 'var(--resume-accent)' }}
+        style={{
+          borderColor: isClassic ? '#b9b4bc' : 'var(--resume-accent)',
+          fontSize: formatting.sectionTitleFontSizePx,
+        }}
       >
         {section.title}
       </h2>
       {section.type === 'summary' ? (
-        <p className="mt-[0.8em] whitespace-pre-line">{section.text}</p>
+        <ResumeMarkdownHtml className="mt-[0.8em]" value={section.text} />
       ) : null}
       {section.type === 'skills' ? (
         <div className="mt-[0.8em] flex flex-wrap gap-[0.65em]">
@@ -198,31 +198,40 @@ function HtmlSection({
               section.type,
               item as unknown as Record<string, unknown>,
             );
-            const bullets = descriptionLines(display.description);
             return (
               <article className="break-inside-avoid" key={item.id}>
                 {display.title || display.date ? (
                   <div className="flex items-baseline justify-between gap-[1.5em]">
-                    {display.title ? <h3 className="font-bold">{display.title}</h3> : <span />}
+                    {display.title ? (
+                      <h3
+                        className="font-bold"
+                        style={{ fontSize: formatting.entryTitleFontSizePx }}
+                      >
+                        {display.title}
+                      </h3>
+                    ) : (
+                      <span />
+                    )}
                     {display.date ? (
-                      <time className="shrink-0 text-[0.82em] text-[#6f6972]">{display.date}</time>
+                      <time
+                        className="shrink-0 text-[#6f6972]"
+                        style={{ fontSize: formatting.bodyFontSizePx * 0.82 }}
+                      >
+                        {display.date}
+                      </time>
                     ) : null}
                   </div>
                 ) : null}
                 {display.subtitle ? (
-                  <p className="mt-[0.15em] text-[0.82em] text-[#6f6972]">{display.subtitle}</p>
+                  <p
+                    className="mt-[0.15em] text-[#6f6972]"
+                    style={{ fontSize: formatting.bodyFontSizePx * 0.82 }}
+                  >
+                    {display.subtitle}
+                  </p>
                 ) : null}
-                {bullets.length ? (
-                  <ul className="mt-[0.45em] space-y-[0.18em]">
-                    {bullets.map((line, index) => (
-                      <li className="flex gap-[0.65em]" key={`${index}-${line}`}>
-                        <span aria-hidden="true" className="text-[var(--resume-accent)]">
-                          •
-                        </span>
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
+                {display.description.trim() ? (
+                  <ResumeMarkdownHtml className="mt-[0.45em]" value={display.description} />
                 ) : null}
               </article>
             );
