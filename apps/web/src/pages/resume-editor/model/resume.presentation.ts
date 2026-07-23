@@ -1,0 +1,41 @@
+import type { ResumeFormatting } from './resume.types';
+
+const CSS_PIXELS_PER_INCH = 96;
+const MILLIMETERS_PER_INCH = 25.4;
+
+export const RESUME_PHOTO_SPEC = {
+  aspectRatio: 5 / 7,
+  heightMm: 35,
+  outputHeightPx: 700,
+  outputWidthPx: 500,
+  widthMm: 25,
+} as const;
+
+export const pxToPt = (value: number) => value * 0.75;
+export const mmToPx = (value: number) => (value * CSS_PIXELS_PER_INCH) / MILLIMETERS_PER_INCH;
+
+export function formatTargetRole(targetRole: string) {
+  return `求职意向：${targetRole}`;
+}
+
+export function createResumePresentation(formatting: ResumeFormatting, isClassic: boolean) {
+  const body = formatting.bodyFontSizePx;
+  return {
+    bodyColor: '#242126',
+    contactsColumnGapPx: body,
+    contactsMarginTopPx: body * 0.8,
+    contactsRowGapPx: body * 0.35,
+    entryDescriptionMarginTopPx: body * 0.45,
+    entryGapPx: body,
+    headerPaddingBottomPx: body * 1.4,
+    nameLetterSpacingPx: formatting.nameFontSizePx * -0.02,
+    nameLineHeight: 1.08,
+    photoGapPx: body * 2,
+    photoHeightPx: mmToPx(RESUME_PHOTO_SPEC.heightMm),
+    photoWidthPx: mmToPx(RESUME_PHOTO_SPEC.widthMm),
+    profileTextAlign: isClassic ? ('center' as const) : ('left' as const),
+    roleMarginTopPx: body * 0.45,
+    sectionContentMarginTopPx: body * 0.8,
+    sectionTitlePaddingBottomPx: formatting.sectionTitleFontSizePx * 0.35,
+  };
+}

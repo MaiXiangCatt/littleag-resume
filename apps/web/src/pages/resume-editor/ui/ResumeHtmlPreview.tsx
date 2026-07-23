@@ -10,6 +10,7 @@ import {
   itemHasPrintableContent,
   sectionHasPrintableContent,
 } from '../model/resume.preview';
+import { createResumePresentation, formatTargetRole } from '../model/resume.presentation';
 import type { ResumeDocument, ResumeFormatting, ResumeSection } from '../model/resume.types';
 import { ResumeMarkdownHtml } from './ResumeMarkdownHtml';
 
@@ -26,6 +27,7 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   const profile = resume.content.profile;
   const isClassic = resume.templateId === 'classic-professional';
   const accent = resolveAccentColor(formatting.accentColor);
+  const presentation = createResumePresentation(formatting, isClassic);
   const style = {
     '--resume-accent': accent,
     containerType: 'inline-size',
@@ -61,19 +63,21 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
         avatar ? (
           <header
             className={cn(
-              'flex border-b pb-[1.4em]',
+              'flex',
               avatar ? 'flex-row items-start justify-between' : 'flex-col',
-              isClassic ? 'border-b text-center' : 'border-b-[3px] text-left',
+              isClassic ? 'text-center' : 'text-left',
             )}
-            style={{ borderColor: isClassic ? '#b9b4bc' : accent }}
+            style={{ paddingBottom: presentation.headerPaddingBottomPx }}
           >
-            <div className={cn('min-w-0 flex-1', isClassic ? 'text-center' : 'text-left')}>
+            <div className="min-w-0 flex-1" style={{ textAlign: presentation.profileTextAlign }}>
               {profile.fullName ? (
                 <h1
-                  className="font-bold leading-[1.08] tracking-[-0.02em]"
+                  className="font-bold"
                   style={{
                     color: isClassic ? '#202027' : accent,
                     fontSize: formatting.nameFontSizePx,
+                    letterSpacing: presentation.nameLetterSpacingPx,
+                    lineHeight: presentation.nameLineHeight,
                   }}
                 >
                   {profile.fullName}
@@ -81,19 +85,25 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
               ) : null}
               {profile.targetRole ? (
                 <p
-                  className="mt-[0.45em]"
-                  style={{ color: '#242126', fontSize: formatting.bodyFontSizePx }}
+                  style={{
+                    color: presentation.bodyColor,
+                    fontSize: formatting.bodyFontSizePx,
+                    marginTop: presentation.roleMarginTopPx,
+                  }}
                 >
-                  {`求职意向：${profile.targetRole}`}
+                  {formatTargetRole(profile.targetRole)}
                 </p>
               ) : null}
               {contacts.length || printableLinks.length ? (
                 <div
-                  className={cn(
-                    'mt-[0.8em] flex flex-wrap gap-x-[1em] gap-y-[0.35em]',
-                    isClassic ? 'justify-center' : 'justify-start',
-                  )}
-                  style={{ color: '#242126', fontSize: formatting.bodyFontSizePx }}
+                  className={cn('flex flex-wrap', isClassic ? 'justify-center' : 'justify-start')}
+                  style={{
+                    color: presentation.bodyColor,
+                    columnGap: presentation.contactsColumnGapPx,
+                    fontSize: formatting.bodyFontSizePx,
+                    marginTop: presentation.contactsMarginTopPx,
+                    rowGap: presentation.contactsRowGapPx,
+                  }}
                 >
                   {contacts.map((value) => (
                     <span key={value}>{value}</span>
@@ -115,11 +125,13 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
             {avatar ? (
               <img
                 alt=""
-                className={cn(
-                  'ml-[2em] size-[7.2em] shrink-0 object-cover',
-                  isClassic ? 'rounded-full' : 'rounded-md',
-                )}
+                className="shrink-0 object-contain"
                 src={avatar}
+                style={{
+                  height: presentation.photoHeightPx,
+                  marginLeft: presentation.photoGapPx,
+                  width: presentation.photoWidthPx,
+                }}
               />
             ) : null}
           </header>
@@ -147,16 +159,18 @@ function HtmlSection({
   section: ResumeSection;
   formatting: ResumeFormatting;
 }) {
+  const presentation = createResumePresentation(formatting, isClassic);
   return (
     <section className="break-inside-avoid" style={{ marginTop: formatting.sectionGapPx }}>
       <h2
         className={cn(
-          'border-b pb-[0.35em] font-bold tracking-[0.04em]',
+          'border-b font-bold tracking-[0.04em]',
           isClassic ? 'text-[#27242a]' : 'text-[var(--resume-accent)]',
         )}
         style={{
           borderColor: isClassic ? '#b9b4bc' : 'var(--resume-accent)',
           fontSize: formatting.sectionTitleFontSizePx,
+          paddingBottom: presentation.sectionTitlePaddingBottomPx,
         }}
       >
         {section.title}

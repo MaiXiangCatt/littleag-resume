@@ -50,9 +50,9 @@ export function ProfileEditor({
       description="这部分固定在简历头部，不参与板块排序。"
     >
       <div className="flex items-center gap-5 rounded-2xl border border-[#e8e0e6] bg-[#fbf9fa] p-4">
-        <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[#ded4db] bg-white text-[#8f7d8b]">
+        <div className="grid h-28 w-20 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#ded4db] bg-white text-[#8f7d8b]">
           {avatar ? (
-            <img alt="简历头像" className="size-full object-cover" src={avatar} />
+            <img alt="简历头像" className="size-full object-contain" src={avatar} />
           ) : (
             <ImagePlus aria-hidden="true" size={24} />
           )}
@@ -60,7 +60,7 @@ export function ProfileEditor({
         <div>
           <p className="text-sm font-semibold text-[#32272f]">简历头像</p>
           <p className="mt-1 text-xs leading-5 text-[#81757e]">
-            上传后裁剪为方形，每份简历独立保存。
+            上传后按一寸照常用的 5:7 比例裁剪，每份简历独立保存。
           </p>
           <div className="mt-3 flex gap-2">
             <Button onClick={onAvatar} size="sm" variant="outline">

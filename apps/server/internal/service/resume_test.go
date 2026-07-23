@@ -119,7 +119,7 @@ func TestResumeServiceAvatarIsolationCopyAndCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create resume: %v", err)
 	}
-	avatar := jpegAvatar(t, 512, 512)
+	avatar := jpegAvatar(t, service.AvatarWidth, service.AvatarHeight)
 	withAvatar, err := resumes.PutAvatar(ctx, ownerID, created.ID, avatar)
 	if err != nil || withAvatar.AvatarKey == nil {
 		t.Fatalf("put avatar: resume=%+v err=%v", withAvatar, err)
@@ -142,7 +142,7 @@ func TestResumeServiceAvatarIsolationCopyAndCleanup(t *testing.T) {
 		t.Fatalf("avatar file should be removed, stat err=%v", err)
 	}
 	if _, err := resumes.PutAvatar(ctx, ownerID, copied.ID, jpegAvatar(t, 300, 300)); !errors.Is(err, model.ErrAvatarInvalid) {
-		t.Fatalf("non-512 avatar should be rejected, got %v", err)
+		t.Fatalf("non-500x700 avatar should be rejected, got %v", err)
 	}
 }
 

@@ -462,6 +462,7 @@ paths:
         - bearerAuth: []
       requestBody:
         required: true
+        description: A 500×700 JPEG portrait cropped to the standard 5:7 one-inch-photo ratio.
         content:
           image/jpeg:
             schema:

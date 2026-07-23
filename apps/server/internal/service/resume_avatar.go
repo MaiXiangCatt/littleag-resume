@@ -17,7 +17,11 @@ import (
 	"github.com/vega-resume/server/internal/repository"
 )
 
-const MaxAvatarBytes = 512 * 1024
+const (
+	AvatarHeight   = 700
+	AvatarWidth    = 500
+	MaxAvatarBytes = 512 * 1024
+)
 
 type AvatarStorage struct {
 	dir string
@@ -146,7 +150,7 @@ func validateAvatar(data []byte) error {
 		return model.ErrFileTooLarge
 	}
 	config, err := jpeg.DecodeConfig(bytes.NewReader(data))
-	if err != nil || config.Width != 512 || config.Height != 512 {
+	if err != nil || config.Width != AvatarWidth || config.Height != AvatarHeight {
 		return model.ErrAvatarInvalid
 	}
 	return nil

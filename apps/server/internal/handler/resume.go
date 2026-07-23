@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -216,7 +217,8 @@ func (h *ResumeHandler) PutResumeAvatar(c *gin.Context, resumeID generated.Resum
 	if !ok {
 		return
 	}
-	if c.GetHeader("Content-Type") != "image/jpeg" {
+	mediaType, _, mediaTypeErr := mime.ParseMediaType(c.GetHeader("Content-Type"))
+	if mediaTypeErr != nil || mediaType != "image/jpeg" {
 		writeError(c, model.ErrAvatarInvalid)
 		return
 	}

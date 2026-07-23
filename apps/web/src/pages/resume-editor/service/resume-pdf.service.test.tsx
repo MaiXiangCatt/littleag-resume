@@ -9,8 +9,8 @@ import type { ResumeDocument } from '../model/resume.types';
 import { createResumePdfBlob } from './resume-pdf.service';
 
 beforeAll(() => {
-  const fontPath = resolve(process.cwd(), 'public/fonts/NotoSansSC-Regular.ttf');
-  const serifFontPath = resolve(process.cwd(), 'public/fonts/NotoSerifSC-Variable.ttf');
+  const sansRegularPath = resolve(process.cwd(), 'public/fonts/NotoSansSC-Regular.ttf');
+  const serifRegularPath = resolve(process.cwd(), 'public/fonts/NotoSerifSC-Variable.ttf');
   Font.clear();
   Font.register({
     family: 'Helvetica',
@@ -24,19 +24,19 @@ beforeAll(() => {
   Font.register({
     family: 'NotoSansSC',
     fonts: [
-      { fontWeight: 400, src: fontPath },
-      { fontWeight: 700, src: fontPath },
-      { fontStyle: 'italic', fontWeight: 400, src: fontPath },
-      { fontStyle: 'italic', fontWeight: 700, src: fontPath },
+      { fontWeight: 400, src: sansRegularPath },
+      { fontWeight: 700, src: sansRegularPath },
+      { fontStyle: 'italic', fontWeight: 400, src: sansRegularPath },
+      { fontStyle: 'italic', fontWeight: 700, src: sansRegularPath },
     ],
   });
   Font.register({
     family: 'NotoSerifSC',
     fonts: [
-      { fontWeight: 400, src: serifFontPath },
-      { fontWeight: 700, src: serifFontPath },
-      { fontStyle: 'italic', fontWeight: 400, src: serifFontPath },
-      { fontStyle: 'italic', fontWeight: 700, src: serifFontPath },
+      { fontWeight: 400, src: serifRegularPath },
+      { fontWeight: 700, src: serifRegularPath },
+      { fontStyle: 'italic', fontWeight: 400, src: serifRegularPath },
+      { fontStyle: 'italic', fontWeight: 700, src: serifRegularPath },
     ],
   });
 });
@@ -45,6 +45,14 @@ describe('resume PDF service', () => {
   it('generates a PDF containing formatted Markdown', async () => {
     const content = createDefaultContent();
     content.formatting.fontFamily = 'source-han-serif';
+    content.profile = {
+      fullName: '林清清',
+      targetRole: '前端开发工程师',
+      phone: '13800000000',
+      email: 'qingqing@example.com',
+      location: '杭州',
+      links: [],
+    };
     const summary = content.sections.find((section) => section.type === 'summary');
     if (summary?.type === 'summary') {
       summary.text = '负责**设计系统**\n\n- 建立规范\n- 推动交付';

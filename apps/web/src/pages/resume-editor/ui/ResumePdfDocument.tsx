@@ -6,6 +6,7 @@ import {
   itemHasPrintableContent,
   sectionHasPrintableContent,
 } from '../model/resume.preview';
+import { createResumePresentation, formatTargetRole, pxToPt } from '../model/resume.presentation';
 import type { ResumeDocument, ResumeSection } from '../model/resume.types';
 import { ResumeMarkdownPdf } from './ResumeMarkdownPdf';
 
@@ -29,8 +30,6 @@ Font.register({
   ],
 });
 
-const pxToPt = (value: number) => value * 0.75;
-
 export function ResumePdfDocument({
   avatar,
   resume,
@@ -42,6 +41,7 @@ export function ResumePdfDocument({
   const isClassic = resume.templateId === 'classic-professional';
   const formatting = resume.content.formatting;
   const base = pxToPt(formatting.bodyFontSizePx);
+  const presentation = createResumePresentation(formatting, isClassic);
   const styles = StyleSheet.create({
     page: {
       backgroundColor: '#ffffff',
@@ -56,36 +56,42 @@ export function ResumePdfDocument({
     },
     header: {
       alignItems: avatar ? 'flex-start' : 'stretch',
-      borderBottomColor: accent,
-      borderBottomWidth: isClassic ? 0.7 : 2.2,
       flexDirection: avatar ? 'row' : 'column',
       justifyContent: avatar ? 'space-between' : 'flex-start',
-      paddingBottom: 13,
+      paddingBottom: pxToPt(presentation.headerPaddingBottomPx),
     },
-    identity: { ...(avatar ? { flexGrow: 1 } : {}), textAlign: isClassic ? 'center' : 'left' },
+    identity: {
+      ...(avatar ? { flexBasis: 0, flexGrow: 1 } : {}),
+    },
     name: {
       color: isClassic ? '#202027' : accent,
       fontSize: pxToPt(formatting.nameFontSizePx),
       fontWeight: 700,
-      letterSpacing: isClassic ? 1.3 : -0.4,
-      lineHeight: 1.15,
+      letterSpacing: pxToPt(presentation.nameLetterSpacingPx),
+      lineHeight: presentation.nameLineHeight,
+      textAlign: presentation.profileTextAlign,
     },
-    role: { color: '#242126', fontSize: base, lineHeight: 1.3, marginTop: 5 },
+    role: {
+      color: presentation.bodyColor,
+      fontSize: base,
+      marginTop: pxToPt(presentation.roleMarginTopPx),
+      textAlign: presentation.profileTextAlign,
+    },
     contacts: {
-      color: '#242126',
+      color: presentation.bodyColor,
       flexDirection: 'row',
       flexWrap: 'wrap',
       fontSize: base,
-      gap: 8,
+      columnGap: pxToPt(presentation.contactsColumnGapPx),
       justifyContent: isClassic ? 'center' : 'flex-start',
-      marginTop: 7,
+      marginTop: pxToPt(presentation.contactsMarginTopPx),
+      rowGap: pxToPt(presentation.contactsRowGapPx),
     },
     avatar: {
-      borderRadius: isClassic ? 35 : 6,
-      height: 66,
-      marginLeft: 18,
-      objectFit: 'cover',
-      width: 66,
+      height: pxToPt(presentation.photoHeightPx),
+      marginLeft: pxToPt(presentation.photoGapPx),
+      objectFit: 'contain',
+      width: pxToPt(presentation.photoWidthPx),
     },
     section: { marginTop: pxToPt(formatting.sectionGapPx) },
     sectionTitle: {
@@ -95,14 +101,17 @@ export function ResumePdfDocument({
       fontSize: pxToPt(formatting.sectionTitleFontSizePx),
       fontWeight: 700,
       letterSpacing: 0.5,
-      paddingBottom: 3,
-      textTransform: 'uppercase',
+      paddingBottom: pxToPt(presentation.sectionTitlePaddingBottomPx),
     },
-    entry: { marginTop: 7 },
+    sectionContent: { marginTop: pxToPt(presentation.sectionContentMarginTopPx) },
+    entries: { marginTop: pxToPt(presentation.sectionContentMarginTopPx) },
+    entry: {},
+    followingEntry: { marginTop: pxToPt(presentation.entryGapPx) },
     entryHead: { flexDirection: 'row', justifyContent: 'space-between' },
     entryTitle: { fontSize: pxToPt(formatting.entryTitleFontSizePx), fontWeight: 700 },
     entryDate: { fontSize: pxToPt(formatting.entryTitleFontSizePx) },
-    link: { color: '#242126', textDecoration: 'none' },
+    entryDescription: { marginTop: pxToPt(presentation.entryDescriptionMarginTopPx) },
+    link: { color: presentation.bodyColor, textDecoration: 'none' },
   });
 
   const profile = resume.content.profile;
@@ -123,25 +132,35 @@ export function ResumePdfDocument({
           <View style={styles.header}>
             <View style={styles.identity}>
               {profile.fullName ? <Text style={styles.name}>{profile.fullName}</Text> : null}
-              {profile.targetRole ? <Text style={styles.role}>{profile.targetRole}</Text> : null}
-              <View style={styles.contacts}>
-                {contacts.map((value) => (
-                  <Text key={value}>{value}</Text>
-                ))}
-                {profile.links
-                  .filter((item) => item.label && item.url)
-                  .map((item) => (
-                    <Link key={item.id} src={item.url} style={styles.link}>
-                      {item.label}
-                    </Link>
+              {profile.targetRole ? (
+                <Text style={styles.role}>{formatTargetRole(profile.targetRole)}</Text>
+              ) : null}
+              {contacts.length || profile.links.some((item) => item.label && item.url) ? (
+                <View style={styles.contacts}>
+                  {contacts.map((value) => (
+                    <Text key={value}>{value}</Text>
                   ))}
-              </View>
+                  {profile.links
+                    .filter((item) => item.label && item.url)
+                    .map((item) => (
+                      <Link key={item.id} src={item.url} style={styles.link}>
+                        {item.label}
+                      </Link>
+                    ))}
+                </View>
+              ) : null}
             </View>
             {avatar ? <Image src={avatar} style={styles.avatar} /> : null}
           </View>
         ) : null}
         {resume.content.sections.filter(sectionHasPrintableContent).map((section) => (
-          <PdfSection accent={accent} key={section.id} section={section} styles={styles} />
+          <PdfSection
+            accent={accent}
+            bodyFontSizePx={formatting.bodyFontSizePx}
+            key={section.id}
+            section={section}
+            styles={styles}
+          />
         ))}
       </Page>
     </Document>
@@ -150,10 +169,12 @@ export function ResumePdfDocument({
 
 function PdfSection({
   accent,
+  bodyFontSizePx,
   section,
   styles,
 }: {
   accent: string;
+  bodyFontSizePx: number;
   section: ResumeSection;
   styles: ReturnType<typeof StyleSheet.create>;
 }) {
@@ -163,8 +184,8 @@ function PdfSection({
     return (
       <View style={styles.section} minPresenceAhead={40}>
         <Text style={styles.sectionTitle}>{section.title}</Text>
-        <View style={{ marginTop: 7 }}>
-          <ResumeMarkdownPdf accent={accent} value={markdown} />
+        <View style={styles.sectionContent}>
+          <ResumeMarkdownPdf accent={accent} bodyFontSizePx={bodyFontSizePx} value={markdown} />
         </View>
       </View>
     );
@@ -172,20 +193,31 @@ function PdfSection({
   return (
     <View style={styles.section} minPresenceAhead={55}>
       <Text style={styles.sectionTitle}>{section.title}</Text>
-      {section.items.filter(itemHasPrintableContent).map((item) => {
-        const display = getEntryDisplay(section.type, item as Record<string, unknown>);
-        return (
-          <View key={item.id} style={styles.entry}>
-            <View style={styles.entryHead}>
-              <Text style={styles.entryTitle}>{display.title}</Text>
-              <Text style={styles.entryDate}>{display.date}</Text>
+      <View style={styles.entries}>
+        {section.items.filter(itemHasPrintableContent).map((item, index) => {
+          const display = getEntryDisplay(section.type, item as Record<string, unknown>);
+          return (
+            <View
+              key={item.id}
+              style={index > 0 ? [styles.entry, styles.followingEntry] : styles.entry}
+            >
+              <View style={styles.entryHead}>
+                <Text style={styles.entryTitle}>{display.title}</Text>
+                <Text style={styles.entryDate}>{display.date}</Text>
+              </View>
+              {display.description.trim() ? (
+                <View style={styles.entryDescription}>
+                  <ResumeMarkdownPdf
+                    accent={accent}
+                    bodyFontSizePx={bodyFontSizePx}
+                    value={display.description}
+                  />
+                </View>
+              ) : null}
             </View>
-            {display.description.trim() ? (
-              <ResumeMarkdownPdf accent={accent} value={display.description} />
-            ) : null}
-          </View>
-        );
-      })}
+          );
+        })}
+      </View>
     </View>
   );
 }

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createDefaultContent } from '../model/resume.model';
+import { RESUME_PHOTO_SPEC } from '../model/resume.presentation';
 import type { ResumeDocument } from '../model/resume.types';
 import { ResumeHtmlPreview } from './ResumeHtmlPreview';
 
@@ -149,5 +150,30 @@ describe('ResumeHtmlPreview', () => {
       'classic-professional',
     );
     expect(screen.getByRole('heading', { name: '林清清' })).toBeVisible();
+  });
+
+  it('uses a rectangular one-inch photo without a header divider', () => {
+    const resume = { ...createResume(), templateId: 'classic-professional' as const };
+    const { container } = render(
+      <ResumeHtmlPreview
+        avatar="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q=="
+        resume={resume}
+      />,
+    );
+
+    const photo = container.querySelector('header img');
+    const header = container.querySelector('header');
+
+    expect(photo).toBeInTheDocument();
+    expect(
+      Number.parseFloat((photo as HTMLImageElement).style.width) /
+        Number.parseFloat((photo as HTMLImageElement).style.height),
+    ).toBeCloseTo(RESUME_PHOTO_SPEC.aspectRatio);
+    expect(photo).toHaveClass('object-contain');
+    expect(photo).not.toHaveClass('rounded-full');
+    expect(header).not.toHaveClass('border-b');
+    expect(screen.getByText('求职意向：前端开发工程师').parentElement).toHaveStyle({
+      textAlign: 'center',
+    });
   });
 });

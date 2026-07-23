@@ -10,34 +10,50 @@ type MarkdownPdfStyles = ReturnType<typeof createStyles>;
 
 const styleCache = new Map<string, MarkdownPdfStyles>();
 
-export function ResumeMarkdownPdf({ accent, value }: { accent: string; value: string }) {
-  const styles = getStyles(accent);
+export function ResumeMarkdownPdf({
+  accent,
+  bodyFontSizePx,
+  value,
+}: {
+  accent: string;
+  bodyFontSizePx: number;
+  value: string;
+}) {
+  const styles = getStyles(accent, bodyFontSizePx);
   const document = parseResumeMarkdown(value);
   return (
     <View>
       {document.blocks.map((block, index) => (
-        <PdfBlock block={block} key={index} styles={styles} />
+        <PdfBlock block={block} first={index === 0} key={index} styles={styles} />
       ))}
     </View>
   );
 }
 
-function PdfBlock({ block, styles }: { block: ResumeMarkdownBlock; styles: MarkdownPdfStyles }) {
+function PdfBlock({
+  block,
+  first,
+  styles,
+}: {
+  block: ResumeMarkdownBlock;
+  first: boolean;
+  styles: MarkdownPdfStyles;
+}) {
   if (block.type === 'paragraph') {
     return (
-      <Text style={styles.paragraph}>
+      <Text style={first ? [styles.block, styles.firstBlock] : styles.block}>
         <PdfInline nodes={block.children} styles={styles} />
       </Text>
     );
   }
   return (
-    <View style={styles.list}>
+    <View style={first ? [styles.block, styles.firstBlock] : styles.block}>
       {block.items.map((item, index) => (
         <View key={index} style={styles.listRow}>
           <Text style={styles.marker}>{block.ordered ? `${block.start + index}.` : '•'}</Text>
           <View style={styles.listContent}>
             {item.children.map((child, childIndex) => (
-              <PdfBlock block={child} key={childIndex} styles={styles} />
+              <PdfBlock block={child} first={childIndex === 0} key={childIndex} styles={styles} />
             ))}
           </View>
         </View>
@@ -87,20 +103,22 @@ function PdfInline({
   });
 }
 
-function getStyles(accent: string): MarkdownPdfStyles {
-  const cached = styleCache.get(accent);
+function getStyles(accent: string, bodyFontSizePx: number): MarkdownPdfStyles {
+  const key = `${accent}:${bodyFontSizePx}`;
+  const cached = styleCache.get(key);
   if (cached) return cached;
-  const styles = createStyles(accent);
-  styleCache.set(accent, styles);
+  const styles = createStyles(accent, bodyFontSizePx);
+  styleCache.set(key, styles);
   return styles;
 }
 
-function createStyles(accent: string) {
+function createStyles(accent: string, bodyFontSizePx: number) {
+  const base = bodyFontSizePx * 0.75;
   return StyleSheet.create({
-    paragraph: { marginTop: 3 },
-    list: { marginTop: 3 },
-    listRow: { flexDirection: 'row', marginTop: 1 },
-    marker: { color: accent, width: 12 },
+    block: { marginTop: base * 0.45 },
+    firstBlock: { marginTop: 0 },
+    listRow: { flexDirection: 'row', marginTop: base * 0.2 },
+    marker: { color: accent, width: base * 1.4 },
     listContent: { flex: 1 },
     strong: { fontWeight: 700 },
     emphasis: { fontStyle: 'italic' },

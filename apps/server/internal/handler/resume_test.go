@@ -1,10 +1,15 @@
 package handler_test
 
 import (
+	"bytes"
+	"image"
+	"image/jpeg"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/vega-resume/server/internal/service"
 )
 
 func registerAccessToken(t *testing.T, router http.Handler, username, email string) string {
@@ -93,5 +98,34 @@ func TestResumeHandlersRequireAuthenticationAndIsolateOwners(t *testing.T) {
 	read := performAuthorizedJSON(router, otherToken, http.MethodGet, "/api/resumes/"+resumeID, "")
 	if read.Code != http.StatusNotFound {
 		t.Fatalf("cross-owner read should look missing, got %d body=%s", read.Code, read.Body.String())
+	}
+}
+
+func TestResumeAvatarAcceptsFiveBySevenJPEG(t *testing.T) {
+	router := newTestRouter(t)
+	token := registerAccessToken(t, router, "avatar-user", "avatar@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	var avatar bytes.Buffer
+	if err := jpeg.Encode(
+		&avatar,
+		image.NewRGBA(image.Rect(0, 0, service.AvatarWidth, service.AvatarHeight)),
+		&jpeg.Options{Quality: 82},
+	); err != nil {
+		t.Fatalf("encode avatar: %v", err)
+	}
+	request := httptest.NewRequest(
+		http.MethodPut,
+		"/api/resumes/"+resumeID+"/avatar",
+		bytes.NewReader(avatar.Bytes()),
+	)
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Content-Type", "image/jpeg; name=avatar.jpg")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("upload avatar status=%d body=%s", response.Code, response.Body.String())
 	}
 }

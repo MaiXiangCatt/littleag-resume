@@ -11,6 +11,8 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog';
 
+import { RESUME_PHOTO_SPEC } from '../model/resume.presentation';
+
 export function AvatarCropDialog({
   image,
   onClose,
@@ -47,12 +49,14 @@ export function AvatarCropDialog({
     >
       <DialogContent className="max-w-xl rounded-3xl p-6">
         <DialogTitle>裁剪简历头像</DialogTitle>
-        <DialogDescription>拖动图片并调整缩放，头像会保存为清晰的方形图片。</DialogDescription>
+        <DialogDescription>
+          拖动图片并调整缩放，照片会按一寸照常用的 5:7 比例保存。
+        </DialogDescription>
         <div className="relative mt-3 h-96 overflow-hidden rounded-2xl bg-[#171317]">
           <Cropper
-            aspect={1}
+            aspect={RESUME_PHOTO_SPEC.aspectRatio}
             crop={crop}
-            cropShape="round"
+            cropShape="rect"
             image={image}
             onCropChange={setCrop}
             onCropComplete={complete}
@@ -103,13 +107,23 @@ export function AvatarCropDialog({
 async function cropAvatar(source: string, area: Area) {
   const image = await loadImage(source);
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = RESUME_PHOTO_SPEC.outputWidthPx;
+  canvas.height = RESUME_PHOTO_SPEC.outputHeightPx;
   const context = canvas.getContext('2d');
   if (!context) throw new Error('浏览器无法处理图片');
   context.fillStyle = '#ffffff';
-  context.fillRect(0, 0, 512, 512);
-  context.drawImage(image, area.x, area.y, area.width, area.height, 0, 0, 512, 512);
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(
+    image,
+    area.x,
+    area.y,
+    area.width,
+    area.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('头像处理失败'))),
