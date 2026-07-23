@@ -7,6 +7,7 @@ import (
 	"github.com/vega-resume/server/internal/config"
 	"github.com/vega-resume/server/internal/handler"
 	"github.com/vega-resume/server/internal/middleware"
+	"github.com/vega-resume/server/internal/pdf"
 	"github.com/vega-resume/server/internal/repository"
 	"github.com/vega-resume/server/internal/server"
 	"github.com/vega-resume/server/internal/service"
@@ -41,9 +42,21 @@ func main() {
 		AccountLockTTL:   cfg.AccountLockTTL,
 	})
 	resumeService := service.NewResumeService(service.ResumeServiceConfig{Resumes: store, AvatarDir: cfg.AvatarStorageDir})
+	renderer := pdf.NewChromeRenderer(pdf.Config{
+		ExecPath:    cfg.ChromeExecPath,
+		RemoteURL:   cfg.ChromeRemoteURL,
+		Timeout:     cfg.PdfRenderTimeout,
+		Concurrency: cfg.PdfMaxConcurrency,
+	})
+	defer renderer.Close()
 	apiHandler := handler.NewAPIHandler(
 		handler.NewAuthHandler(authService),
-		handler.NewResumeHandler(resumeService),
+		handler.NewResumeHandler(handler.ResumeHandlerConfig{
+			Resumes:     resumeService,
+			Renderer:    renderer,
+			PrintTokens: service.NewPrintTokenService(cfg.PrintTokenTTL),
+			WebBaseURL:  cfg.WebBaseURL,
+		}),
 	)
 	router := server.NewRouter(apiHandler, middleware.Authenticate(authService))
 	if err := router.Run(cfg.Addr); err != nil {

@@ -19,7 +19,7 @@ export class UnsupportedResumeContentError extends Error {
   }
 }
 
-function toDocument(detail: ResumeDetail): ResumeDocument {
+export function toDocument(detail: ResumeDetail): ResumeDocument {
   if (detail.contentVersion !== 2) throw new UnsupportedResumeContentError();
   return {
     ...detail,
@@ -79,9 +79,7 @@ export const resumeEditorService = {
     return toDocument(detail);
   },
 
-  async recordExport(resumeId: string) {
-    return toDocument(
-      await httpRequest<ResumeDetail>(`/api/resumes/${resumeId}/exports`, { method: 'POST' }),
-    );
+  async exportPdf(resumeId: string) {
+    return httpBlobRequest(`/api/resumes/${resumeId}/export/pdf`, { method: 'POST' });
   },
 };

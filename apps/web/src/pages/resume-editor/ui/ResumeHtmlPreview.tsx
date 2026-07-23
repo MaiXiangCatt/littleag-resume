@@ -17,12 +17,15 @@ import { ResumeMarkdownHtml } from './ResumeMarkdownHtml';
 type ResumeHtmlPreviewProps = {
   avatar: string | null;
   resume: ResumeDocument;
+  mode?: 'screen' | 'print';
 };
 
 export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   avatar,
   resume,
+  mode = 'screen',
 }: ResumeHtmlPreviewProps) {
+  const isPrint = mode === 'print';
   const formatting = resume.content.formatting;
   const profile = resume.content.profile;
   const isClassic = resume.templateId === 'classic-professional';
@@ -30,7 +33,7 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   const presentation = createResumePresentation(formatting, isClassic);
   const style = {
     '--resume-accent': accent,
-    containerType: 'inline-size',
+    ...(isPrint ? {} : { containerType: 'inline-size' }),
     fontFamily: RESUME_FONT_FAMILIES[formatting.fontFamily].cssFamily,
     fontSize: `${formatting.bodyFontSizePx}px`,
     lineHeight: formatting.lineHeightRatio,
@@ -42,19 +45,28 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
     <Card
       aria-label={`${resume.title} A4 实时预览`}
       className={cn(
-        'mx-auto w-full max-w-[794px] shrink-0 gap-0 rounded-[2px] border-0 bg-white py-0 text-[#242126] shadow-[0_26px_70px_rgba(31,24,29,0.24)]',
+        'mx-auto w-full shrink-0 gap-0 border-0 bg-white py-0 text-[#242126]',
+        isPrint
+          ? 'w-[210mm] max-w-none rounded-none shadow-none'
+          : 'max-w-[794px] rounded-[2px] shadow-[0_26px_70px_rgba(31,24,29,0.24)]',
       )}
       data-template={resume.templateId}
       style={style}
     >
       <article
-        className="min-h-[141.428cqw]"
-        style={{
-          paddingBottom: formatting.pageMarginPx.bottom,
-          paddingLeft: formatting.pageMarginPx.left,
-          paddingRight: formatting.pageMarginPx.right,
-          paddingTop: formatting.pageMarginPx.top,
-        }}
+        className={isPrint ? undefined : 'min-h-[141.428cqw]'}
+        style={
+          // 打印模式的页边距由 @page margin 承担，article 不再加 padding，
+          // 否则第 2 页起上下边距会丢失。
+          isPrint
+            ? undefined
+            : {
+                paddingBottom: formatting.pageMarginPx.bottom,
+                paddingLeft: formatting.pageMarginPx.left,
+                paddingRight: formatting.pageMarginPx.right,
+                paddingTop: formatting.pageMarginPx.top,
+              }
+        }
       >
         {profile.fullName ||
         profile.targetRole ||

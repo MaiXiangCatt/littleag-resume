@@ -45,4 +45,5 @@ var (
 	ErrResumeConflict        = &AppError{Code: 103005, Message: "简历已在其他页面更新", HTTPStatus: http.StatusConflict}
 	ErrAvatarInvalid         = &AppError{Code: 105003, Message: "头像必须是 500×700 的 JPEG 图片", HTTPStatus: http.StatusBadRequest}
 	ErrFileTooLarge          = &AppError{Code: 105002, Message: "上传文件超过大小限制", HTTPStatus: http.StatusBadRequest}
+	ErrPdfRenderFailed       = &AppError{Code: 106001, Message: "PDF 生成失败，请稍后重试", HTTPStatus: http.StatusInternalServerError}
 )

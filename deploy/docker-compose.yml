@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vega_resume
+      POSTGRES_PASSWORD: vega_resume
+      POSTGRES_DB: vega_resume
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  server:
+    build:
+      context: ..
+      dockerfile: apps/server/Dockerfile
+    # headless Chromium 需要足够的共享内存，双保险（代码里还带 disable-dev-shm-usage）
+    shm_size: 1gb
+    environment:
+      DATABASE_URL: postgres://vega_resume:vega_resume@postgres:5432/vega_resume?sslmode=disable
+      # chromedp 在容器内经 compose DNS 访问 web 容器里的打印页
+      WEB_BASE_URL: http://web
+      ACCESS_TOKEN_KEY: ${ACCESS_TOKEN_KEY:?set ACCESS_TOKEN_KEY in .env or environment}
+    depends_on:
+      - postgres
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+volumes:
+  pgdata:

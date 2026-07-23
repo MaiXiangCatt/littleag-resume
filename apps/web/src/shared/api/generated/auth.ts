@@ -13,6 +13,7 @@ import type {
   CreateResumeRequest,
   EmptyResponse,
   ErrorResponse,
+  GetResumePrintDataParams,
   ImportResumeRequest,
   InternalServerErrorResponse,
   ListResumesParams,
@@ -22,6 +23,7 @@ import type {
   ReplaceResumeImportBody,
   ResumeDetailResponse,
   ResumeListResponse,
+  ResumePrintResponse,
   ResumeStatsResponse,
   TooManyRequestsResponse,
   UnauthorizedResponse,
@@ -892,49 +894,49 @@ export const replaceResumeImport = async (resumeId: string,
 
 
 
-export type recordResumeExportResponse200 = {
-  data: ResumeDetailResponse
+export type exportResumePdfResponse200 = {
+  data: Blob
   status: 200
 }
 
-export type recordResumeExportResponse401 = {
+export type exportResumePdfResponse401 = {
   data: UnauthorizedResponse
   status: 401
 }
 
-export type recordResumeExportResponse404 = {
+export type exportResumePdfResponse404 = {
   data: NotFoundResponse
   status: 404
 }
 
-export type recordResumeExportResponse500 = {
+export type exportResumePdfResponse500 = {
   data: InternalServerErrorResponse
   status: 500
 }
 
-export type recordResumeExportResponseSuccess = (recordResumeExportResponse200) & {
+export type exportResumePdfResponseSuccess = (exportResumePdfResponse200) & {
   headers: Headers;
 };
-export type recordResumeExportResponseError = (recordResumeExportResponse401 | recordResumeExportResponse404 | recordResumeExportResponse500) & {
+export type exportResumePdfResponseError = (exportResumePdfResponse401 | exportResumePdfResponse404 | exportResumePdfResponse500) & {
   headers: Headers;
 };
 
-export type recordResumeExportResponse = (recordResumeExportResponseSuccess | recordResumeExportResponseError)
+export type exportResumePdfResponse = (exportResumePdfResponseSuccess | exportResumePdfResponseError)
 
-export const getRecordResumeExportUrl = (resumeId: string,) => {
-
-
+export const getExportResumePdfUrl = (resumeId: string,) => {
 
 
-  return `/api/resumes/${resumeId}/exports`
+
+
+  return `/api/resumes/${resumeId}/export/pdf`
 }
 
 /**
- * @summary Record a successfully started PDF download
+ * @summary Render the resume to a PDF via headless Chrome; records the export on success
  */
-export const recordResumeExport = async (resumeId: string, options?: RequestInit): Promise<recordResumeExportResponse> => {
+export const exportResumePdf = async (resumeId: string, options?: RequestInit): Promise<exportResumePdfResponse> => {
 
-  const res = await fetch(getRecordResumeExportUrl(resumeId),
+  const res = await fetch(getExportResumePdfUrl(resumeId),
   {
     ...options,
     method: 'POST'
@@ -944,10 +946,78 @@ export const recordResumeExport = async (resumeId: string, options?: RequestInit
 )
 
 
+  const body = [204, 205, 304].includes(res.status) ? null : await res.blob();
+  const data: exportResumePdfResponse['data'] = body as exportResumePdfResponse['data']
+  return { data, status: res.status, headers: res.headers } as exportResumePdfResponse
+}
+
+
+
+export type getResumePrintDataResponse200 = {
+  data: ResumePrintResponse
+  status: 200
+}
+
+export type getResumePrintDataResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getResumePrintDataResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getResumePrintDataResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type getResumePrintDataResponseSuccess = (getResumePrintDataResponse200) & {
+  headers: Headers;
+};
+export type getResumePrintDataResponseError = (getResumePrintDataResponse401 | getResumePrintDataResponse404 | getResumePrintDataResponse500) & {
+  headers: Headers;
+};
+
+export type getResumePrintDataResponse = (getResumePrintDataResponseSuccess | getResumePrintDataResponseError)
+
+export const getGetResumePrintDataUrl = (resumeId: string,
+    params: GetResumePrintDataParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/resumes/${resumeId}/print?${stringifiedParams}` : `/api/resumes/${resumeId}/print`
+}
+
+/**
+ * @summary Print-page data endpoint authorized by a short-lived print token
+ */
+export const getResumePrintData = async (resumeId: string,
+    params: GetResumePrintDataParams, options?: RequestInit): Promise<getResumePrintDataResponse> => {
+
+  const res = await fetch(getGetResumePrintDataUrl(resumeId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: recordResumeExportResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as recordResumeExportResponse
+  const data: getResumePrintDataResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getResumePrintDataResponse
 }
 
 

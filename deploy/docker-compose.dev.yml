@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vega_resume
+      POSTGRES_PASSWORD: vega_resume
+      POSTGRES_DB: vega_resume
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+
+  # 可选：本机没有 Chrome 时启用 headless-shell，并给后端配置
+  #   CHROME_REMOTE_URL=ws://localhost:9222
+  #   WEB_BASE_URL=http://host.docker.internal:5173
+  # chrome:
+  #   image: chromedp/headless-shell:stable
+  #   shm_size: 1gb
+  #   ports:
+  #     - "9222:9222"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+
+volumes:
+  pgdata-dev:

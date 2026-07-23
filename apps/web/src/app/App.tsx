@@ -1,5 +1,13 @@
-import { lazy, Suspense, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 
 import { useAuthBootstrap } from '@/shared/auth/hooks/useAuthBootstrap';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
@@ -12,6 +20,12 @@ import { HomePage } from '@/pages/home/ui/HomePage';
 const ResumeEditorPage = lazy(() =>
   import('@/pages/resume-editor/ui/ResumeEditorPage').then((module) => ({
     default: module.ResumeEditorPage,
+  })),
+);
+
+const PrintResumePage = lazy(() =>
+  import('@/pages/print/ui/PrintResumePage').then((module) => ({
+    default: module.PrintResumePage,
   })),
 );
 
@@ -36,6 +50,7 @@ export function AppRoutes() {
       <Route element={<HomeRoute />} path="/" />
       <Route element={<ConsoleRoute />} path="/console" />
       <Route element={<ResumeEditorRoute />} path="/resumes/:resumeId/edit" />
+      <Route element={<PrintResumeRoute />} path="/print/resumes/:resumeId" />
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
   );
@@ -68,6 +83,29 @@ function ResumeEditorRoute() {
       }
     >
       <ResumeEditorPage resumeId={resumeId} />
+    </Suspense>
+  );
+}
+
+function PrintResumeRoute() {
+  const { resumeId } = useParams<{ resumeId: string }>();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  const missingParams = !resumeId || !token;
+
+  useEffect(() => {
+    if (missingParams) {
+      document.body.dataset.printError = '打印链接缺少参数';
+    }
+  }, [missingParams]);
+
+  if (missingParams) {
+    return null;
+  }
+
+  return (
+    <Suspense fallback={null}>
+      <PrintResumePage resumeId={resumeId} token={token} />
     </Suspense>
   );
 }

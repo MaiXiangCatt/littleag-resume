@@ -64,7 +64,7 @@ build-cli:         ## 构建 vega CLI
 storybook:         ## 启动 Storybook UI 隔离开发环境
 	pnpm --filter web storybook
 docker-build:      ## Docker 镜像构建
-	docker build -t vega-resume:latest .
+	docker compose -f deploy/docker-compose.yml build
 deploy:            ## 部署到自有服务器
 	bash scripts/deploy.sh
 smoke:             ## 部署后冒烟测试

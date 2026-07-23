@@ -238,13 +238,12 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
     setExporting(true);
     try {
       await flushSave();
-      const { createResumePdfBlob } = await import('../service/resume-pdf.service');
       downloadBlob(
-        await createResumePdfBlob(current, visibleAvatar),
+        await resumeEditorService.exportPdf(current.id),
         `${safeFileName(current.title)}.pdf`,
       );
       downloaded = true;
-      const updated = await resumeEditorService.recordExport(current.id);
+      const updated = await resumeEditorService.get(current.id);
       useResumeEditorStore.getState().mergeServerMetadata(updated);
       const finalSaveStatus = useResumeEditorStore.getState().saveStatus;
       if (finalSaveStatus === 'failed' || finalSaveStatus === 'conflict') {

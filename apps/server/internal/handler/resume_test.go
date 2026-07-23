@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"bytes"
+	"errors"
 	"image"
 	"image/jpeg"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/vega-resume/server/internal/service"
 )
+
+var errAny = errors.New("renderer boom")
 
 func registerAccessToken(t *testing.T, router http.Handler, username, email string) string {
 	t.Helper()
@@ -127,5 +130,119 @@ func TestResumeAvatarAcceptsFiveBySevenJPEG(t *testing.T) {
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("upload avatar status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestExportResumePdfReturnsPdfAndRecordsExport(t *testing.T) {
+	renderer := &stubRenderer{data: []byte("%PDF-1.7 stub")}
+	router := newTestRouterWithRenderer(t, renderer)
+	token := registerAccessToken(t, router, "export-user", "export@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	exported := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes/"+resumeID+"/export/pdf", "")
+	if exported.Code != http.StatusOK {
+		t.Fatalf("export status=%d body=%s", exported.Code, exported.Body.String())
+	}
+	if got := exported.Header().Get("Content-Type"); got != "application/pdf" {
+		t.Fatalf("content type = %q", got)
+	}
+	if !strings.HasPrefix(exported.Body.String(), "%PDF") {
+		t.Fatalf("body is not pdf: %q", exported.Body.String())
+	}
+	if got := exported.Header().Get("Content-Disposition"); !strings.Contains(got, ".pdf") {
+		t.Fatalf("content disposition = %q", got)
+	}
+	if !strings.HasPrefix(renderer.gotURL, "http://web.test/print/resumes/"+resumeID+"?token=") {
+		t.Fatalf("renderer url = %q", renderer.gotURL)
+	}
+
+	stats := performAuthorizedJSON(router, token, http.MethodGet, "/api/resumes/stats", "")
+	statsData := decodeEnvelope(t, stats)["data"].(map[string]any)
+	if statsData["exported"] != float64(1) {
+		t.Fatalf("export not recorded: %+v", statsData)
+	}
+}
+
+func TestExportResumePdfRejectsUnauthorizedAndForeignResumes(t *testing.T) {
+	router := newTestRouter(t)
+	ownerToken := registerAccessToken(t, router, "pdf-owner", "pdf-owner@example.com")
+	otherToken := registerAccessToken(t, router, "pdf-other", "pdf-other@example.com")
+	created := performAuthorizedJSON(router, ownerToken, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	anonymous := performJSON(router, http.MethodPost, "/api/resumes/"+resumeID+"/export/pdf", "")
+	if anonymous.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous export status=%d", anonymous.Code)
+	}
+	foreign := performAuthorizedJSON(router, otherToken, http.MethodPost, "/api/resumes/"+resumeID+"/export/pdf", "")
+	if foreign.Code != http.StatusNotFound {
+		t.Fatalf("foreign export status=%d body=%s", foreign.Code, foreign.Body.String())
+	}
+}
+
+func TestExportResumePdfMapsRendererFailure(t *testing.T) {
+	router := newTestRouterWithRenderer(t, &stubRenderer{err: errAny})
+	token := registerAccessToken(t, router, "fail-user", "fail@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	exported := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes/"+resumeID+"/export/pdf", "")
+	if exported.Code != http.StatusInternalServerError {
+		t.Fatalf("export status=%d body=%s", exported.Code, exported.Body.String())
+	}
+	if code := decodeEnvelope(t, exported)["code"]; code != float64(106001) {
+		t.Fatalf("error code = %v", code)
+	}
+
+	stats := performAuthorizedJSON(router, token, http.MethodGet, "/api/resumes/stats", "")
+	if statsData := decodeEnvelope(t, stats)["data"].(map[string]any); statsData["exported"] != float64(0) {
+		t.Fatalf("failed export must not be recorded: %+v", statsData)
+	}
+}
+
+func TestGetResumePrintDataAuthorizedByPrintToken(t *testing.T) {
+	renderer := &stubRenderer{data: []byte("%PDF-stub")}
+	router := newTestRouterWithRenderer(t, renderer)
+	token := registerAccessToken(t, router, "print-user", "print@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes/"+resumeID+"/export/pdf", "")
+	printPath := strings.TrimPrefix(renderer.gotURL, "http://web.test")
+	printPath = strings.Replace(printPath, "/print/resumes/", "/api/resumes/", 1)
+	printPath = strings.Replace(printPath, "?token=", "/print?token=", 1)
+
+	printed := performJSON(router, http.MethodGet, printPath, "")
+	if printed.Code != http.StatusOK {
+		t.Fatalf("print data status=%d body=%s", printed.Code, printed.Body.String())
+	}
+	printData := decodeEnvelope(t, printed)["data"].(map[string]any)
+	resume := printData["resume"].(map[string]any)
+	if resume["id"] != resumeID {
+		t.Fatalf("unexpected print resume: %+v", resume)
+	}
+
+	invalid := performJSON(router, http.MethodGet, "/api/resumes/"+resumeID+"/print?token=not-a-token", "")
+	if invalid.Code != http.StatusUnauthorized {
+		t.Fatalf("invalid token status=%d", invalid.Code)
+	}
+}
+
+func TestGetResumePrintDataRejectsTokenForOtherResume(t *testing.T) {
+	renderer := &stubRenderer{data: []byte("%PDF-stub")}
+	router := newTestRouterWithRenderer(t, renderer)
+	token := registerAccessToken(t, router, "swap-user", "swap@example.com")
+	first := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	firstID := decodeEnvelope(t, first)["data"].(map[string]any)["id"].(string)
+	second := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	secondID := decodeEnvelope(t, second)["data"].(map[string]any)["id"].(string)
+
+	performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes/"+firstID+"/export/pdf", "")
+	firstToken := renderer.gotURL[strings.Index(renderer.gotURL, "?token=")+len("?token="):]
+
+	swapped := performJSON(router, http.MethodGet, "/api/resumes/"+secondID+"/print?token="+firstToken, "")
+	if swapped.Code != http.StatusUnauthorized {
+		t.Fatalf("token for other resume status=%d body=%s", swapped.Code, swapped.Body.String())
 	}
 }

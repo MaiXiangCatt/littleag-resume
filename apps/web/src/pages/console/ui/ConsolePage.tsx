@@ -197,22 +197,14 @@ function AuthenticatedConsole({
 
   async function handleExport(resume: ResumeSummary) {
     setPendingAction(`export:${resume.id}`);
-    let avatarUrl: string | null = null;
     try {
-      const detail = await resumeEditorService.get(resume.id);
-      if (detail.hasAvatar) {
-        avatarUrl = URL.createObjectURL(await resumeEditorService.getAvatar(resume.id));
-      }
-      const { createResumePdfBlob } =
-        await import('@/pages/resume-editor/service/resume-pdf.service');
-      const blob = await createResumePdfBlob(detail, avatarUrl);
+      const blob = await resumeEditorService.exportPdf(resume.id);
       const downloadUrl = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = downloadUrl;
-      anchor.download = `${detail.title.trim() || 'resume'}.pdf`;
+      anchor.download = `${resume.title.trim() || 'resume'}.pdf`;
       anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-      await resumeEditorService.recordExport(resume.id);
       setFeedback({ kind: 'success', message: `已开始导出“${resume.title}”` });
       consoleData.reload();
     } catch (error) {
@@ -224,7 +216,6 @@ function AuthenticatedConsole({
             : resumeErrorMessage(error),
       });
     } finally {
-      if (avatarUrl) URL.revokeObjectURL(avatarUrl);
       setPendingAction(null);
     }
   }

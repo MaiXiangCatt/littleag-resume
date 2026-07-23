@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,10 @@ import (
 )
 
 func newTestRouter(t *testing.T) *gin.Engine {
+	return newTestRouterWithRenderer(t, &stubRenderer{data: []byte("%PDF-stub")})
+}
+
+func newTestRouterWithRenderer(t *testing.T, renderer handler.PdfRenderer) *gin.Engine {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
@@ -37,12 +42,31 @@ func newTestRouter(t *testing.T) *gin.Engine {
 	router := gin.New()
 	generated.RegisterHandlersWithOptions(router, handler.NewAPIHandler(
 		handler.NewAuthHandler(auth),
-		handler.NewResumeHandler(resumes),
+		handler.NewResumeHandler(handler.ResumeHandlerConfig{
+			Resumes:     resumes,
+			Renderer:    renderer,
+			PrintTokens: service.NewPrintTokenService(time.Minute),
+			WebBaseURL:  "http://web.test",
+		}),
 	), generated.GinServerOptions{
 		Middlewares:  []generated.MiddlewareFunc{middleware.Authenticate(auth)},
 		ErrorHandler: handler.GeneratedErrorHandler,
 	})
 	return router
+}
+
+type stubRenderer struct {
+	data   []byte
+	err    error
+	gotURL string
+}
+
+func (s *stubRenderer) Render(_ context.Context, url string) ([]byte, error) {
+	s.gotURL = url
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.data, nil
 }
 
 func performJSON(router http.Handler, method, path, body string) *httptest.ResponseRecorder {

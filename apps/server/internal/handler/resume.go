@@ -1,11 +1,17 @@
 package handler
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"mime"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,12 +24,32 @@ import (
 
 const maxImportBodyBytes = 2 << 20
 
-type ResumeHandler struct {
-	resumes *service.ResumeService
+// PdfRenderer prints the page at url into PDF bytes.
+type PdfRenderer interface {
+	Render(ctx context.Context, url string) ([]byte, error)
 }
 
-func NewResumeHandler(resumes *service.ResumeService) *ResumeHandler {
-	return &ResumeHandler{resumes: resumes}
+type ResumeHandlerConfig struct {
+	Resumes     *service.ResumeService
+	Renderer    PdfRenderer
+	PrintTokens *service.PrintTokenService
+	WebBaseURL  string
+}
+
+type ResumeHandler struct {
+	resumes     *service.ResumeService
+	renderer    PdfRenderer
+	printTokens *service.PrintTokenService
+	webBaseURL  string
+}
+
+func NewResumeHandler(cfg ResumeHandlerConfig) *ResumeHandler {
+	return &ResumeHandler{
+		resumes:     cfg.Resumes,
+		renderer:    cfg.Renderer,
+		printTokens: cfg.PrintTokens,
+		webBaseURL:  strings.TrimRight(cfg.WebBaseURL, "/"),
+	}
 }
 
 func (h *ResumeHandler) ListResumes(c *gin.Context, params generated.ListResumesParams) {
@@ -199,17 +225,66 @@ func (h *ResumeHandler) ReplaceResumeImport(c *gin.Context, resumeID generated.R
 	writeResume(c, resume)
 }
 
-func (h *ResumeHandler) RecordResumeExport(c *gin.Context, resumeID generated.ResumeId) {
+func (h *ResumeHandler) ExportResumePdf(c *gin.Context, resumeID generated.ResumeId) {
 	userID, ok := currentUserID(c)
 	if !ok {
 		return
 	}
-	resume, err := h.resumes.RecordExport(c.Request.Context(), userID, uuid.UUID(resumeID))
+	resume, err := h.resumes.Get(c.Request.Context(), userID, uuid.UUID(resumeID))
 	if err != nil {
 		writeError(c, err)
 		return
 	}
-	writeResume(c, resume)
+	token, err := h.printTokens.Issue(userID, uuid.UUID(resumeID))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	printURL := fmt.Sprintf("%s/print/resumes/%s?token=%s", h.webBaseURL, uuid.UUID(resumeID), url.QueryEscape(token))
+	data, err := h.renderer.Render(c.Request.Context(), printURL)
+	if err != nil {
+		log.Printf("render resume pdf %s: %v", resumeID, err)
+		writeError(c, model.ErrPdfRenderFailed)
+		return
+	}
+	if _, err := h.resumes.RecordExport(c.Request.Context(), userID, uuid.UUID(resumeID)); err != nil {
+		log.Printf("record resume export %s: %v", resumeID, err)
+	}
+	c.Header("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(resume.Title)+".pdf")
+	c.Data(http.StatusOK, "application/pdf", data)
+}
+
+func (h *ResumeHandler) GetResumePrintData(c *gin.Context, resumeID generated.ResumeId, params generated.GetResumePrintDataParams) {
+	userID, tokenResumeID, err := h.printTokens.Validate(params.Token)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	if tokenResumeID != uuid.UUID(resumeID) {
+		writeError(c, model.ErrTokenInvalid)
+		return
+	}
+	resume, err := h.resumes.Get(c.Request.Context(), userID, tokenResumeID)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	detail, err := resumeDetail(resume)
+	if err != nil {
+		writeError(c, model.ErrInternalServer)
+		return
+	}
+	payload := generated.ResumePrintPayload{Resume: detail}
+	if resume.AvatarKey != nil {
+		avatar, avatarErr := h.resumes.GetAvatar(c.Request.Context(), userID, tokenResumeID)
+		if avatarErr != nil {
+			writeError(c, avatarErr)
+			return
+		}
+		dataURL := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(avatar)
+		payload.AvatarDataUrl = &dataURL
+	}
+	c.JSON(http.StatusOK, model.OK(payload))
 }
 
 func (h *ResumeHandler) PutResumeAvatar(c *gin.Context, resumeID generated.ResumeId) {

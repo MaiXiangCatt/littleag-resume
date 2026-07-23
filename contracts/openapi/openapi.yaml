@@ -408,23 +408,51 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /api/resumes/{resumeId}/exports:
+  /api/resumes/{resumeId}/export/pdf:
     parameters:
       - $ref: "#/components/parameters/ResumeId"
     post:
-      operationId: recordResumeExport
+      operationId: exportResumePdf
       tags:
         - Resume
-      summary: Record a successfully started PDF download
+      summary: Render the resume to a PDF via headless Chrome; records the export on success
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Updated resume.
+          description: PDF bytes.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/resumes/{resumeId}/print:
+    parameters:
+      - $ref: "#/components/parameters/ResumeId"
+    get:
+      operationId: getResumePrintData
+      tags:
+        - Resume
+      summary: Print-page data endpoint authorized by a short-lived print token
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resume detail plus inline avatar for printing.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ResumeDetailResponse"
+                $ref: "#/components/schemas/ResumePrintResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -1004,6 +1032,33 @@ components:
               enum: [""]
             data:
               $ref: "#/components/schemas/ResumeDetail"
+    ResumePrintPayload:
+      type: object
+      required:
+        - resume
+      properties:
+        resume:
+          $ref: "#/components/schemas/ResumeDetail"
+        avatarDataUrl:
+          type: string
+          nullable: true
+          description: Inline data URL of the avatar JPEG, if any.
+    ResumePrintResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum: [0]
+            message:
+              type: string
+              enum: [""]
+            data:
+              $ref: "#/components/schemas/ResumePrintPayload"
     ResumeStatsResponse:
       allOf:
         - $ref: "#/components/schemas/BaseResponse"

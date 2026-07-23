@@ -22,6 +22,13 @@ type Config struct {
 	AccountLockLimit int
 	AccountLockTTL   time.Duration
 	AvatarStorageDir string
+
+	WebBaseURL        string
+	ChromeExecPath    string
+	ChromeRemoteURL   string
+	PdfRenderTimeout  time.Duration
+	PdfMaxConcurrency int
+	PrintTokenTTL     time.Duration
 }
 
 func Load() (Config, error) {
@@ -47,6 +54,13 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 		AccountLockLimit: intEnv("ACCOUNT_LOCK_LIMIT", 5),
 		AccountLockTTL:   durationEnv("ACCOUNT_LOCK_TTL", 15*time.Minute),
 		AvatarStorageDir: env("AVATAR_STORAGE_DIR", "data/avatars"),
+
+		WebBaseURL:        env("WEB_BASE_URL", "http://localhost:5173"),
+		ChromeExecPath:    env("CHROME_EXEC_PATH", ""),
+		ChromeRemoteURL:   env("CHROME_REMOTE_URL", ""),
+		PdfRenderTimeout:  durationEnv("PDF_RENDER_TIMEOUT", 30*time.Second),
+		PdfMaxConcurrency: intEnv("PDF_MAX_CONCURRENCY", 2),
+		PrintTokenTTL:     durationEnv("PRINT_TOKEN_TTL", 90*time.Second),
 	}, nil
 }
 
