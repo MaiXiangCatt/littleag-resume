@@ -2,6 +2,7 @@ package pdf
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -9,6 +10,8 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 )
+
+var ErrBusy = errors.New("pdf renderer busy")
 
 type Config struct {
 	// ExecPath points at a Chrome/Chromium binary; empty means chromedp looks
@@ -18,14 +21,16 @@ type Config struct {
 	RemoteURL   string
 	Timeout     time.Duration
 	Concurrency int
+	MaxQueue    int
 }
 
 // ChromeRenderer keeps one long-lived headless browser and opens a tab per
 // Render call. The browser starts lazily on first use and is recreated if it
 // dies.
 type ChromeRenderer struct {
-	cfg Config
-	sem chan struct{}
+	cfg    Config
+	active chan struct{}
+	slots  chan struct{}
 
 	mu            sync.Mutex
 	allocCancel   context.CancelFunc
@@ -40,19 +45,34 @@ func NewChromeRenderer(cfg Config) *ChromeRenderer {
 	if cfg.Concurrency <= 0 {
 		cfg.Concurrency = 2
 	}
-	return &ChromeRenderer{cfg: cfg, sem: make(chan struct{}, cfg.Concurrency)}
+	if cfg.MaxQueue < 0 {
+		cfg.MaxQueue = 0
+	}
+	return &ChromeRenderer{
+		cfg:    cfg,
+		active: make(chan struct{}, cfg.Concurrency),
+		slots:  make(chan struct{}, cfg.Concurrency+cfg.MaxQueue),
+	}
 }
 
 // Render navigates to url, waits until the page flags itself ready via
 // document.body.dataset.printReady / printError, and returns the printed PDF.
 func (r *ChromeRenderer) Render(ctx context.Context, url string) ([]byte, error) {
 	select {
-	case r.sem <- struct{}{}:
-		defer func() { <-r.sem }()
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	case r.slots <- struct{}{}:
+		defer func() { <-r.slots }()
+	default:
+		return nil, ErrBusy
 	}
 
+	renderCtx, cancelRender := context.WithTimeout(ctx, r.cfg.Timeout)
+	defer cancelRender()
+	select {
+	case r.active <- struct{}{}:
+		defer func() { <-r.active }()
+	case <-renderCtx.Done():
+		return nil, renderCtx.Err()
+	}
 	browserCtx, err := r.ensureBrowser()
 	if err != nil {
 		return nil, err
@@ -60,9 +80,7 @@ func (r *ChromeRenderer) Render(ctx context.Context, url string) ([]byte, error)
 
 	tabCtx, cancelTab := chromedp.NewContext(browserCtx)
 	defer cancelTab()
-	tabCtx, cancelTimeout := context.WithTimeout(tabCtx, r.cfg.Timeout)
-	defer cancelTimeout()
-	stop := context.AfterFunc(ctx, cancelTimeout)
+	stop := context.AfterFunc(renderCtx, cancelTab)
 	defer stop()
 
 	var buf []byte

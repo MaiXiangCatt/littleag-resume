@@ -25,7 +25,12 @@ describe('auth bootstrap in StrictMode', () => {
             message: '',
             data: {
               accessToken: 'access-token',
-              user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+              user: {
+                id: 'user-id',
+                username: 'zhangsan',
+                email: 'user@example.com',
+                emailVerified: true,
+              },
             },
           }),
           { status: 200 },

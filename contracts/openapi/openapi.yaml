@@ -20,7 +20,36 @@ paths:
               $ref: "#/components/schemas/RegisterRequest"
       responses:
         "200":
-          description: Registered user and access token.
+          description: User created and verification code sent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailVerificationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/auth/email-verification/confirm:
+    post:
+      operationId: confirmAuthEmailVerification
+      tags:
+        - Auth
+      summary: Confirm a registration email verification code and issue a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmEmailVerificationRequest"
+      responses:
+        "200":
+          description: Email verified and user session issued.
           headers:
             Set-Cookie:
               $ref: "#/components/headers/RefreshTokenSetCookie"
@@ -30,8 +59,39 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/auth/email-verification/resend:
+    post:
+      operationId: resendAuthEmailVerification
+      tags:
+        - Auth
+      summary: Resend a registration email verification code after validating credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResendEmailVerificationRequest"
+      responses:
+        "200":
+          description: Verification challenge is ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailVerificationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /api/auth/login:
     post:
       operationId: loginAuthUser
@@ -58,6 +118,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "423":
           description: ErrAccountLocked response.
           content:
@@ -428,8 +490,14 @@ paths:
                 format: binary
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
         "500":
           $ref: "#/components/responses/InternalServerError"
   /api/resumes/{resumeId}/print:
@@ -599,6 +667,12 @@ components:
                 code: 101004
                 message: Token invalid.
                 data: null
+    Forbidden:
+      description: The authenticated identity cannot perform this operation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
     Conflict:
       description: Duplicate email or username, including ErrUsernameExists.
       content:
@@ -625,6 +699,12 @@ components:
                 data: null
     InternalServerError:
       description: Server error response.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: A required backend resource is temporarily unavailable.
       content:
         application/json:
           schema:
@@ -689,6 +769,7 @@ components:
         - id
         - username
         - email
+        - emailVerified
       properties:
         id:
           type: string
@@ -702,6 +783,8 @@ components:
           type: string
           format: email
           example: user@example.com
+        emailVerified:
+          type: boolean
     AuthPayload:
       type: object
       required:
@@ -731,6 +814,40 @@ components:
                 - ""
             data:
               $ref: "#/components/schemas/AuthPayload"
+    EmailVerificationPayload:
+      type: object
+      required:
+        - email
+        - expiresInSeconds
+        - resendAfterSeconds
+      properties:
+        email:
+          type: string
+          format: email
+        expiresInSeconds:
+          type: integer
+          minimum: 1
+        resendAfterSeconds:
+          type: integer
+          minimum: 0
+    EmailVerificationResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum:
+                - 0
+            message:
+              type: string
+              enum:
+                - ""
+            data:
+              $ref: "#/components/schemas/EmailVerificationPayload"
     AuthUserResponse:
       allOf:
         - $ref: "#/components/schemas/BaseResponse"
@@ -1105,6 +1222,35 @@ components:
           minLength: 8
           maxLength: 128
           example: password1
+    ConfirmEmailVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - code
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: "083421"
+    ResendEmailVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 128
     LoginRequest:
       type: object
       required:

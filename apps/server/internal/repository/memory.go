@@ -13,17 +13,19 @@ import (
 )
 
 type MemoryStore struct {
-	mu            sync.RWMutex
-	users         map[uuid.UUID]*model.User
-	refreshTokens map[uuid.UUID]*model.RefreshToken
-	resumes       map[uuid.UUID]*model.Resume
+	mu                          sync.RWMutex
+	users                       map[uuid.UUID]*model.User
+	emailVerificationChallenges map[uuid.UUID]*model.EmailVerificationChallenge
+	refreshTokens               map[uuid.UUID]*model.RefreshToken
+	resumes                     map[uuid.UUID]*model.Resume
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		users:         map[uuid.UUID]*model.User{},
-		refreshTokens: map[uuid.UUID]*model.RefreshToken{},
-		resumes:       map[uuid.UUID]*model.Resume{},
+		users:                       map[uuid.UUID]*model.User{},
+		emailVerificationChallenges: map[uuid.UUID]*model.EmailVerificationChallenge{},
+		refreshTokens:               map[uuid.UUID]*model.RefreshToken{},
+		resumes:                     map[uuid.UUID]*model.Resume{},
 	}
 }
 
@@ -251,6 +253,112 @@ func (s *MemoryStore) FindActiveUserByUsername(_ context.Context, username strin
 		}
 	}
 	return nil, ErrNotFound
+}
+
+func (s *MemoryStore) ReplaceEmailVerificationChallenge(
+	_ context.Context,
+	challenge *model.EmailVerificationChallenge,
+	invalidatedAt time.Time,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.users[challenge.UserID]; !ok {
+		return ErrNotFound
+	}
+	for _, existing := range s.emailVerificationChallenges {
+		if existing.UserID == challenge.UserID && existing.ConsumedAt == nil && existing.InvalidatedAt == nil {
+			existing.InvalidatedAt = &invalidatedAt
+		}
+	}
+	copy := *challenge
+	s.emailVerificationChallenges[copy.ID] = &copy
+	return nil
+}
+
+func (s *MemoryStore) FindActiveEmailVerificationChallengeByUserID(
+	_ context.Context,
+	userID uuid.UUID,
+) (*model.EmailVerificationChallenge, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var latest *model.EmailVerificationChallenge
+	for _, challenge := range s.emailVerificationChallenges {
+		if challenge.UserID != userID || challenge.ConsumedAt != nil || challenge.InvalidatedAt != nil {
+			continue
+		}
+		if latest == nil || challenge.CreatedAt.After(latest.CreatedAt) {
+			copy := *challenge
+			latest = &copy
+		}
+	}
+	if latest == nil {
+		return nil, ErrNotFound
+	}
+	return latest, nil
+}
+
+func (s *MemoryStore) IncrementEmailVerificationFailures(_ context.Context, id uuid.UUID) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	challenge, ok := s.emailVerificationChallenges[id]
+	if !ok || challenge.ConsumedAt != nil || challenge.InvalidatedAt != nil {
+		return 0, ErrNotFound
+	}
+	challenge.Attempts++
+	return challenge.Attempts, nil
+}
+
+func (s *MemoryStore) MarkEmailVerificationSent(_ context.Context, id uuid.UUID, sentAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	challenge, ok := s.emailVerificationChallenges[id]
+	if !ok || challenge.InvalidatedAt != nil {
+		return ErrNotFound
+	}
+	challenge.SentAt = &sentAt
+	return nil
+}
+
+func (s *MemoryStore) ConsumeEmailVerificationChallenge(
+	_ context.Context,
+	challengeID, userID uuid.UUID,
+	consumedAt time.Time,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	challenge, ok := s.emailVerificationChallenges[challengeID]
+	if !ok || challenge.UserID != userID || challenge.ConsumedAt != nil || challenge.InvalidatedAt != nil {
+		return ErrNotFound
+	}
+	user, ok := s.users[userID]
+	if !ok || user.DeletedAt != nil {
+		return ErrNotFound
+	}
+	challenge.ConsumedAt = &consumedAt
+	user.EmailVerifiedAt = &consumedAt
+	user.UpdatedAt = consumedAt
+	return nil
+}
+
+func (s *MemoryStore) InvalidateEmailVerificationChallenge(
+	_ context.Context,
+	id uuid.UUID,
+	invalidatedAt time.Time,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	challenge, ok := s.emailVerificationChallenges[id]
+	if !ok || challenge.ConsumedAt != nil || challenge.InvalidatedAt != nil {
+		return ErrNotFound
+	}
+	challenge.InvalidatedAt = &invalidatedAt
+	return nil
 }
 
 func (s *MemoryStore) CreateRefreshToken(_ context.Context, token *model.RefreshToken) error {

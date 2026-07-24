@@ -6,13 +6,8 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface AuthUser {
-  id: string;
-  /**
-     * @minLength 2
-     * @maxLength 32
-     */
-  username: string;
+export interface ConfirmEmailVerificationRequest {
   email: string;
-  emailVerified: boolean;
+  /** @pattern ^[0-9]{6}$ */
+  code: string;
 }

@@ -27,7 +27,7 @@ describe('auth hooks', () => {
   it('bootstraps a refresh-based session', async () => {
     authServiceMock.refresh.mockResolvedValueOnce({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     renderHook(() => useAuthBootstrap());
@@ -77,7 +77,7 @@ describe('auth hooks', () => {
 
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
     rerender();
 

@@ -3,12 +3,23 @@ package pdf
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 )
+
+func TestChromeRendererRejectsWhenAdmissionQueueIsFull(t *testing.T) {
+	renderer := NewChromeRenderer(Config{Concurrency: 1, MaxQueue: 1})
+	renderer.slots <- struct{}{}
+	renderer.slots <- struct{}{}
+
+	if _, err := renderer.Render(context.Background(), "http://print.test"); !errors.Is(err, ErrBusy) {
+		t.Fatalf("Render() error = %v, want ErrBusy", err)
+	}
+}
 
 // Requires a locally installed Chrome; opt in with PDF_CHROME_TEST=1.
 func TestChromeRendererRender(t *testing.T) {

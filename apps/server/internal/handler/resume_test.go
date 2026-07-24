@@ -14,6 +14,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/vega-resume/server/internal/model"
+	pdfservice "github.com/vega-resume/server/internal/pdf"
 	"github.com/vega-resume/server/internal/repository"
 	"github.com/vega-resume/server/internal/service"
 )
@@ -22,6 +24,7 @@ var errAny = errors.New("renderer boom")
 
 func registerAccessToken(t *testing.T, router http.Handler, username, email string) string {
 	t.Helper()
+	testVerificationCodes.Delete(email)
 	response := performJSON(router, http.MethodPost, "/api/auth/register", `{
 		"username": "`+username+`",
 		"email": "`+email+`",
@@ -31,7 +34,18 @@ func registerAccessToken(t *testing.T, router http.Handler, username, email stri
 	if response.Code != http.StatusOK {
 		t.Fatalf("register status=%d body=%s", response.Code, response.Body.String())
 	}
-	return decodeEnvelope(t, response)["data"].(map[string]any)["accessToken"].(string)
+	code, ok := testVerificationCodes.Load(email)
+	if !ok {
+		t.Fatalf("verification code was not sent to %s", email)
+	}
+	confirmed := performJSON(router, http.MethodPost, "/api/auth/email-verification/confirm", `{
+		"email": "`+email+`",
+		"code": "`+code.(string)+`"
+	}`)
+	if confirmed.Code != http.StatusOK {
+		t.Fatalf("confirm status=%d body=%s", confirmed.Code, confirmed.Body.String())
+	}
+	return decodeEnvelope(t, confirmed)["data"].(map[string]any)["accessToken"].(string)
 }
 
 func performAuthorizedJSON(router http.Handler, token, method, path, body string) *httptest.ResponseRecorder {
@@ -206,6 +220,21 @@ func TestExportResumePdfMapsRendererFailure(t *testing.T) {
 	stats := performAuthorizedJSON(router, token, http.MethodGet, "/api/resumes/stats", "")
 	if statsData := decodeEnvelope(t, stats)["data"].(map[string]any); statsData["exported"] != float64(0) {
 		t.Fatalf("failed export must not be recorded: %+v", statsData)
+	}
+}
+
+func TestExportResumePdfRejectsQuicklyWhenRendererIsBusy(t *testing.T) {
+	router := newTestRouterWithRenderer(t, &stubRenderer{err: pdfservice.ErrBusy})
+	token := registerAccessToken(t, router, "busy-user", "busy@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	exported := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes/"+resumeID+"/export/pdf", "")
+	if exported.Code != http.StatusServiceUnavailable {
+		t.Fatalf("export status=%d body=%s", exported.Code, exported.Body.String())
+	}
+	if code := decodeEnvelope(t, exported)["code"]; code != float64(model.ErrPdfBusy.Code) {
+		t.Fatalf("error code = %v", code)
 	}
 }
 

@@ -19,7 +19,14 @@ services:
       # chromedp 在容器内经 compose DNS 访问 web 容器里的打印页
       WEB_BASE_URL: http://web
       AVATAR_STORAGE_DIR: /data/avatars
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       ACCESS_TOKEN_KEY: ${ACCESS_TOKEN_KEY:?set ACCESS_TOKEN_KEY in .env or environment}
+      EMAIL_VERIFICATION_KEY: ${EMAIL_VERIFICATION_KEY:?set EMAIL_VERIFICATION_KEY in .env or environment}
+      EMAIL_PROVIDER: resend
+      EMAIL_PRODUCT_NAME: ${EMAIL_PRODUCT_NAME:-Vega Resume}
+      RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY in .env or environment}
+      MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in .env or environment}
+      PDF_MAX_QUEUE: ${PDF_MAX_QUEUE:-8}
     volumes:
       - avatars:/data/avatars
     depends_on:

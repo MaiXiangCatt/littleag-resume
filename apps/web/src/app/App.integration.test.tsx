@@ -8,10 +8,12 @@ import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { AppRoutes } from './App';
 
 const authServiceMock = vi.hoisted(() => ({
+  confirmEmailVerification: vi.fn(),
   login: vi.fn(),
   logout: vi.fn(),
   refresh: vi.fn(),
   register: vi.fn(),
+  resendEmailVerification: vi.fn(),
 }));
 
 vi.mock('@/shared/auth/api/auth.service', () => ({
@@ -29,10 +31,12 @@ function renderApp(path = '/') {
 describe('app auth flow integration', () => {
   beforeEach(() => {
     useAuthStore.getState().reset();
+    authServiceMock.confirmEmailVerification.mockReset();
     authServiceMock.login.mockReset();
     authServiceMock.logout.mockReset();
     authServiceMock.refresh.mockReset();
     authServiceMock.register.mockReset();
+    authServiceMock.resendEmailVerification.mockReset();
     authServiceMock.refresh.mockRejectedValue(new Error('no session'));
   });
 
@@ -47,8 +51,13 @@ describe('app auth flow integration', () => {
   it('registers from home and lands on console', async () => {
     const user = userEvent.setup();
     authServiceMock.register.mockResolvedValueOnce({
+      email: 'user@example.com',
+      expiresInSeconds: 600,
+      resendAfterSeconds: 60,
+    });
+    authServiceMock.confirmEmailVerification.mockResolvedValueOnce({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     renderApp('/');
@@ -59,6 +68,8 @@ describe('app auth flow integration', () => {
     await user.type(screen.getByLabelText('密码'), 'password1');
     await user.type(screen.getByLabelText('确认密码'), 'password1');
     await user.click(screen.getByRole('button', { name: '创建账号' }));
+    await user.type(await screen.findByLabelText('邮箱验证码'), '123456');
+    await user.click(screen.getByRole('button', { name: '验证并登录' }));
 
     expect(await screen.findByText('zhangsan')).toBeInTheDocument();
   });
@@ -67,7 +78,7 @@ describe('app auth flow integration', () => {
     const user = userEvent.setup();
     authServiceMock.login.mockResolvedValueOnce({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     renderApp('/');
@@ -83,7 +94,7 @@ describe('app auth flow integration', () => {
   it('restores a refresh-cookie session on console', async () => {
     authServiceMock.refresh.mockResolvedValueOnce({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     renderApp('/console');
@@ -95,7 +106,7 @@ describe('app auth flow integration', () => {
     const user = userEvent.setup();
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
     authServiceMock.logout.mockResolvedValueOnce(undefined);
 
@@ -112,7 +123,7 @@ describe('app auth flow integration', () => {
   it('redirects authenticated home visits and protects console failures', async () => {
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     const { unmount } = renderApp('/');

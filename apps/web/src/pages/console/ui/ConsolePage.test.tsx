@@ -65,7 +65,7 @@ describe('ConsolePage', () => {
   it('renders remote resume data and the authenticated account', async () => {
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     renderConsole();
@@ -79,7 +79,7 @@ describe('ConsolePage', () => {
     const user = userEvent.setup();
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
     renderConsole();
     await screen.findByRole('heading', { name: '产品经理简历' });
@@ -98,7 +98,7 @@ describe('ConsolePage', () => {
     const user = userEvent.setup();
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
     renderConsole();
     await screen.findByRole('heading', { name: '产品经理简历' });
@@ -113,7 +113,7 @@ describe('ConsolePage', () => {
     const user = userEvent.setup();
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
     renderConsole();
     await screen.findByRole('heading', { name: '产品经理简历' });

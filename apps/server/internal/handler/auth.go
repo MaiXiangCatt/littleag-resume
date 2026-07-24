@@ -30,7 +30,7 @@ func (h *AuthHandler) RegisterAuthUser(c *gin.Context) {
 		return
 	}
 
-	payload, refreshToken, err := h.auth.Register(c.Request.Context(), service.RegisterInput{
+	payload, err := h.auth.Register(c.Request.Context(), service.RegisterInput{
 		Username:        body.Username,
 		Email:           string(body.Email),
 		Password:        body.Password,
@@ -40,7 +40,47 @@ func (h *AuthHandler) RegisterAuthUser(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
+	c.JSON(http.StatusOK, model.OK(payload))
+}
+
+func (h *AuthHandler) ConfirmAuthEmailVerification(c *gin.Context) {
+	var body generated.ConfirmAuthEmailVerificationJSONRequestBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		writeError(c, model.ErrInvalidParam)
+		return
+	}
+	payload, refreshToken, err := h.auth.ConfirmEmailVerification(
+		c.Request.Context(),
+		service.ConfirmEmailVerificationInput{
+			Email: string(body.Email),
+			Code:  body.Code,
+		},
+	)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
 	setRefreshCookie(c, refreshToken, 7*24*time.Hour)
+	c.JSON(http.StatusOK, model.OK(payload))
+}
+
+func (h *AuthHandler) ResendAuthEmailVerification(c *gin.Context) {
+	var body generated.ResendAuthEmailVerificationJSONRequestBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		writeError(c, model.ErrInvalidParam)
+		return
+	}
+	payload, err := h.auth.ResendEmailVerification(
+		c.Request.Context(),
+		service.ResendEmailVerificationInput{
+			Email:    string(body.Email),
+			Password: body.Password,
+		},
+	)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
 	c.JSON(http.StatusOK, model.OK(payload))
 }
 

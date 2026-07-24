@@ -4,11 +4,22 @@ export type AuthUser = {
   id: string;
   username: string;
   email: string;
+  emailVerified: boolean;
 };
 
 export type AuthSession = {
   accessToken: string;
   user: AuthUser;
+};
+
+export type EmailVerification = {
+  email: string;
+  expiresInSeconds: number;
+  resendAfterSeconds: number;
+};
+
+export type PendingEmailVerification = EmailVerification & {
+  password: string;
 };
 
 export type ApiErrorPayload = {
@@ -20,6 +31,10 @@ export type ApiErrorPayload = {
 export const loginSchema = z.object({
   email: z.email('请输入有效邮箱'),
   password: z.string().min(1, '请输入密码'),
+});
+
+export const emailVerificationSchema = z.object({
+  code: z.string().regex(/^\d{6}$/, '请输入 6 位数字验证码'),
 });
 
 export const registerSchema = z
@@ -40,6 +55,7 @@ export const registerSchema = z
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type RegisterFormValues = z.infer<typeof registerSchema>;
+export type EmailVerificationFormValues = z.infer<typeof emailVerificationSchema>;
 
 export const authErrorMessages: Record<number, string> = {
   100001: '请求参数格式错误',
@@ -54,6 +70,9 @@ export const authErrorMessages: Record<number, string> = {
   101008: '用户名格式不正确',
   101009: '账号已临时锁定，请稍后再试',
   101010: '登录状态已失效，请重新登录',
+  101011: '请先完成邮箱验证',
+  101012: '验证码无效或已过期',
+  101013: '验证邮件发送失败，请稍后再试',
 };
 
 export function authErrorMessage(error: unknown) {

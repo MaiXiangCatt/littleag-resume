@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useAuthStore } from '@/shared/auth/store/auth.store';
+import { ApiError } from '@/shared/http/http.client';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import {
@@ -251,9 +252,11 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
       } else {
         toast.success('PDF 已开始下载');
       }
-    } catch {
+    } catch (error) {
       if (downloaded) {
         toast.warning('PDF 已开始下载，但导出记录更新失败');
+      } else if (error instanceof ApiError && error.code === 106002) {
+        toast.error('PDF 服务繁忙，请稍后重试');
       } else {
         toast.error('PDF 生成失败，请检查内容后重试');
       }

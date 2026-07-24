@@ -22,7 +22,12 @@ describe('AppHeader', () => {
     render(
       <AppHeader
         actions={null}
-        currentUser={{ id: 'user-id', username: 'zhangsan', email: 'user@example.com' }}
+        currentUser={{
+          id: 'user-id',
+          username: 'zhangsan',
+          email: 'user@example.com',
+          emailVerified: true,
+        }}
       />,
     );
 

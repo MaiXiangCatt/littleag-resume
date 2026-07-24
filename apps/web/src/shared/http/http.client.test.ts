@@ -13,7 +13,7 @@ describe('http client', () => {
   it('unwraps unified BaseResponse data and injects Authorization header', async () => {
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     const fetchMock = vi.fn().mockResolvedValue(
@@ -57,7 +57,7 @@ describe('http client', () => {
   it('performs one credentialed refresh retry for expired access tokens', async () => {
     useAuthStore.getState().setSession({
       accessToken: 'old-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     const fetchMock = vi
@@ -74,7 +74,12 @@ describe('http client', () => {
             message: '',
             data: {
               accessToken: 'new-token',
-              user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+              user: {
+                id: 'user-id',
+                username: 'zhangsan',
+                email: 'user@example.com',
+                emailVerified: true,
+              },
             },
           }),
           { status: 200 },
@@ -106,7 +111,7 @@ describe('http client', () => {
   it('shares one refresh across concurrent expired requests', async () => {
     useAuthStore.getState().setSession({
       accessToken: 'old-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
@@ -117,7 +122,12 @@ describe('http client', () => {
             message: '',
             data: {
               accessToken: 'new-token',
-              user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+              user: {
+                id: 'user-id',
+                username: 'zhangsan',
+                email: 'user@example.com',
+                emailVerified: true,
+              },
             },
           }),
           { status: 200 },

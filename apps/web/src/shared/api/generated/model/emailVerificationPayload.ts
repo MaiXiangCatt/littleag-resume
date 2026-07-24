@@ -6,13 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface AuthUser {
-  id: string;
-  /**
-     * @minLength 2
-     * @maxLength 32
-     */
-  username: string;
+export interface EmailVerificationPayload {
   email: string;
-  emailVerified: boolean;
+  /** @minimum 1 */
+  expiresInSeconds: number;
+  /** @minimum 0 */
+  resendAfterSeconds: number;
 }

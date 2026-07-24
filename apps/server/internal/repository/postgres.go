@@ -41,12 +41,26 @@ func NewGormStore(db *gorm.DB) *GormStore {
 
 func Migrate(ctx context.Context, db *gorm.DB) error {
 	gdb := db.WithContext(ctx)
-	if err := gdb.AutoMigrate(&model.User{}, &model.RefreshToken{}, &model.Resume{}); err != nil {
+	hadEmailVerifiedAt := gdb.Migrator().HasColumn(&model.User{}, "email_verified_at")
+	if err := gdb.AutoMigrate(
+		&model.User{},
+		&model.EmailVerificationChallenge{},
+		&model.RefreshToken{},
+		&model.Resume{},
+	); err != nil {
 		return err
+	}
+	if !hadEmailVerifiedAt {
+		if err := gdb.Exec(
+			`UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL`,
+		).Error; err != nil {
+			return err
+		}
 	}
 	for _, statement := range []string{
 		`CREATE UNIQUE INDEX IF NOT EXISTS users_email_active_uidx ON users (email_normalized) WHERE deleted_at IS NULL`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS users_username_active_uidx ON users (username) WHERE deleted_at IS NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS email_verification_challenges_user_active_uidx ON email_verification_challenges (user_id) WHERE consumed_at IS NULL AND invalidated_at IS NULL`,
 	} {
 		if err := gdb.Exec(statement).Error; err != nil {
 			return err
@@ -221,6 +235,117 @@ func (s *GormStore) FindActiveUserByUsername(ctx context.Context, username strin
 		return nil, mapNotFound(err)
 	}
 	return &user, nil
+}
+
+func (s *GormStore) ReplaceEmailVerificationChallenge(
+	ctx context.Context,
+	challenge *model.EmailVerificationChallenge,
+	invalidatedAt time.Time,
+) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.EmailVerificationChallenge{}).
+			Where("user_id = ? AND consumed_at IS NULL AND invalidated_at IS NULL", challenge.UserID).
+			Update("invalidated_at", invalidatedAt).Error; err != nil {
+			return err
+		}
+		return tx.Create(challenge).Error
+	})
+}
+
+func (s *GormStore) FindActiveEmailVerificationChallengeByUserID(
+	ctx context.Context,
+	userID uuid.UUID,
+) (*model.EmailVerificationChallenge, error) {
+	var challenge model.EmailVerificationChallenge
+	if err := s.db.WithContext(ctx).
+		Where("user_id = ? AND consumed_at IS NULL AND invalidated_at IS NULL", userID).
+		Order("created_at DESC").
+		First(&challenge).Error; err != nil {
+		return nil, mapNotFound(err)
+	}
+	return &challenge, nil
+}
+
+func (s *GormStore) IncrementEmailVerificationFailures(ctx context.Context, id uuid.UUID) (int, error) {
+	result := s.db.WithContext(ctx).
+		Model(&model.EmailVerificationChallenge{}).
+		Where("id = ? AND consumed_at IS NULL AND invalidated_at IS NULL", id).
+		UpdateColumn("attempts", gorm.Expr("attempts + 1"))
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return 0, ErrNotFound
+	}
+	var challenge model.EmailVerificationChallenge
+	if err := s.db.WithContext(ctx).Select("attempts").First(&challenge, "id = ?", id).Error; err != nil {
+		return 0, mapNotFound(err)
+	}
+	return challenge.Attempts, nil
+}
+
+func (s *GormStore) MarkEmailVerificationSent(ctx context.Context, id uuid.UUID, sentAt time.Time) error {
+	result := s.db.WithContext(ctx).
+		Model(&model.EmailVerificationChallenge{}).
+		Where("id = ? AND invalidated_at IS NULL", id).
+		Update("sent_at", sentAt)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *GormStore) ConsumeEmailVerificationChallenge(
+	ctx context.Context,
+	challengeID, userID uuid.UUID,
+	consumedAt time.Time,
+) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&model.EmailVerificationChallenge{}).
+			Where(
+				"id = ? AND user_id = ? AND consumed_at IS NULL AND invalidated_at IS NULL",
+				challengeID,
+				userID,
+			).
+			Update("consumed_at", consumedAt)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		result = tx.Model(&model.User{}).
+			Where("id = ? AND deleted_at IS NULL", userID).
+			Updates(map[string]any{"email_verified_at": consumedAt, "updated_at": consumedAt})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+}
+
+func (s *GormStore) InvalidateEmailVerificationChallenge(
+	ctx context.Context,
+	id uuid.UUID,
+	invalidatedAt time.Time,
+) error {
+	result := s.db.WithContext(ctx).
+		Model(&model.EmailVerificationChallenge{}).
+		Where("id = ? AND consumed_at IS NULL AND invalidated_at IS NULL", id).
+		Update("invalidated_at", invalidatedAt)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *GormStore) CreateRefreshToken(ctx context.Context, token *model.RefreshToken) error {

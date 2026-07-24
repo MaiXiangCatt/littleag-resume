@@ -9,10 +9,13 @@ import type {
   AuthResponse,
   AuthUserResponse,
   BadRequestResponse,
+  ConfirmEmailVerificationRequest,
   ConflictResponse,
   CreateResumeRequest,
+  EmailVerificationResponse,
   EmptyResponse,
   ErrorResponse,
+  ForbiddenResponse,
   ImportResumeRequest,
   InternalServerErrorResponse,
   ListResumesParams,
@@ -20,17 +23,19 @@ import type {
   NotFoundResponse,
   RegisterRequest,
   ReplaceResumeImportBody,
+  ResendEmailVerificationRequest,
   ResumeDetailResponse,
   ResumeListResponse,
   ResumePrintResponse,
   ResumeStatsResponse,
+  ServiceUnavailableResponse,
   TooManyRequestsResponse,
   UnauthorizedResponse,
   UpdateResumeRequest
 } from './model';
 
 export type registerAuthUserResponse200 = {
-  data: AuthResponse
+  data: EmailVerificationResponse
   status: 200
 }
 
@@ -39,15 +44,30 @@ export type registerAuthUserResponse400 = {
   status: 400
 }
 
+export type registerAuthUserResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type registerAuthUserResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
+}
+
 export type registerAuthUserResponse500 = {
   data: InternalServerErrorResponse
   status: 500
 }
 
+export type registerAuthUserResponse503 = {
+  data: ServiceUnavailableResponse
+  status: 503
+}
+
 export type registerAuthUserResponseSuccess = (registerAuthUserResponse200) & {
   headers: Headers;
 };
-export type registerAuthUserResponseError = (registerAuthUserResponse400 | registerAuthUserResponse500) & {
+export type registerAuthUserResponseError = (registerAuthUserResponse400 | registerAuthUserResponse409 | registerAuthUserResponse429 | registerAuthUserResponse500 | registerAuthUserResponse503) & {
   headers: Headers;
 };
 
@@ -84,6 +104,136 @@ export const registerAuthUser = async (registerRequest: RegisterRequest, options
 
 
 
+export type confirmAuthEmailVerificationResponse200 = {
+  data: AuthResponse
+  status: 200
+}
+
+export type confirmAuthEmailVerificationResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type confirmAuthEmailVerificationResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
+}
+
+export type confirmAuthEmailVerificationResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type confirmAuthEmailVerificationResponseSuccess = (confirmAuthEmailVerificationResponse200) & {
+  headers: Headers;
+};
+export type confirmAuthEmailVerificationResponseError = (confirmAuthEmailVerificationResponse400 | confirmAuthEmailVerificationResponse429 | confirmAuthEmailVerificationResponse500) & {
+  headers: Headers;
+};
+
+export type confirmAuthEmailVerificationResponse = (confirmAuthEmailVerificationResponseSuccess | confirmAuthEmailVerificationResponseError)
+
+export const getConfirmAuthEmailVerificationUrl = () => {
+
+
+
+
+  return `/api/auth/email-verification/confirm`
+}
+
+/**
+ * @summary Confirm a registration email verification code and issue a session
+ */
+export const confirmAuthEmailVerification = async (confirmEmailVerificationRequest: ConfirmEmailVerificationRequest, options?: RequestInit): Promise<confirmAuthEmailVerificationResponse> => {
+
+  const res = await fetch(getConfirmAuthEmailVerificationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(confirmEmailVerificationRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: confirmAuthEmailVerificationResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as confirmAuthEmailVerificationResponse
+}
+
+
+
+export type resendAuthEmailVerificationResponse200 = {
+  data: EmailVerificationResponse
+  status: 200
+}
+
+export type resendAuthEmailVerificationResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type resendAuthEmailVerificationResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type resendAuthEmailVerificationResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
+}
+
+export type resendAuthEmailVerificationResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type resendAuthEmailVerificationResponse503 = {
+  data: ServiceUnavailableResponse
+  status: 503
+}
+
+export type resendAuthEmailVerificationResponseSuccess = (resendAuthEmailVerificationResponse200) & {
+  headers: Headers;
+};
+export type resendAuthEmailVerificationResponseError = (resendAuthEmailVerificationResponse400 | resendAuthEmailVerificationResponse401 | resendAuthEmailVerificationResponse429 | resendAuthEmailVerificationResponse500 | resendAuthEmailVerificationResponse503) & {
+  headers: Headers;
+};
+
+export type resendAuthEmailVerificationResponse = (resendAuthEmailVerificationResponseSuccess | resendAuthEmailVerificationResponseError)
+
+export const getResendAuthEmailVerificationUrl = () => {
+
+
+
+
+  return `/api/auth/email-verification/resend`
+}
+
+/**
+ * @summary Resend a registration email verification code after validating credentials
+ */
+export const resendAuthEmailVerification = async (resendEmailVerificationRequest: ResendEmailVerificationRequest, options?: RequestInit): Promise<resendAuthEmailVerificationResponse> => {
+
+  const res = await fetch(getResendAuthEmailVerificationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(resendEmailVerificationRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: resendAuthEmailVerificationResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as resendAuthEmailVerificationResponse
+}
+
+
+
 export type loginAuthUserResponse200 = {
   data: AuthResponse
   status: 200
@@ -97,6 +247,11 @@ export type loginAuthUserResponse400 = {
 export type loginAuthUserResponse401 = {
   data: UnauthorizedResponse
   status: 401
+}
+
+export type loginAuthUserResponse403 = {
+  data: ForbiddenResponse
+  status: 403
 }
 
 export type loginAuthUserResponse423 = {
@@ -117,7 +272,7 @@ export type loginAuthUserResponse500 = {
 export type loginAuthUserResponseSuccess = (loginAuthUserResponse200) & {
   headers: Headers;
 };
-export type loginAuthUserResponseError = (loginAuthUserResponse400 | loginAuthUserResponse401 | loginAuthUserResponse423 | loginAuthUserResponse429 | loginAuthUserResponse500) & {
+export type loginAuthUserResponseError = (loginAuthUserResponse400 | loginAuthUserResponse401 | loginAuthUserResponse403 | loginAuthUserResponse423 | loginAuthUserResponse429 | loginAuthUserResponse500) & {
   headers: Headers;
 };
 
@@ -903,9 +1058,19 @@ export type exportResumePdfResponse401 = {
   status: 401
 }
 
+export type exportResumePdfResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
 export type exportResumePdfResponse404 = {
   data: NotFoundResponse
   status: 404
+}
+
+export type exportResumePdfResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
 }
 
 export type exportResumePdfResponse500 = {
@@ -913,10 +1078,15 @@ export type exportResumePdfResponse500 = {
   status: 500
 }
 
+export type exportResumePdfResponse503 = {
+  data: ServiceUnavailableResponse
+  status: 503
+}
+
 export type exportResumePdfResponseSuccess = (exportResumePdfResponse200) & {
   headers: Headers;
 };
-export type exportResumePdfResponseError = (exportResumePdfResponse401 | exportResumePdfResponse404 | exportResumePdfResponse500) & {
+export type exportResumePdfResponseError = (exportResumePdfResponse401 | exportResumePdfResponse403 | exportResumePdfResponse404 | exportResumePdfResponse429 | exportResumePdfResponse500 | exportResumePdfResponse503) & {
   headers: Headers;
 };
 

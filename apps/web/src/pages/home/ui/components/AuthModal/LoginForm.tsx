@@ -52,14 +52,26 @@ export function LoginForm({ isSubmitting, onSubmit }: LoginFormProps) {
 }
 
 type FieldProps = {
+  autoComplete?: string;
   error?: string;
+  inputMode?: 'numeric';
   label: string;
+  maxLength?: number;
   onChange: (value: string) => void;
   type: string;
   value: string;
 };
 
-export function Field({ error, label, onChange, type, value }: FieldProps) {
+export function Field({
+  autoComplete,
+  error,
+  inputMode,
+  label,
+  maxLength,
+  onChange,
+  type,
+  value,
+}: FieldProps) {
   const id = label;
 
   return (
@@ -68,7 +80,10 @@ export function Field({ error, label, onChange, type, value }: FieldProps) {
       <Input
         aria-describedby={error ? `${id}-error` : undefined}
         aria-invalid={Boolean(error)}
+        autoComplete={autoComplete}
         id={id}
+        inputMode={inputMode}
+        maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
         type={type}
         value={value}

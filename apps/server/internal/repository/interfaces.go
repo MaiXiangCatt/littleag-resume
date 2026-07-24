@@ -24,6 +24,26 @@ type UserRepository interface {
 	FindActiveUserByUsername(ctx context.Context, username string) (*model.User, error)
 }
 
+type EmailVerificationRepository interface {
+	ReplaceEmailVerificationChallenge(
+		ctx context.Context,
+		challenge *model.EmailVerificationChallenge,
+		invalidatedAt time.Time,
+	) error
+	FindActiveEmailVerificationChallengeByUserID(
+		ctx context.Context,
+		userID uuid.UUID,
+	) (*model.EmailVerificationChallenge, error)
+	IncrementEmailVerificationFailures(ctx context.Context, id uuid.UUID) (int, error)
+	MarkEmailVerificationSent(ctx context.Context, id uuid.UUID, sentAt time.Time) error
+	ConsumeEmailVerificationChallenge(
+		ctx context.Context,
+		challengeID, userID uuid.UUID,
+		consumedAt time.Time,
+	) error
+	InvalidateEmailVerificationChallenge(ctx context.Context, id uuid.UUID, invalidatedAt time.Time) error
+}
+
 type RefreshTokenRepository interface {
 	CreateRefreshToken(ctx context.Context, token *model.RefreshToken) error
 	FindActiveRefreshTokenByHash(ctx context.Context, tokenHash string) (*model.RefreshToken, error)

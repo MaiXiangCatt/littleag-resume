@@ -1,12 +1,20 @@
 import {
+  confirmAuthEmailVerification,
   getCurrentAuthUser,
   loginAuthUser,
   logoutAuthUser,
   registerAuthUser,
+  resendAuthEmailVerification,
 } from '@/shared/api/generated/auth';
 import type { AuthUser } from '@/shared/api/generated/model';
 
-import type { AuthSession, LoginFormValues, RegisterFormValues } from '@/shared/auth/model/auth';
+import type {
+  AuthSession,
+  EmailVerification,
+  EmailVerificationFormValues,
+  LoginFormValues,
+  RegisterFormValues,
+} from '@/shared/auth/model/auth';
 import { ApiError, httpRequest, refreshSession } from '@/shared/http/http.client';
 
 type GeneratedResponse<T> = {
@@ -31,7 +39,29 @@ export const authService = {
       await registerAuthUser(values, {
         credentials: 'include',
       }),
+    ) as EmailVerification;
+  },
+
+  async confirmEmailVerification(email: string, values: EmailVerificationFormValues) {
+    return unwrap(
+      await confirmAuthEmailVerification(
+        { email, code: values.code },
+        {
+          credentials: 'include',
+        },
+      ),
     ) as AuthSession;
+  },
+
+  async resendEmailVerification(email: string, password: string) {
+    return unwrap(
+      await resendAuthEmailVerification(
+        { email, password },
+        {
+          credentials: 'include',
+        },
+      ),
+    ) as EmailVerification;
   },
 
   async login(values: LoginFormValues) {

@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"math/big"
 	"regexp"
 	"strings"
 	"sync"
@@ -20,7 +23,10 @@ import (
 	"github.com/vega-resume/server/internal/repository"
 )
 
-var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_\p{Han}-]{2,32}$`)
+var (
+	usernamePattern         = regexp.MustCompile(`^[A-Za-z0-9_\p{Han}-]{2,32}$`)
+	verificationCodePattern = regexp.MustCompile(`^[0-9]{6}$`)
+)
 
 type RegisterInput struct {
 	Username        string
@@ -34,28 +40,60 @@ type LoginInput struct {
 	Password string
 }
 
+type ConfirmEmailVerificationInput struct {
+	Email string
+	Code  string
+}
+
+type ResendEmailVerificationInput struct {
+	Email    string
+	Password string
+}
+
+type EmailVerificationPayload struct {
+	Email              string `json:"email"`
+	ExpiresInSeconds   int    `json:"expiresInSeconds"`
+	ResendAfterSeconds int    `json:"resendAfterSeconds"`
+}
+
+type VerificationEmailSender interface {
+	SendVerificationCode(ctx context.Context, recipient, code string, ttl time.Duration) error
+}
+
 type AuthServiceConfig struct {
-	Users            repository.UserRepository
-	RefreshTokens    repository.RefreshTokenRepository
-	AccessTokenKey   []byte
-	AccessTokenTTL   time.Duration
-	RefreshTokenTTL  time.Duration
-	AccountLockLimit int
-	AccountLockTTL   time.Duration
-	Now              func() time.Time
+	Users                   repository.UserRepository
+	EmailVerifications      repository.EmailVerificationRepository
+	RefreshTokens           repository.RefreshTokenRepository
+	VerificationEmailSender VerificationEmailSender
+	EmailVerificationKey    []byte
+	EmailVerificationTTL    time.Duration
+	EmailVerificationLimit  int
+	EmailResendCooldown     time.Duration
+	AccessTokenKey          []byte
+	AccessTokenTTL          time.Duration
+	RefreshTokenTTL         time.Duration
+	AccountLockLimit        int
+	AccountLockTTL          time.Duration
+	Now                     func() time.Time
 }
 
 type AuthService struct {
-	users        repository.UserRepository
-	refresh      repository.RefreshTokenRepository
-	accessKey    []byte
-	accessTTL    time.Duration
-	refreshTTL   time.Duration
-	lockLimit    int
-	lockTTL      time.Duration
-	now          func() time.Time
-	lockMu       sync.Mutex
-	loginFailure map[string]loginFailure
+	users                   repository.UserRepository
+	emailVerifications      repository.EmailVerificationRepository
+	refresh                 repository.RefreshTokenRepository
+	verificationEmailSender VerificationEmailSender
+	emailVerificationKey    []byte
+	emailVerificationTTL    time.Duration
+	emailVerificationLimit  int
+	emailResendCooldown     time.Duration
+	accessKey               []byte
+	accessTTL               time.Duration
+	refreshTTL              time.Duration
+	lockLimit               int
+	lockTTL                 time.Duration
+	now                     func() time.Time
+	lockMu                  sync.Mutex
+	loginFailure            map[string]loginFailure
 }
 
 type loginFailure struct {
@@ -68,6 +106,15 @@ type accessClaims struct {
 }
 
 func NewAuthService(config AuthServiceConfig) *AuthService {
+	if config.EmailVerificationTTL == 0 {
+		config.EmailVerificationTTL = 10 * time.Minute
+	}
+	if config.EmailVerificationLimit == 0 {
+		config.EmailVerificationLimit = 5
+	}
+	if config.EmailResendCooldown == 0 {
+		config.EmailResendCooldown = time.Minute
+	}
 	if config.AccessTokenTTL == 0 {
 		config.AccessTokenTTL = 15 * time.Minute
 	}
@@ -84,38 +131,44 @@ func NewAuthService(config AuthServiceConfig) *AuthService {
 		config.Now = func() time.Time { return time.Now().UTC() }
 	}
 	return &AuthService{
-		users:        config.Users,
-		refresh:      config.RefreshTokens,
-		accessKey:    config.AccessTokenKey,
-		accessTTL:    config.AccessTokenTTL,
-		refreshTTL:   config.RefreshTokenTTL,
-		lockLimit:    config.AccountLockLimit,
-		lockTTL:      config.AccountLockTTL,
-		now:          config.Now,
-		loginFailure: map[string]loginFailure{},
+		users:                   config.Users,
+		emailVerifications:      config.EmailVerifications,
+		refresh:                 config.RefreshTokens,
+		verificationEmailSender: config.VerificationEmailSender,
+		emailVerificationKey:    append([]byte(nil), config.EmailVerificationKey...),
+		emailVerificationTTL:    config.EmailVerificationTTL,
+		emailVerificationLimit:  config.EmailVerificationLimit,
+		emailResendCooldown:     config.EmailResendCooldown,
+		accessKey:               config.AccessTokenKey,
+		accessTTL:               config.AccessTokenTTL,
+		refreshTTL:              config.RefreshTokenTTL,
+		lockLimit:               config.AccountLockLimit,
+		lockTTL:                 config.AccountLockTTL,
+		now:                     config.Now,
+		loginFailure:            map[string]loginFailure{},
 	}
 }
 
-func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*model.AuthPayload, string, error) {
+func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*EmailVerificationPayload, error) {
 	if err := validateRegister(input); err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	emailNormalized := normalizeEmail(input.Email)
 	if _, err := s.users.FindActiveUserByEmailNormalized(ctx, emailNormalized); err == nil {
-		return nil, "", model.ErrEmailExists
+		return nil, model.ErrEmailExists
 	} else if !errors.Is(err, repository.ErrNotFound) {
-		return nil, "", model.ErrDBError
+		return nil, model.ErrDBError
 	}
 	if _, err := s.users.FindActiveUserByUsername(ctx, input.Username); err == nil {
-		return nil, "", model.ErrUsernameExists
+		return nil, model.ErrUsernameExists
 	} else if !errors.Is(err, repository.ErrNotFound) {
-		return nil, "", model.ErrDBError
+		return nil, model.ErrDBError
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, "", model.ErrInternalServer
+		return nil, model.ErrInternalServer
 	}
 
 	now := s.now()
@@ -130,15 +183,15 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*model
 	}
 	if err := s.users.CreateUser(ctx, user); err != nil {
 		if errors.Is(err, repository.ErrDuplicateEmail) {
-			return nil, "", model.ErrEmailExists
+			return nil, model.ErrEmailExists
 		}
 		if errors.Is(err, repository.ErrDuplicateUsername) {
-			return nil, "", model.ErrUsernameExists
+			return nil, model.ErrUsernameExists
 		}
-		return nil, "", model.ErrDBError
+		return nil, model.ErrDBError
 	}
 
-	return s.issueSession(ctx, user)
+	return s.issueEmailVerification(ctx, user, false)
 }
 
 func (s *AuthService) Login(ctx context.Context, input LoginInput) (*model.AuthPayload, string, error) {
@@ -157,9 +210,86 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*model.AuthP
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
 		return nil, "", s.recordLoginFailure(emailNormalized)
 	}
-
 	s.clearLoginFailure(emailNormalized)
+	if user.EmailVerifiedAt == nil {
+		return nil, "", model.ErrEmailNotVerified
+	}
+
 	return s.issueSession(ctx, user)
+}
+
+func (s *AuthService) ConfirmEmailVerification(
+	ctx context.Context,
+	input ConfirmEmailVerificationInput,
+) (*model.AuthPayload, string, error) {
+	emailNormalized := normalizeEmail(input.Email)
+	if !verificationCodePattern.MatchString(input.Code) {
+		return nil, "", model.ErrVerificationInvalid
+	}
+	user, err := s.users.FindActiveUserByEmailNormalized(ctx, emailNormalized)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, "", model.ErrVerificationInvalid
+		}
+		return nil, "", model.ErrDBError
+	}
+	if user.EmailVerifiedAt != nil {
+		return nil, "", model.ErrVerificationInvalid
+	}
+	challenge, err := s.emailVerifications.FindActiveEmailVerificationChallengeByUserID(ctx, user.ID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, "", model.ErrVerificationInvalid
+		}
+		return nil, "", model.ErrDBError
+	}
+	now := s.now()
+	if challenge.SentAt == nil ||
+		!challenge.ExpiresAt.After(now) ||
+		challenge.Attempts >= s.emailVerificationLimit {
+		return nil, "", model.ErrVerificationInvalid
+	}
+
+	expectedMAC := verificationCodeMAC(s.emailVerificationKey, challenge.ID, input.Code)
+	if !hmac.Equal([]byte(challenge.CodeMAC), []byte(expectedMAC)) {
+		attempts, err := s.emailVerifications.IncrementEmailVerificationFailures(ctx, challenge.ID)
+		if err != nil {
+			return nil, "", model.ErrDBError
+		}
+		if attempts >= s.emailVerificationLimit {
+			_ = s.emailVerifications.InvalidateEmailVerificationChallenge(ctx, challenge.ID, now)
+		}
+		return nil, "", model.ErrVerificationInvalid
+	}
+	if err := s.emailVerifications.ConsumeEmailVerificationChallenge(ctx, challenge.ID, user.ID, now); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, "", model.ErrVerificationInvalid
+		}
+		return nil, "", model.ErrDBError
+	}
+	user.EmailVerifiedAt = &now
+	return s.issueSession(ctx, user)
+}
+
+func (s *AuthService) ResendEmailVerification(
+	ctx context.Context,
+	input ResendEmailVerificationInput,
+) (*EmailVerificationPayload, error) {
+	emailNormalized := normalizeEmail(input.Email)
+	user, err := s.users.FindActiveUserByEmailNormalized(ctx, emailNormalized)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, model.ErrInvalidCredential
+		}
+		return nil, model.ErrDBError
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+		return nil, model.ErrInvalidCredential
+	}
+	if user.EmailVerifiedAt != nil {
+		return nil, model.ErrInvalidParam
+	}
+	return s.issueEmailVerification(ctx, user, true)
 }
 
 func (s *AuthService) ValidateAccessToken(ctx context.Context, tokenString string) (*model.AuthUser, error) {
@@ -218,6 +348,9 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 		}
 		return nil, "", model.ErrDBError
 	}
+	if user.EmailVerifiedAt == nil {
+		return nil, "", model.ErrRefreshTokenInvalid
+	}
 
 	payload, newRefresh, newToken, err := s.buildSession(user)
 	if err != nil {
@@ -250,6 +383,9 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (s *AuthService) issueSession(ctx context.Context, user *model.User) (*model.AuthPayload, string, error) {
+	if user.EmailVerifiedAt == nil {
+		return nil, "", model.ErrEmailNotVerified
+	}
 	payload, refreshPlaintext, refreshToken, err := s.buildSession(user)
 	if err != nil {
 		return nil, "", err
@@ -258,6 +394,88 @@ func (s *AuthService) issueSession(ctx context.Context, user *model.User) (*mode
 		return nil, "", model.ErrDBError
 	}
 	return payload, refreshPlaintext, nil
+}
+
+func (s *AuthService) issueEmailVerification(
+	ctx context.Context,
+	user *model.User,
+	honorCooldown bool,
+) (*EmailVerificationPayload, error) {
+	if s.emailVerifications == nil || s.verificationEmailSender == nil || len(s.emailVerificationKey) == 0 {
+		return nil, model.ErrEmailDeliveryFailed
+	}
+
+	now := s.now()
+	if honorCooldown {
+		current, err := s.emailVerifications.FindActiveEmailVerificationChallengeByUserID(ctx, user.ID)
+		if err == nil && current.SentAt != nil {
+			resendAt := current.SentAt.Add(s.emailResendCooldown)
+			if resendAt.After(now) && current.ExpiresAt.After(now) {
+				return verificationPayload(user.Email, current.ExpiresAt.Sub(now), resendAt.Sub(now)), nil
+			}
+		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
+			return nil, model.ErrDBError
+		}
+	}
+
+	code, err := newVerificationCode()
+	if err != nil {
+		return nil, model.ErrInternalServer
+	}
+	challenge := &model.EmailVerificationChallenge{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		ExpiresAt: now.Add(s.emailVerificationTTL),
+		CreatedAt: now,
+	}
+	challenge.CodeMAC = verificationCodeMAC(s.emailVerificationKey, challenge.ID, code)
+	if err := s.emailVerifications.ReplaceEmailVerificationChallenge(ctx, challenge, now); err != nil {
+		return nil, model.ErrDBError
+	}
+	if err := s.verificationEmailSender.SendVerificationCode(
+		ctx,
+		user.Email,
+		code,
+		s.emailVerificationTTL,
+	); err != nil {
+		_ = s.emailVerifications.InvalidateEmailVerificationChallenge(ctx, challenge.ID, now)
+		return nil, model.ErrEmailDeliveryFailed
+	}
+	if err := s.emailVerifications.MarkEmailVerificationSent(ctx, challenge.ID, now); err != nil {
+		return nil, model.ErrDBError
+	}
+	return verificationPayload(user.Email, s.emailVerificationTTL, s.emailResendCooldown), nil
+}
+
+func verificationPayload(email string, expiresIn, resendAfter time.Duration) *EmailVerificationPayload {
+	return &EmailVerificationPayload{
+		Email:              email,
+		ExpiresInSeconds:   durationSecondsCeil(expiresIn),
+		ResendAfterSeconds: durationSecondsCeil(resendAfter),
+	}
+}
+
+func durationSecondsCeil(value time.Duration) int {
+	if value <= 0 {
+		return 0
+	}
+	return int((value + time.Second - 1) / time.Second)
+}
+
+func newVerificationCode() (string, error) {
+	value, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%06d", value.Int64()), nil
+}
+
+func verificationCodeMAC(key []byte, challengeID uuid.UUID, code string) string {
+	mac := hmac.New(sha256.New, key)
+	_, _ = mac.Write([]byte(challengeID.String()))
+	_, _ = mac.Write([]byte{':'})
+	_, _ = mac.Write([]byte(code))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 func (s *AuthService) buildSession(user *model.User) (*model.AuthPayload, string, *model.RefreshToken, error) {

@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,47 +14,103 @@ import (
 	"github.com/vega-resume/server/internal/service"
 )
 
-func newTestAuthService(t *testing.T) (*service.AuthService, *repository.MemoryStore) {
+type fakeVerificationEmailSender struct {
+	mu    sync.Mutex
+	codes map[string]string
+	calls int
+	err   error
+}
+
+func newFakeVerificationEmailSender() *fakeVerificationEmailSender {
+	return &fakeVerificationEmailSender{codes: map[string]string{}}
+}
+
+func (s *fakeVerificationEmailSender) SendVerificationCode(
+	_ context.Context,
+	recipient, code string,
+	_ time.Duration,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return s.err
+	}
+	s.codes[recipient] = code
+	s.calls++
+	return nil
+}
+
+func (s *fakeVerificationEmailSender) code(recipient string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.codes[recipient]
+}
+
+func newTestAuthService(
+	t *testing.T,
+) (*service.AuthService, *repository.MemoryStore, *fakeVerificationEmailSender) {
 	t.Helper()
 
 	store := repository.NewMemoryStore()
+	sender := newFakeVerificationEmailSender()
 	auth := service.NewAuthService(service.AuthServiceConfig{
-		Users:            store,
-		RefreshTokens:    store,
-		AccessTokenKey:   []byte("test-access-secret-with-enough-length"),
-		AccessTokenTTL:   15 * time.Minute,
-		RefreshTokenTTL:  7 * 24 * time.Hour,
-		AccountLockLimit: 5,
-		AccountLockTTL:   15 * time.Minute,
+		Users:                   store,
+		EmailVerifications:      store,
+		RefreshTokens:           store,
+		VerificationEmailSender: sender,
+		EmailVerificationKey:    []byte("test-email-verification-key-with-enough-length"),
+		EmailVerificationTTL:    10 * time.Minute,
+		EmailVerificationLimit:  5,
+		EmailResendCooldown:     time.Minute,
+		AccessTokenKey:          []byte("test-access-secret-with-enough-length"),
+		AccessTokenTTL:          15 * time.Minute,
+		RefreshTokenTTL:         7 * 24 * time.Hour,
+		AccountLockLimit:        5,
+		AccountLockTTL:          15 * time.Minute,
 	})
-	return auth, store
+	return auth, store, sender
 }
 
-func TestAuthServiceRegisterValidationAndDuplicates(t *testing.T) {
+func registerAndVerify(
+	t *testing.T,
+	auth *service.AuthService,
+	sender *fakeVerificationEmailSender,
+	username, email string,
+) (*model.AuthPayload, string) {
+	t.Helper()
 	ctx := context.Background()
-	auth, store := newTestAuthService(t)
+	if _, err := auth.Register(ctx, service.RegisterInput{
+		Username:        username,
+		Email:           email,
+		Password:        "password1",
+		ConfirmPassword: "password1",
+	}); err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+	payload, refreshToken, err := auth.ConfirmEmailVerification(
+		ctx,
+		service.ConfirmEmailVerificationInput{Email: email, Code: sender.code(email)},
+	)
+	if err != nil {
+		t.Fatalf("confirm email failed: %v", err)
+	}
+	return payload, refreshToken
+}
 
-	_, _, err := auth.Register(ctx, service.RegisterInput{
+func TestAuthServiceRegisterRequiresEmailVerification(t *testing.T) {
+	ctx := context.Background()
+	auth, store, sender := newTestAuthService(t)
+
+	if _, err := auth.Register(ctx, service.RegisterInput{
 		Username:        "!",
 		Email:           "bad@example.com",
 		Password:        "password1",
 		ConfirmPassword: "password1",
-	})
-	if !errors.Is(err, model.ErrUsernameFormatInvalid) {
+	}); !errors.Is(err, model.ErrUsernameFormatInvalid) {
 		t.Fatalf("expected username format error, got %v", err)
 	}
 
-	_, _, err = auth.Register(ctx, service.RegisterInput{
-		Username:        "zhangsan",
-		Email:           "user@example.com",
-		Password:        "short",
-		ConfirmPassword: "short",
-	})
-	if !errors.Is(err, model.ErrPasswordTooWeak) {
-		t.Fatalf("expected weak password error, got %v", err)
-	}
-
-	result, refreshToken, err := auth.Register(ctx, service.RegisterInput{
+	pending, err := auth.Register(ctx, service.RegisterInput{
 		Username:        "zhangsan",
 		Email:           "User@Example.com",
 		Password:        "password1",
@@ -62,102 +119,178 @@ func TestAuthServiceRegisterValidationAndDuplicates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
-	if result.AccessToken == "" || refreshToken == "" {
-		t.Fatalf("expected issued tokens")
+	if pending.Email != "User@Example.com" || pending.ExpiresInSeconds != 600 {
+		t.Fatalf("unexpected verification payload: %+v", pending)
 	}
-	if result.User.Email != "User@Example.com" || result.User.Username != "zhangsan" {
-		t.Fatalf("unexpected user payload: %+v", result.User)
+	if sender.code("User@Example.com") == "" {
+		t.Fatal("verification email was not sent")
 	}
-
 	user, err := store.FindActiveUserByEmailNormalized(ctx, "user@example.com")
 	if err != nil {
-		t.Fatalf("expected normalized email lookup: %v", err)
+		t.Fatalf("find pending user: %v", err)
 	}
-	if user.PasswordHash == "password1" || user.PasswordHash == "" {
-		t.Fatalf("password must be stored as a non-empty hash")
+	challenge, err := store.FindActiveEmailVerificationChallengeByUserID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("find verification challenge: %v", err)
+	}
+	if challenge.CodeMAC == sender.code("User@Example.com") || len(challenge.CodeMAC) != 64 {
+		t.Fatalf("verification code must only be stored as an HMAC, got %q", challenge.CodeMAC)
+	}
+	if _, _, err := auth.Login(ctx, service.LoginInput{
+		Email: "user@example.com", Password: "password1",
+	}); !errors.Is(err, model.ErrEmailNotVerified) {
+		t.Fatalf("unverified user should not log in, got %v", err)
 	}
 
-	_, _, err = auth.Register(ctx, service.RegisterInput{
+	result, refreshToken, err := auth.ConfirmEmailVerification(
+		ctx,
+		service.ConfirmEmailVerificationInput{
+			Email: "user@example.com",
+			Code:  sender.code("User@Example.com"),
+		},
+	)
+	if err != nil {
+		t.Fatalf("confirm failed: %v", err)
+	}
+	if result.AccessToken == "" || refreshToken == "" || !result.User.EmailVerified {
+		t.Fatalf("expected verified session, got %+v", result)
+	}
+	user, err = store.FindActiveUserByEmailNormalized(ctx, "user@example.com")
+	if err != nil || user.EmailVerifiedAt == nil {
+		t.Fatalf("user should be verified, user=%+v err=%v", user, err)
+	}
+	if user.PasswordHash == "password1" || user.PasswordHash == "" {
+		t.Fatal("password must be stored as a non-empty hash")
+	}
+
+	if _, err := auth.Register(ctx, service.RegisterInput{
 		Username:        "lisi",
 		Email:           "user@example.com",
 		Password:        "password1",
 		ConfirmPassword: "password1",
-	})
-	if !errors.Is(err, model.ErrEmailExists) {
+	}); !errors.Is(err, model.ErrEmailExists) {
 		t.Fatalf("expected duplicate email error, got %v", err)
 	}
+}
 
-	_, _, err = auth.Register(ctx, service.RegisterInput{
+func TestAuthServiceVerificationAttemptLimit(t *testing.T) {
+	ctx := context.Background()
+	auth, _, sender := newTestAuthService(t)
+	if _, err := auth.Register(ctx, service.RegisterInput{
 		Username:        "zhangsan",
-		Email:           "other@example.com",
+		Email:           "user@example.com",
 		Password:        "password1",
 		ConfirmPassword: "password1",
+	}); err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+	validCode := sender.code("user@example.com")
+	for attempt := 0; attempt < 5; attempt++ {
+		if _, _, err := auth.ConfirmEmailVerification(
+			ctx,
+			service.ConfirmEmailVerificationInput{Email: "user@example.com", Code: "000000"},
+		); !errors.Is(err, model.ErrVerificationInvalid) {
+			t.Fatalf("attempt %d expected invalid verification code, got %v", attempt+1, err)
+		}
+	}
+	if _, _, err := auth.ConfirmEmailVerification(
+		ctx,
+		service.ConfirmEmailVerificationInput{Email: "user@example.com", Code: validCode},
+	); !errors.Is(err, model.ErrVerificationInvalid) {
+		t.Fatalf("challenge should stay invalid after attempt limit, got %v", err)
+	}
+}
+
+func TestAuthServiceResendHonorsCooldownAndInvalidatesOldCode(t *testing.T) {
+	ctx := context.Background()
+	store := repository.NewMemoryStore()
+	sender := newFakeVerificationEmailSender()
+	now := time.Date(2026, 7, 24, 12, 0, 0, 0, time.UTC)
+	auth := service.NewAuthService(service.AuthServiceConfig{
+		Users:                   store,
+		EmailVerifications:      store,
+		RefreshTokens:           store,
+		VerificationEmailSender: sender,
+		EmailVerificationKey:    []byte("test-email-verification-key-with-enough-length"),
+		EmailVerificationTTL:    10 * time.Minute,
+		EmailResendCooldown:     time.Minute,
+		AccessTokenKey:          []byte("test-access-secret-with-enough-length"),
+		Now:                     func() time.Time { return now },
 	})
-	if !errors.Is(err, model.ErrUsernameExists) {
-		t.Fatalf("expected duplicate username error, got %v", err)
+	if _, err := auth.Register(ctx, service.RegisterInput{
+		Username:        "zhangsan",
+		Email:           "user@example.com",
+		Password:        "password1",
+		ConfirmPassword: "password1",
+	}); err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+	oldCode := sender.code("user@example.com")
+	if _, err := auth.ResendEmailVerification(ctx, service.ResendEmailVerificationInput{
+		Email: "user@example.com", Password: "password1",
+	}); err != nil {
+		t.Fatalf("cooldown resend should return current challenge: %v", err)
+	}
+	if sender.calls != 1 {
+		t.Fatalf("cooldown should not send again, calls=%d", sender.calls)
+	}
+
+	now = now.Add(61 * time.Second)
+	if _, err := auth.ResendEmailVerification(ctx, service.ResendEmailVerificationInput{
+		Email: "user@example.com", Password: "password1",
+	}); err != nil {
+		t.Fatalf("resend failed: %v", err)
+	}
+	if sender.calls != 2 {
+		t.Fatalf("expected second email, calls=%d", sender.calls)
+	}
+	if _, _, err := auth.ConfirmEmailVerification(
+		ctx,
+		service.ConfirmEmailVerificationInput{Email: "user@example.com", Code: oldCode},
+	); !errors.Is(err, model.ErrVerificationInvalid) {
+		t.Fatalf("old code should be invalid, got %v", err)
+	}
+	if _, _, err := auth.ConfirmEmailVerification(
+		ctx,
+		service.ConfirmEmailVerificationInput{Email: "user@example.com", Code: sender.code("user@example.com")},
+	); err != nil {
+		t.Fatalf("new code should verify: %v", err)
 	}
 }
 
 func TestAuthServiceLoginTokenRefreshAndLogout(t *testing.T) {
 	ctx := context.Background()
-	auth, _ := newTestAuthService(t)
-
-	registered, firstRefresh, err := auth.Register(ctx, service.RegisterInput{
-		Username:        "zhangsan",
-		Email:           "user@example.com",
-		Password:        "password1",
-		ConfirmPassword: "password1",
-	})
-	if err != nil {
-		t.Fatalf("register failed: %v", err)
-	}
+	auth, _, sender := newTestAuthService(t)
+	registered, firstRefresh := registerAndVerify(t, auth, sender, "zhangsan", "user@example.com")
 
 	user, err := auth.ValidateAccessToken(ctx, registered.AccessToken)
-	if err != nil {
-		t.Fatalf("access token should validate: %v", err)
+	if err != nil || !user.EmailVerified {
+		t.Fatalf("access token should validate verified user: user=%+v err=%v", user, err)
 	}
-	if user.Email != "user@example.com" {
-		t.Fatalf("unexpected token user: %+v", user)
-	}
-
-	_, _, err = auth.Login(ctx, service.LoginInput{
-		Email:    "user@example.com",
-		Password: "wrong-password",
-	})
-	if !errors.Is(err, model.ErrInvalidCredential) {
+	if _, _, err = auth.Login(ctx, service.LoginInput{
+		Email: "user@example.com", Password: "wrong-password",
+	}); !errors.Is(err, model.ErrInvalidCredential) {
 		t.Fatalf("expected invalid credential, got %v", err)
 	}
 
 	loggedIn, secondRefresh, err := auth.Login(ctx, service.LoginInput{
-		Email:    "USER@example.com",
-		Password: "password1",
+		Email: "USER@example.com", Password: "password1",
 	})
 	if err != nil {
 		t.Fatalf("login failed: %v", err)
 	}
 	if loggedIn.User.ID != registered.User.ID || secondRefresh == firstRefresh {
-		t.Fatalf("expected same user and a fresh refresh token")
+		t.Fatal("expected same user and a fresh refresh token")
 	}
-
 	refreshed, thirdRefresh, err := auth.Refresh(ctx, secondRefresh)
-	if err != nil {
-		t.Fatalf("refresh failed: %v", err)
+	if err != nil || refreshed.AccessToken == "" || thirdRefresh == secondRefresh {
+		t.Fatalf("expected rotated refresh token, refreshed=%+v err=%v", refreshed, err)
 	}
-	if refreshed.AccessToken == "" || thirdRefresh == "" || thirdRefresh == secondRefresh {
-		t.Fatalf("expected rotated refresh token and new access token")
+	if _, _, err = auth.Refresh(ctx, secondRefresh); !errors.Is(err, model.ErrRefreshTokenInvalid) {
+		t.Fatalf("reused refresh token should be invalid, got %v", err)
 	}
-
-	_, _, err = auth.Refresh(ctx, secondRefresh)
-	if !errors.Is(err, model.ErrRefreshTokenInvalid) {
-		t.Fatalf("expected reused refresh token to be invalid, got %v", err)
-	}
-
 	if err := auth.Logout(ctx, thirdRefresh); err != nil {
 		t.Fatalf("logout failed: %v", err)
-	}
-	_, _, err = auth.Refresh(ctx, thirdRefresh)
-	if !errors.Is(err, model.ErrRefreshTokenInvalid) {
-		t.Fatalf("expected logged-out refresh token to be invalid, got %v", err)
 	}
 }
 
@@ -165,17 +298,12 @@ func TestAuthServiceRefreshPreservesDatabaseErrors(t *testing.T) {
 	store := repository.NewMemoryStore()
 	databaseFailure := errors.New("database unavailable")
 	auth := service.NewAuthService(service.AuthServiceConfig{
-		Users:            store,
-		RefreshTokens:    failingRefreshRepository{err: databaseFailure},
-		AccessTokenKey:   []byte("test-access-secret-with-enough-length"),
-		AccessTokenTTL:   15 * time.Minute,
-		RefreshTokenTTL:  7 * 24 * time.Hour,
-		AccountLockLimit: 5,
-		AccountLockTTL:   15 * time.Minute,
+		Users:          store,
+		RefreshTokens:  failingRefreshRepository{err: databaseFailure},
+		AccessTokenKey: []byte("test-access-secret-with-enough-length"),
 	})
 
-	_, _, err := auth.Refresh(context.Background(), "refresh-token")
-	if !errors.Is(err, model.ErrDBError) {
+	if _, _, err := auth.Refresh(context.Background(), "refresh-token"); !errors.Is(err, model.ErrDBError) {
 		t.Fatalf("expected database error, got %v", err)
 	}
 }
@@ -202,41 +330,24 @@ func (r failingRefreshRepository) RotateRefreshToken(context.Context, uuid.UUID,
 
 func TestAuthServiceAccountLockout(t *testing.T) {
 	ctx := context.Background()
-	auth, _ := newTestAuthService(t)
-
-	_, _, err := auth.Register(ctx, service.RegisterInput{
-		Username:        "zhangsan",
-		Email:           "user@example.com",
-		Password:        "password1",
-		ConfirmPassword: "password1",
-	})
-	if err != nil {
-		t.Fatalf("register failed: %v", err)
-	}
+	auth, _, sender := newTestAuthService(t)
+	registerAndVerify(t, auth, sender, "zhangsan", "user@example.com")
 
 	for attempt := 1; attempt <= 4; attempt++ {
-		_, _, err = auth.Login(ctx, service.LoginInput{
-			Email:    "USER@example.com",
-			Password: "wrong-password",
-		})
-		if !errors.Is(err, model.ErrInvalidCredential) {
+		if _, _, err := auth.Login(ctx, service.LoginInput{
+			Email: "USER@example.com", Password: "wrong-password",
+		}); !errors.Is(err, model.ErrInvalidCredential) {
 			t.Fatalf("attempt %d expected invalid credential, got %v", attempt, err)
 		}
 	}
-
-	_, _, err = auth.Login(ctx, service.LoginInput{
-		Email:    "user@example.com",
-		Password: "wrong-password",
-	})
-	if !errors.Is(err, model.ErrAccountLocked) {
+	if _, _, err := auth.Login(ctx, service.LoginInput{
+		Email: "user@example.com", Password: "wrong-password",
+	}); !errors.Is(err, model.ErrAccountLocked) {
 		t.Fatalf("fifth failed login should lock account, got %v", err)
 	}
-
-	_, _, err = auth.Login(ctx, service.LoginInput{
-		Email:    "user@example.com",
-		Password: "password1",
-	})
-	if !errors.Is(err, model.ErrAccountLocked) {
-		t.Fatalf("locked account should reject even correct password, got %v", err)
+	if _, _, err := auth.Login(ctx, service.LoginInput{
+		Email: "user@example.com", Password: "password1",
+	}); !errors.Is(err, model.ErrAccountLocked) {
+		t.Fatalf("locked account should reject correct password, got %v", err)
 	}
 }

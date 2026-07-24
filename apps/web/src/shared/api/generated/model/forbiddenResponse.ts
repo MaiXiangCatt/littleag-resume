@@ -5,14 +5,9 @@
  * Contract for authentication and resume management.
  * OpenAPI spec version: 0.2.0
  */
+import type { ErrorResponse } from './errorResponse';
 
-export interface AuthUser {
-  id: string;
-  /**
-     * @minLength 2
-     * @maxLength 32
-     */
-  username: string;
-  email: string;
-  emailVerified: boolean;
-}
+/**
+ * The authenticated identity cannot perform this operation.
+ */
+export type ForbiddenResponse = ErrorResponse;

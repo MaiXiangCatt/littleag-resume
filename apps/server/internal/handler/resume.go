@@ -19,6 +19,7 @@ import (
 	"github.com/vega-resume/server/internal/generated"
 	"github.com/vega-resume/server/internal/middleware"
 	"github.com/vega-resume/server/internal/model"
+	pdfservice "github.com/vega-resume/server/internal/pdf"
 	"github.com/vega-resume/server/internal/service"
 )
 
@@ -226,7 +227,7 @@ func (h *ResumeHandler) ReplaceResumeImport(c *gin.Context, resumeID generated.R
 }
 
 func (h *ResumeHandler) ExportResumePdf(c *gin.Context, resumeID generated.ResumeId) {
-	userID, ok := currentUserID(c)
+	userID, ok := currentVerifiedUserID(c)
 	if !ok {
 		return
 	}
@@ -244,6 +245,10 @@ func (h *ResumeHandler) ExportResumePdf(c *gin.Context, resumeID generated.Resum
 	data, err := h.renderer.Render(c.Request.Context(), printURL)
 	if err != nil {
 		log.Printf("render resume pdf %s: %v", resumeID, err)
+		if errors.Is(err, pdfservice.ErrBusy) {
+			writeError(c, model.ErrPdfBusy)
+			return
+		}
 		writeError(c, model.ErrPdfRenderFailed)
 		return
 	}
@@ -373,6 +378,24 @@ func currentUserID(c *gin.Context) (uuid.UUID, bool) {
 		writeError(c, model.ErrUnauthorized)
 	}
 	return userID, ok
+}
+
+func currentVerifiedUserID(c *gin.Context) (uuid.UUID, bool) {
+	user, ok := middleware.CurrentUser(c)
+	if !ok {
+		writeError(c, model.ErrUnauthorized)
+		return uuid.Nil, false
+	}
+	if !user.EmailVerified {
+		writeError(c, model.ErrEmailNotVerified)
+		return uuid.Nil, false
+	}
+	userID, err := uuid.Parse(user.ID)
+	if err != nil {
+		writeError(c, model.ErrUnauthorized)
+		return uuid.Nil, false
+	}
+	return userID, true
 }
 
 func resumeSummary(resume *model.Resume) generated.ResumeSummary {
