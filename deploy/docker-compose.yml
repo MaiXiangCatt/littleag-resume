@@ -18,7 +18,10 @@ services:
       DATABASE_URL: postgres://vega_resume:vega_resume@postgres:5432/vega_resume?sslmode=disable
       # chromedp 在容器内经 compose DNS 访问 web 容器里的打印页
       WEB_BASE_URL: http://web
+      AVATAR_STORAGE_DIR: /data/avatars
       ACCESS_TOKEN_KEY: ${ACCESS_TOKEN_KEY:?set ACCESS_TOKEN_KEY in .env or environment}
+    volumes:
+      - avatars:/data/avatars
     depends_on:
       - postgres
 
@@ -33,3 +36,4 @@ services:
 
 volumes:
   pgdata:
+  avatars:

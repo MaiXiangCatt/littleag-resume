@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"image"
 	"image/jpeg"
@@ -9,7 +10,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
+
+	"github.com/vega-resume/server/internal/repository"
 	"github.com/vega-resume/server/internal/service"
 )
 
@@ -153,8 +158,11 @@ func TestExportResumePdfReturnsPdfAndRecordsExport(t *testing.T) {
 	if got := exported.Header().Get("Content-Disposition"); !strings.Contains(got, ".pdf") {
 		t.Fatalf("content disposition = %q", got)
 	}
-	if !strings.HasPrefix(renderer.gotURL, "http://web.test/print/resumes/"+resumeID+"?token=") {
+	if !strings.HasPrefix(renderer.gotURL, "http://web.test/print/resumes/"+resumeID+"#token=") {
 		t.Fatalf("renderer url = %q", renderer.gotURL)
+	}
+	if strings.Contains(renderer.gotURL, "?") {
+		t.Fatalf("print token must not be sent in a query string: %q", renderer.gotURL)
 	}
 
 	stats := performAuthorizedJSON(router, token, http.MethodGet, "/api/resumes/stats", "")
@@ -201,6 +209,35 @@ func TestExportResumePdfMapsRendererFailure(t *testing.T) {
 	}
 }
 
+type failingExportStore struct {
+	*repository.MemoryStore
+}
+
+func (s *failingExportStore) IncrementResumeExport(
+	_ context.Context,
+	_, _ uuid.UUID,
+	_ time.Time,
+) error {
+	return errAny
+}
+
+func TestExportResumePdfFailsWhenExportCannotBeRecorded(t *testing.T) {
+	renderer := &stubRenderer{data: []byte("%PDF-stub")}
+	store := &failingExportStore{MemoryStore: repository.NewMemoryStore()}
+	router := newTestRouterWithStoreAndRenderer(t, store, renderer)
+	token := registerAccessToken(t, router, "record-fail-user", "record-fail@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	exported := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes/"+resumeID+"/export/pdf", "")
+	if exported.Code != http.StatusInternalServerError {
+		t.Fatalf("export status=%d body=%s", exported.Code, exported.Body.String())
+	}
+	if code := decodeEnvelope(t, exported)["code"]; code != float64(200002) {
+		t.Fatalf("error code = %v", code)
+	}
+}
+
 func TestGetResumePrintDataAuthorizedByPrintToken(t *testing.T) {
 	renderer := &stubRenderer{data: []byte("%PDF-stub")}
 	router := newTestRouterWithRenderer(t, renderer)
@@ -209,11 +246,10 @@ func TestGetResumePrintDataAuthorizedByPrintToken(t *testing.T) {
 	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
 
 	performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes/"+resumeID+"/export/pdf", "")
-	printPath := strings.TrimPrefix(renderer.gotURL, "http://web.test")
-	printPath = strings.Replace(printPath, "/print/resumes/", "/api/resumes/", 1)
-	printPath = strings.Replace(printPath, "?token=", "/print?token=", 1)
+	printToken := renderer.gotURL[strings.Index(renderer.gotURL, "#token=")+len("#token="):]
+	printPath := "/api/resumes/" + resumeID + "/print"
 
-	printed := performJSON(router, http.MethodGet, printPath, "")
+	printed := performPrintJSON(router, printPath, printToken)
 	if printed.Code != http.StatusOK {
 		t.Fatalf("print data status=%d body=%s", printed.Code, printed.Body.String())
 	}
@@ -223,7 +259,12 @@ func TestGetResumePrintDataAuthorizedByPrintToken(t *testing.T) {
 		t.Fatalf("unexpected print resume: %+v", resume)
 	}
 
-	invalid := performJSON(router, http.MethodGet, "/api/resumes/"+resumeID+"/print?token=not-a-token", "")
+	reused := performPrintJSON(router, printPath, printToken)
+	if reused.Code != http.StatusUnauthorized {
+		t.Fatalf("reused token status=%d body=%s", reused.Code, reused.Body.String())
+	}
+
+	invalid := performPrintJSON(router, printPath, "not-a-token")
 	if invalid.Code != http.StatusUnauthorized {
 		t.Fatalf("invalid token status=%d", invalid.Code)
 	}
@@ -239,10 +280,18 @@ func TestGetResumePrintDataRejectsTokenForOtherResume(t *testing.T) {
 	secondID := decodeEnvelope(t, second)["data"].(map[string]any)["id"].(string)
 
 	performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes/"+firstID+"/export/pdf", "")
-	firstToken := renderer.gotURL[strings.Index(renderer.gotURL, "?token=")+len("?token="):]
+	firstToken := renderer.gotURL[strings.Index(renderer.gotURL, "#token=")+len("#token="):]
 
-	swapped := performJSON(router, http.MethodGet, "/api/resumes/"+secondID+"/print?token="+firstToken, "")
+	swapped := performPrintJSON(router, "/api/resumes/"+secondID+"/print", firstToken)
 	if swapped.Code != http.StatusUnauthorized {
 		t.Fatalf("token for other resume status=%d body=%s", swapped.Code, swapped.Body.String())
 	}
+}
+
+func performPrintJSON(router http.Handler, path, token string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(http.MethodGet, path, nil)
+	request.Header.Set("X-Print-Token", token)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	return response
 }

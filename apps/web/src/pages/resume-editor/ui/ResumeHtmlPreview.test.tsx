@@ -176,4 +176,12 @@ describe('ResumeHtmlPreview', () => {
       textAlign: 'center',
     });
   });
+
+  it('uses the printable page content width instead of overflowing the A4 margins', () => {
+    render(<ResumeHtmlPreview avatar={null} mode="print" resume={createResume()} />);
+
+    const preview = screen.getByLabelText('测试简历 A4 实时预览');
+    expect(preview).toHaveClass('w-full', 'max-w-none');
+    expect(preview).not.toHaveClass('w-[210mm]');
+  });
 });

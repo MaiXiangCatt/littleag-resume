@@ -52,6 +52,9 @@ describe('PrintResumePage', () => {
     expect(getPrintData).toHaveBeenCalledWith('resume-1', 'token-1');
     expect(screen.getByLabelText('打印简历 A4 实时预览')).toBeInTheDocument();
     expect(document.body.dataset.printError).toBeUndefined();
+    expect(document.querySelector('style')?.textContent).toContain(
+      'html, body, #root { background: #fff !important; }',
+    );
   });
 
   it('flags a print error when loading fails', async () => {

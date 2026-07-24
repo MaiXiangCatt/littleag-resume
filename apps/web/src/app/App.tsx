@@ -4,9 +4,9 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   useParams,
-  useSearchParams,
 } from 'react-router-dom';
 
 import { useAuthBootstrap } from '@/shared/auth/hooks/useAuthBootstrap';
@@ -89,8 +89,8 @@ function ResumeEditorRoute() {
 
 function PrintResumeRoute() {
   const { resumeId } = useParams<{ resumeId: string }>();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const location = useLocation();
+  const token = new URLSearchParams(location.hash.slice(1)).get('token');
   const missingParams = !resumeId || !token;
 
   useEffect(() => {

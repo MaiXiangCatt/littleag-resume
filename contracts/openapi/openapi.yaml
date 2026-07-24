@@ -441,8 +441,8 @@ paths:
         - Resume
       summary: Print-page data endpoint authorized by a short-lived print token
       parameters:
-        - name: token
-          in: query
+        - name: X-Print-Token
+          in: header
           required: true
           schema:
             type: string

@@ -22,7 +22,6 @@ export * from './emptyResponse';
 export * from './emptyResponseCode';
 export * from './emptyResponseMessage';
 export * from './errorResponse';
-export * from './getResumePrintDataParams';
 export * from './importResumeRequest';
 export * from './importResumeRequestTemplateId';
 export * from './importResumeRequestVersion';

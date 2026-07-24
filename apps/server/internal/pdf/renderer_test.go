@@ -23,7 +23,10 @@ func TestChromeRendererRender(t *testing.T) {
 	}))
 	defer server.Close()
 
-	renderer := NewChromeRenderer(Config{Timeout: 30 * time.Second})
+	renderer := NewChromeRenderer(Config{
+		ExecPath: os.Getenv("CHROME_EXEC_PATH"),
+		Timeout:  30 * time.Second,
+	})
 	defer renderer.Close()
 
 	data, err := renderer.Render(context.Background(), server.URL)
@@ -46,7 +49,10 @@ func TestChromeRendererFailsFastOnPageError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	renderer := NewChromeRenderer(Config{Timeout: 30 * time.Second})
+	renderer := NewChromeRenderer(Config{
+		ExecPath: os.Getenv("CHROME_EXEC_PATH"),
+		Timeout:  30 * time.Second,
+	})
 	defer renderer.Close()
 
 	if _, err := renderer.Render(context.Background(), server.URL); err == nil {

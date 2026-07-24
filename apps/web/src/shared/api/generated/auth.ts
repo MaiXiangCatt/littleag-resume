@@ -13,7 +13,6 @@ import type {
   CreateResumeRequest,
   EmptyResponse,
   ErrorResponse,
-  GetResumePrintDataParams,
   ImportResumeRequest,
   InternalServerErrorResponse,
   ListResumesParams,
@@ -982,29 +981,20 @@ export type getResumePrintDataResponseError = (getResumePrintDataResponse401 | g
 
 export type getResumePrintDataResponse = (getResumePrintDataResponseSuccess | getResumePrintDataResponseError)
 
-export const getGetResumePrintDataUrl = (resumeId: string,
-    params: GetResumePrintDataParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getGetResumePrintDataUrl = (resumeId: string,) => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/resumes/${resumeId}/print?${stringifiedParams}` : `/api/resumes/${resumeId}/print`
+  return `/api/resumes/${resumeId}/print`
 }
 
 /**
  * @summary Print-page data endpoint authorized by a short-lived print token
  */
-export const getResumePrintData = async (resumeId: string,
-    params: GetResumePrintDataParams, options?: RequestInit): Promise<getResumePrintDataResponse> => {
+export const getResumePrintData = async (resumeId: string, options?: RequestInit): Promise<getResumePrintDataResponse> => {
 
-  const res = await fetch(getGetResumePrintDataUrl(resumeId,params),
+  const res = await fetch(getGetResumePrintDataUrl(resumeId),
   {
     ...options,
     method: 'GET'

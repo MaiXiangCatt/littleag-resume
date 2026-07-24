@@ -26,8 +26,24 @@ func newTestRouter(t *testing.T) *gin.Engine {
 func newTestRouterWithRenderer(t *testing.T, renderer handler.PdfRenderer) *gin.Engine {
 	t.Helper()
 
-	gin.SetMode(gin.TestMode)
 	store := repository.NewMemoryStore()
+	return newTestRouterWithStoreAndRenderer(t, store, renderer)
+}
+
+type testStore interface {
+	repository.UserRepository
+	repository.RefreshTokenRepository
+	repository.ResumeRepository
+}
+
+func newTestRouterWithStoreAndRenderer(
+	t *testing.T,
+	store testStore,
+	renderer handler.PdfRenderer,
+) *gin.Engine {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
 	auth := service.NewAuthService(service.AuthServiceConfig{
 		Users:            store,
 		RefreshTokens:    store,

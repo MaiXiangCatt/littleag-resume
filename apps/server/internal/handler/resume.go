@@ -240,7 +240,7 @@ func (h *ResumeHandler) ExportResumePdf(c *gin.Context, resumeID generated.Resum
 		writeError(c, err)
 		return
 	}
-	printURL := fmt.Sprintf("%s/print/resumes/%s?token=%s", h.webBaseURL, uuid.UUID(resumeID), url.QueryEscape(token))
+	printURL := fmt.Sprintf("%s/print/resumes/%s#token=%s", h.webBaseURL, uuid.UUID(resumeID), url.QueryEscape(token))
 	data, err := h.renderer.Render(c.Request.Context(), printURL)
 	if err != nil {
 		log.Printf("render resume pdf %s: %v", resumeID, err)
@@ -248,14 +248,15 @@ func (h *ResumeHandler) ExportResumePdf(c *gin.Context, resumeID generated.Resum
 		return
 	}
 	if _, err := h.resumes.RecordExport(c.Request.Context(), userID, uuid.UUID(resumeID)); err != nil {
-		log.Printf("record resume export %s: %v", resumeID, err)
+		writeError(c, err)
+		return
 	}
 	c.Header("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(resume.Title)+".pdf")
 	c.Data(http.StatusOK, "application/pdf", data)
 }
 
 func (h *ResumeHandler) GetResumePrintData(c *gin.Context, resumeID generated.ResumeId, params generated.GetResumePrintDataParams) {
-	userID, tokenResumeID, err := h.printTokens.Validate(params.Token)
+	userID, tokenResumeID, err := h.printTokens.Consume(params.XPrintToken)
 	if err != nil {
 		writeError(c, err)
 		return

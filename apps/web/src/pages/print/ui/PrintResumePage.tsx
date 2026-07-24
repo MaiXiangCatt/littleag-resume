@@ -62,7 +62,10 @@ export function PrintResumePage({ resumeId, token }: { resumeId: string; token: 
   const margin = state.document.content.formatting.pageMarginPx;
   return (
     <>
-      <style>{`@page { size: A4; margin: ${margin.top}px ${margin.right}px ${margin.bottom}px ${margin.left}px; }`}</style>
+      <style>{`
+        @page { size: A4; margin: ${margin.top}px ${margin.right}px ${margin.bottom}px ${margin.left}px; }
+        html, body, #root { background: #fff !important; }
+      `}</style>
       <ResumeHtmlPreview avatar={state.avatar} mode="print" resume={state.document} />
     </>
   );

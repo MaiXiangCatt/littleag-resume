@@ -71,11 +71,11 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     }
     await route.fulfill({ contentType: 'application/json', status: 200, body: ok(detail()) });
   });
-  await page.route(`**/api/resumes/${resumeId}/exports`, async (route) => {
+  await page.route(`**/api/resumes/${resumeId}/export/pdf`, async (route) => {
     await route.fulfill({
-      contentType: 'application/json',
+      contentType: 'application/pdf',
       status: 200,
-      body: ok({ ...detail(), exportCount: 1 }),
+      body: '%PDF-1.7 mocked export',
     });
   });
 
@@ -116,7 +116,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
 
   await page.getByRole('button', { name: '排版设置' }).click();
   await page.getByRole('dialog').getByLabel('姓名', { exact: true }).fill('24');
-  await expect(preview.getByRole('heading', { name: '林清清' })).toHaveCSS('font-size', '24px');
+  await expect(preview.locator('h1', { hasText: '林清清' })).toHaveCSS('font-size', '24px');
   await page.getByRole('combobox', { name: '模板' }).click();
   await page.getByRole('option', { name: '经典专业' }).click();
   await page.getByRole('button', { name: '完成' }).click();

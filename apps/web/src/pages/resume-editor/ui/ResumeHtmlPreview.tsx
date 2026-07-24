@@ -47,7 +47,7 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
       className={cn(
         'mx-auto w-full shrink-0 gap-0 border-0 bg-white py-0 text-[#242126]',
         isPrint
-          ? 'w-[210mm] max-w-none rounded-none shadow-none'
+          ? 'max-w-none rounded-none shadow-none'
           : 'max-w-[794px] rounded-[2px] shadow-[0_26px_70px_rgba(31,24,29,0.24)]',
       )}
       data-template={resume.templateId}
