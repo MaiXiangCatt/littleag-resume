@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrNotFound          = errors.New("repository: not found")
+	ErrConflict          = errors.New("repository: revision conflict")
 	ErrDuplicateEmail    = errors.New("repository: duplicate email")
 	ErrDuplicateUsername = errors.New("repository: duplicate username")
 )
@@ -21,6 +22,47 @@ type UserRepository interface {
 	FindActiveUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	FindActiveUserByEmailNormalized(ctx context.Context, emailNormalized string) (*model.User, error)
 	FindActiveUserByUsername(ctx context.Context, username string) (*model.User, error)
+}
+
+type EmailVerificationRepository interface {
+	ReplaceEmailVerificationChallenge(
+		ctx context.Context,
+		challenge *model.EmailVerificationChallenge,
+		invalidatedAt time.Time,
+	) error
+	FindActiveEmailVerificationChallengeByUserID(
+		ctx context.Context,
+		userID uuid.UUID,
+	) (*model.EmailVerificationChallenge, error)
+	IncrementEmailVerificationFailures(ctx context.Context, id uuid.UUID) (int, error)
+	MarkEmailVerificationSent(ctx context.Context, id uuid.UUID, sentAt time.Time) error
+	ConsumeEmailVerificationChallenge(
+		ctx context.Context,
+		challengeID, userID uuid.UUID,
+		consumedAt time.Time,
+	) error
+	InvalidateEmailVerificationChallenge(ctx context.Context, id uuid.UUID, invalidatedAt time.Time) error
+}
+
+type RegistrationEmailVerificationRepository interface {
+	ReplaceRegistrationEmailVerification(
+		ctx context.Context,
+		challenge *model.RegistrationEmailVerification,
+		invalidatedAt time.Time,
+	) error
+	FindActiveRegistrationEmailVerification(
+		ctx context.Context,
+		emailNormalized string,
+	) (*model.RegistrationEmailVerification, error)
+	IncrementRegistrationEmailVerificationFailures(ctx context.Context, id uuid.UUID) (int, error)
+	MarkRegistrationEmailVerificationSent(ctx context.Context, id uuid.UUID, sentAt time.Time) error
+	InvalidateRegistrationEmailVerification(ctx context.Context, id uuid.UUID, invalidatedAt time.Time) error
+	CreateVerifiedUser(
+		ctx context.Context,
+		challengeID uuid.UUID,
+		user *model.User,
+		consumedAt time.Time,
+	) error
 }
 
 type RefreshTokenRepository interface {
@@ -49,7 +91,9 @@ type ResumeRepository interface {
 	CreateResume(ctx context.Context, resume *model.Resume) error
 	FindResumeByID(ctx context.Context, userID, resumeID uuid.UUID) (*model.Resume, error)
 	ListResumes(ctx context.Context, userID uuid.UUID, options ResumeListOptions) ([]model.Resume, int, error)
-	UpdateResume(ctx context.Context, resume *model.Resume) error
+	UpdateResume(ctx context.Context, resume *model.Resume, expectedRevision int64) error
+	SetResumeAvatar(ctx context.Context, userID, resumeID uuid.UUID, avatarKey *string) error
+	IncrementResumeExport(ctx context.Context, userID, resumeID uuid.UUID, updatedAt time.Time) error
 	DeleteResume(ctx context.Context, userID, resumeID uuid.UUID) error
 	GetResumeStats(ctx context.Context, userID uuid.UUID) (ResumeStats, error)
 }

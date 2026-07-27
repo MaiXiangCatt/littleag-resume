@@ -2,16 +2,16 @@ import { Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { parseImportEnvelope } from '@/pages/resume-editor/model/resume.model';
+import {
+  resumeEditorService,
+  UnsupportedResumeContentError,
+} from '@/pages/resume-editor/service/resume-editor.service';
 import type { ResumeSummary } from '@/shared/api/generated/model/resumeSummary';
 import type { ResumeSort } from '@/shared/api/generated/model/resumeSort';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/shared/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 
@@ -56,7 +56,11 @@ export function ConsolePage({ onLogout }: ConsolePageProps) {
   const authError = useAuthStore((state) => state.error);
 
   if (status === 'loading' || status === 'idle') {
-    return <main className="grid min-h-screen place-items-center bg-[#fbfafc] text-[#746b78]">正在加载账号信息</main>;
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#fbfafc] text-[#746b78]">
+        正在加载账号信息
+      </main>
+    );
   }
 
   if (status === 'error') {
@@ -68,7 +72,11 @@ export function ConsolePage({ onLogout }: ConsolePageProps) {
   }
 
   if (!user) {
-    return <main className="grid min-h-screen place-items-center bg-[#fbfafc] text-[#746b78]">请先登录</main>;
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#fbfafc] text-[#746b78]">
+        请先登录
+      </main>
+    );
   }
 
   return <AuthenticatedConsole onLogout={onLogout} user={user} />;
@@ -95,7 +103,9 @@ function AuthenticatedConsole({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setQuery((current) => (current.query === queryInput ? current : { ...current, page: 1, query: queryInput }));
+      setQuery((current) =>
+        current.query === queryInput ? current : { ...current, page: 1, query: queryInput },
+      );
     }, 250);
     return () => window.clearTimeout(timer);
   }, [queryInput]);
@@ -155,7 +165,9 @@ function AuthenticatedConsole({
   async function handleRename(resumeId: string, title: string) {
     setPendingAction(`rename:${resumeId}`);
     try {
-      await resumeService.update(resumeId, { title });
+      const current = consoleData.list.items.find((item) => item.id === resumeId);
+      if (!current) throw new Error('resume not found');
+      await resumeService.update(resumeId, { expectedRevision: current.revision, title });
       setRenameResume(null);
       setFeedback({ kind: 'success', message: '简历名称已更新' });
       consoleData.reload();
@@ -183,27 +195,53 @@ function AuthenticatedConsole({
     }
   }
 
+  async function handleExport(resume: ResumeSummary) {
+    setPendingAction(`export:${resume.id}`);
+    try {
+      const blob = await resumeEditorService.exportPdf(resume.id);
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = `${resume.title.trim() || 'resume'}.pdf`;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      setFeedback({ kind: 'success', message: `已开始导出“${resume.title}”` });
+      consoleData.reload();
+    } catch (error) {
+      setFeedback({
+        kind: 'error',
+        message:
+          error instanceof UnsupportedResumeContentError
+            ? error.message
+            : resumeErrorMessage(error),
+      });
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
   async function handleImport(file: File) {
     if (file.size > IMPORT_LIMIT_BYTES) {
       setFeedback({ kind: 'error', message: '简历文件不能超过 2 MB' });
       return;
     }
     setPendingAction('import');
+    let envelope;
     try {
       const parsed: unknown = JSON.parse(await file.text());
-      if (!isImportEnvelope(parsed)) {
-        throw new Error('invalid envelope');
-      }
-      await resumeService.import(parsed);
-      setFeedback({ kind: 'success', message: `已导入“${parsed.title.trim()}”` });
+      envelope = parseImportEnvelope(parsed);
+    } catch {
+      setFeedback({ kind: 'error', message: '文件格式不正确，需要 LittleAgResume v1 JSON 文件' });
+      setPendingAction(null);
+      if (importInputRef.current) importInputRef.current.value = '';
+      return;
+    }
+    try {
+      await resumeService.import(envelope);
+      setFeedback({ kind: 'success', message: `已导入“${envelope.title.trim()}”` });
       consoleData.reload();
     } catch (error) {
-      setFeedback({
-        kind: 'error',
-        message: error instanceof SyntaxError || error instanceof Error && error.message === 'invalid envelope'
-          ? '文件格式不正确，需要 VegaResume v1 JSON 文件'
-          : resumeErrorMessage(error),
-      });
+      setFeedback({ kind: 'error', message: resumeErrorMessage(error) });
     } finally {
       setPendingAction(null);
       if (importInputRef.current) {
@@ -222,7 +260,9 @@ function AuthenticatedConsole({
 
   function updatePage(page: number) {
     setQuery((current) => ({ ...current, page }));
-    window.requestAnimationFrame(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    window.requestAnimationFrame(() =>
+      gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
   }
 
   function updatePageSize(pageSize: ConsolePageSize) {
@@ -252,12 +292,18 @@ function AuthenticatedConsole({
       <main className="mx-auto max-w-[1560px] px-5 py-9 lg:px-10 lg:py-11">
         <section className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b4c91]">Workspace</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] text-[#1f1722] sm:text-4xl">我的简历</h1>
-            <p className="mt-2 text-sm leading-6 text-[#716976] sm:text-base">管理你的简历文档，随时编辑与导出</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2B89A8]">
+              Workspace
+            </p>
+            <h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] text-[#1f1722] sm:text-4xl">
+              我的简历
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-[#716976] sm:text-base">
+              管理你的简历文档，随时编辑与导出
+            </p>
           </div>
           <Button
-            className="h-11 rounded-xl bg-[#850477] px-5 text-white shadow-[0_10px_26px_rgba(133,4,119,0.22)] hover:bg-[#6f0364]"
+            className="h-11 rounded-xl bg-[#087EA4] px-5 text-white shadow-[0_10px_26px_rgba(8,126,164,0.22)] hover:bg-[#066B8E]"
             disabled={pendingAction === 'import'}
             onClick={() => importInputRef.current?.click()}
             type="button"
@@ -280,30 +326,49 @@ function AuthenticatedConsole({
         </section>
 
         <div className="mt-8 grid gap-5 xl:grid-cols-[1.35fr_1fr]">
-          <ResumeStatsPanel error={consoleData.statsError} isLoading={consoleData.isStatsLoading} stats={consoleData.stats} />
-          <ResumeToolbar onSortChange={updateSort} onStatusChange={updateStatus} sort={query.sort} status={query.status} />
+          <ResumeStatsPanel
+            error={consoleData.statsError}
+            isLoading={consoleData.isStatsLoading}
+            stats={consoleData.stats}
+          />
+          <ResumeToolbar
+            onSortChange={updateSort}
+            onStatusChange={updateStatus}
+            sort={query.sort}
+            status={query.status}
+          />
         </div>
 
         <section className="relative mt-7 scroll-mt-28" ref={gridRef}>
-          {consoleData.isListRefreshing ? <div className="absolute -top-2 left-0 h-0.5 w-full overflow-hidden rounded-full bg-[#eaddea] before:block before:h-full before:w-1/3 before:animate-[console-progress_1s_ease-in-out_infinite] before:rounded-full before:bg-[#850477]" /> : null}
+          {consoleData.isListRefreshing ? (
+            <div className="absolute -top-2 left-0 h-0.5 w-full overflow-hidden rounded-full bg-[#eaddea] before:block before:h-full before:w-1/3 before:animate-[console-progress_1s_ease-in-out_infinite] before:rounded-full before:bg-[#087EA4]" />
+          ) : null}
           {consoleData.isListLoading ? <ResumeGridSkeleton /> : null}
-          {!consoleData.isListLoading && consoleData.listError ? <ListError message={consoleData.listError} onRetry={consoleData.reload} /> : null}
+          {!consoleData.isListLoading && consoleData.listError ? (
+            <ListError message={consoleData.listError} onRetry={consoleData.reload} />
+          ) : null}
           {!consoleData.isListLoading && !consoleData.listError ? (
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-3">
-              <CreateResumeCard isPending={pendingAction === 'create'} onCreate={() => void handleCreate()} />
+              <CreateResumeCard
+                isPending={pendingAction === 'create'}
+                onCreate={() => void handleCreate()}
+              />
               {consoleData.list.items.map((resume) => (
                 <ResumeCard
                   isPending={pendingAction?.endsWith(resume.id) ?? false}
                   key={resume.id}
                   onCopy={() => void handleCopy(resume)}
                   onDelete={() => setDeleteResume(resume)}
+                  onExport={() => void handleExport(resume)}
                   onOpen={() => navigate(`/resumes/${resume.id}/edit`)}
                   onRename={() => setRenameResume(resume)}
                   ownerInitial={ownerInitial}
                   resume={resume}
                 />
               ))}
-              {consoleData.list.items.length === 0 ? <EmptyResults hasFilters={hasFilters} onReset={resetFilters} /> : null}
+              {consoleData.list.items.length === 0 ? (
+                <EmptyResults hasFilters={hasFilters} onReset={resetFilters} />
+              ) : null}
             </div>
           ) : null}
         </section>
@@ -355,7 +420,12 @@ function RenameResumeDialog({
   const normalizedTitle = title.trim();
 
   return (
-    <Dialog onOpenChange={(open) => { if (!open && !isPending) onClose(); }} open>
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open && !isPending) onClose();
+      }}
+      open
+    >
       <DialogContent className="rounded-2xl p-6">
         <DialogTitle>重命名简历</DialogTitle>
         <DialogDescription>名称用于在控制台中识别这份简历，不会修改简历正文。</DialogDescription>
@@ -368,18 +438,26 @@ function RenameResumeDialog({
             }
           }}
         >
-          <Label className="text-[#433747]" htmlFor="resume-title">简历名称</Label>
+          <Label className="text-[#433747]" htmlFor="resume-title">
+            简历名称
+          </Label>
           <Input
             autoFocus
-            className="mt-2 focus:border-[#850477] focus-visible:ring-[#850477]"
+            className="mt-2 focus:border-[#087EA4] focus-visible:ring-[#087EA4]"
             id="resume-title"
             maxLength={80}
             onChange={(event) => setTitle(event.target.value)}
             value={title}
           />
           <div className="mt-6 flex justify-end gap-3">
-            <Button disabled={isPending} onClick={onClose} type="button" variant="outline">取消</Button>
-            <Button className="bg-[#850477] hover:bg-[#6f0364]" disabled={!normalizedTitle || isPending} type="submit">
+            <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
+              取消
+            </Button>
+            <Button
+              className="bg-[#087EA4] hover:bg-[#066B8E]"
+              disabled={!normalizedTitle || isPending}
+              type="submit"
+            >
               {isPending ? '保存中…' : '保存名称'}
             </Button>
           </div>
@@ -401,12 +479,19 @@ function DeleteResumeDialog({
   resume: ResumeSummary;
 }) {
   return (
-    <Dialog onOpenChange={(open) => { if (!open && !isPending) onClose(); }} open>
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open && !isPending) onClose();
+      }}
+      open
+    >
       <DialogContent className="rounded-2xl p-6">
         <DialogTitle>确认删除“{resume.title}”？</DialogTitle>
         <DialogDescription>删除后无法在控制台恢复，请确认不再需要这份简历。</DialogDescription>
         <div className="mt-6 flex justify-end gap-3">
-          <Button disabled={isPending} onClick={onClose} type="button" variant="outline">取消</Button>
+          <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
+            取消
+          </Button>
           <Button disabled={isPending} onClick={onDelete} type="button" variant="destructive">
             {isPending ? '删除中…' : '确认删除'}
           </Button>
@@ -414,18 +499,4 @@ function DeleteResumeDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-function isImportEnvelope(value: unknown): value is { content: Record<string, unknown>; title: string; version: 1 } {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const envelope = value as Record<string, unknown>;
-  return envelope.version === 1
-    && typeof envelope.title === 'string'
-    && envelope.title.trim().length > 0
-    && envelope.title.trim().length <= 80
-    && typeof envelope.content === 'object'
-    && envelope.content !== null
-    && !Array.isArray(envelope.content);
 }

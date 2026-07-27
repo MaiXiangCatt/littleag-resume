@@ -27,7 +27,7 @@ describe('auth hooks', () => {
   it('bootstraps a refresh-based session', async () => {
     authServiceMock.refresh.mockResolvedValueOnce({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     renderHook(() => useAuthBootstrap());
@@ -45,7 +45,9 @@ describe('auth hooks', () => {
   });
 
   it('preserves a retryable error state when bootstrap hits a server failure', async () => {
-    authServiceMock.refresh.mockRejectedValueOnce(new ApiError(200002, 'database unavailable', 500));
+    authServiceMock.refresh.mockRejectedValueOnce(
+      new ApiError(200002, 'database unavailable', 500),
+    );
 
     renderHook(() => useAuthBootstrap());
 
@@ -75,7 +77,7 @@ describe('auth hooks', () => {
 
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
     rerender();
 

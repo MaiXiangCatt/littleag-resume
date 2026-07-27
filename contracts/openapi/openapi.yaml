@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: VegaResume API
+  title: LittleAgResume API
   version: 0.2.0
   description: Contract for authentication and resume management.
 servers:
@@ -17,23 +17,113 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: "#/components/schemas/RegisterRequest"
       responses:
-        '200':
-          description: Registered user and access token.
+        "200":
+          description: Verified user created and session issued.
           headers:
             Set-Cookie:
-              $ref: '#/components/headers/RefreshTokenSetCookie'
+              $ref: "#/components/headers/RefreshTokenSetCookie"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/auth/registration-email-verification:
+    post:
+      operationId: sendAuthRegistrationEmailVerification
+      tags:
+        - Auth
+      summary: Send or resend a registration email verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendRegistrationEmailVerificationRequest"
+      responses:
+        "200":
+          description: Verification challenge is ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailVerificationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/auth/email-verification/confirm:
+    post:
+      operationId: confirmAuthEmailVerification
+      tags:
+        - Auth
+      summary: Confirm a registration email verification code and issue a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmEmailVerificationRequest"
+      responses:
+        "200":
+          description: Email verified and user session issued.
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/RefreshTokenSetCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/auth/email-verification/resend:
+    post:
+      operationId: resendAuthEmailVerification
+      tags:
+        - Auth
+      summary: Resend a verification code for a legacy unverified account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResendEmailVerificationRequest"
+      responses:
+        "200":
+          description: Verification challenge is ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailVerificationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /api/auth/login:
     post:
       operationId: loginAuthUser
@@ -45,37 +135,39 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: Logged-in user and access token.
           headers:
             Set-Cookie:
-              $ref: '#/components/headers/RefreshTokenSetCookie'
+              $ref: "#/components/headers/RefreshTokenSetCookie"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '423':
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "423":
           description: ErrAccountLocked response.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
                 ErrAccountLocked:
                   value:
                     code: 101009
                     message: Account is temporarily locked.
                     data: null
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/auth/me:
     get:
       operationId: getCurrentAuthUser
@@ -85,18 +177,18 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Current authenticated user.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthUserResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/AuthUserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/auth/refresh:
     post:
       operationId: refreshAuthSession
@@ -104,33 +196,33 @@ paths:
         - Auth
       summary: Rotate refresh token and issue a new access token
       parameters:
-        - $ref: '#/components/parameters/RefreshTokenCookie'
+        - $ref: "#/components/parameters/RefreshTokenCookie"
       responses:
-        '200':
+        "200":
           description: Refreshed user session.
           headers:
             Set-Cookie:
-              $ref: '#/components/headers/RefreshTokenSetCookie'
+              $ref: "#/components/headers/RefreshTokenSetCookie"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '401':
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
           description: ErrRefreshTokenInvalid response.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
                 ErrRefreshTokenInvalid:
                   value:
                     code: 101010
                     message: Refresh token is invalid.
                     data: null
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/auth/logout:
     post:
       operationId: logoutAuthUser
@@ -138,21 +230,21 @@ paths:
         - Auth
       summary: Revoke refresh token and clear cookie
       parameters:
-        - $ref: '#/components/parameters/RefreshTokenCookie'
+        - $ref: "#/components/parameters/RefreshTokenCookie"
       responses:
-        '200':
+        "200":
           description: Logged out. Clears refresh_token cookie.
           headers:
             Set-Cookie:
-              $ref: '#/components/headers/ClearRefreshTokenSetCookie'
+              $ref: "#/components/headers/ClearRefreshTokenSetCookie"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/EmptyResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/resumes:
     get:
       operationId: listResumes
@@ -170,11 +262,11 @@ paths:
         - name: status
           in: query
           schema:
-            $ref: '#/components/schemas/ResumeStatus'
+            $ref: "#/components/schemas/ResumeStatus"
         - name: sort
           in: query
           schema:
-            $ref: '#/components/schemas/ResumeSort'
+            $ref: "#/components/schemas/ResumeSort"
         - name: page
           in: query
           schema:
@@ -188,18 +280,18 @@ paths:
             enum: [6, 12, 24]
             default: 6
       responses:
-        '200':
+        "200":
           description: Paginated resume summaries.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResumeListResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ResumeListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     post:
       operationId: createResume
       tags:
@@ -212,20 +304,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateResumeRequest'
+              $ref: "#/components/schemas/CreateResumeRequest"
       responses:
-        '200':
+        "200":
           description: Created resume.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResumeDetailResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/resumes/stats:
     get:
       operationId: getResumeStats
@@ -235,22 +327,22 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Current user's aggregate resume statistics.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResumeStatsResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ResumeStatsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/resumes/import:
     post:
       operationId: importResume
       tags:
         - Resume
-      summary: Import a VegaResume envelope as a new draft
+      summary: Import a LittleAgResume envelope as a new draft
       security:
         - bearerAuth: []
       requestBody:
@@ -258,23 +350,23 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ImportResumeRequest'
+              $ref: "#/components/schemas/ImportResumeRequest"
       responses:
-        '200':
+        "200":
           description: Imported resume.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResumeDetailResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/resumes/{resumeId}:
     parameters:
-      - $ref: '#/components/parameters/ResumeId'
+      - $ref: "#/components/parameters/ResumeId"
     get:
       operationId: getResume
       tags:
@@ -283,18 +375,18 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Resume details.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResumeDetailResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     patch:
       operationId: updateResume
       tags:
@@ -307,22 +399,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateResumeRequest'
+              $ref: "#/components/schemas/UpdateResumeRequest"
       responses:
-        '200':
+        "200":
           description: Updated resume.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResumeDetailResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     delete:
       operationId: deleteResume
       tags:
@@ -331,21 +425,21 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Resume deleted.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmptyResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/EmptyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/resumes/{resumeId}/copy:
     parameters:
-      - $ref: '#/components/parameters/ResumeId'
+      - $ref: "#/components/parameters/ResumeId"
     post:
       operationId: copyResume
       tags:
@@ -354,18 +448,189 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Copied resume.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResumeDetailResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/resumes/{resumeId}/import:
+    parameters:
+      - $ref: "#/components/parameters/ResumeId"
+    put:
+      operationId: replaceResumeImport
+      tags:
+        - Resume
+      summary: Replace an existing resume from a LittleAgResume envelope
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ImportResumeRequest"
+                - type: object
+                  required:
+                    - expectedRevision
+                  properties:
+                    expectedRevision:
+                      type: integer
+                      format: int64
+                      minimum: 1
+      responses:
+        "200":
+          description: Replaced resume.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/resumes/{resumeId}/export/pdf:
+    parameters:
+      - $ref: "#/components/parameters/ResumeId"
+    post:
+      operationId: exportResumePdf
+      tags:
+        - Resume
+      summary: Render the resume to a PDF via headless Chrome; records the export on success
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: PDF bytes.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/resumes/{resumeId}/print:
+    parameters:
+      - $ref: "#/components/parameters/ResumeId"
+    get:
+      operationId: getResumePrintData
+      tags:
+        - Resume
+      summary: Print-page data endpoint authorized by a short-lived print token
+      parameters:
+        - name: X-Print-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resume detail plus inline avatar for printing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumePrintResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/resumes/{resumeId}/avatar:
+    parameters:
+      - $ref: "#/components/parameters/ResumeId"
+    get:
+      operationId: getResumeAvatar
+      tags:
+        - Resume
+      summary: Get the current resume avatar
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: JPEG avatar bytes.
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: putResumeAvatar
+      tags:
+        - Resume
+      summary: Replace the current resume avatar
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: A 500×700 JPEG portrait cropped to the standard 5:7 one-inch-photo ratio.
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Updated resume.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      operationId: deleteResumeAvatar
+      tags:
+        - Resume
+      summary: Delete the current resume avatar
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Updated resume.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 components:
   securitySchemes:
     bearerAuth:
@@ -404,13 +669,13 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     BadRequest:
       description: Invalid request, including ErrUsernameFormatInvalid and validation errors.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           examples:
             ErrUsernameFormatInvalid:
               value:
@@ -422,7 +687,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           examples:
             ErrTokenExpired:
               value:
@@ -434,12 +699,18 @@ components:
                 code: 101004
                 message: Token invalid.
                 data: null
+    Forbidden:
+      description: The authenticated identity cannot perform this operation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
     Conflict:
       description: Duplicate email or username, including ErrUsernameExists.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           examples:
             ErrUsernameExists:
               value:
@@ -451,7 +722,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           examples:
             ErrTooManyRequests:
               value:
@@ -463,7 +734,13 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: A required backend resource is temporarily unavailable.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     BaseResponse:
       type: object
@@ -480,13 +757,13 @@ components:
         message:
           type: string
           description: Empty for success; human-readable message for failure.
-          example: ''
+          example: ""
         data:
           nullable: true
           description: Endpoint-specific payload, or null for errors.
     ErrorResponse:
       allOf:
-        - $ref: '#/components/schemas/BaseResponse'
+        - $ref: "#/components/schemas/BaseResponse"
         - type: object
           required:
             - data
@@ -503,7 +780,7 @@ components:
               example: null
     EmptyResponse:
       allOf:
-        - $ref: '#/components/schemas/BaseResponse'
+        - $ref: "#/components/schemas/BaseResponse"
         - type: object
           properties:
             code:
@@ -514,7 +791,7 @@ components:
             message:
               type: string
               enum:
-                - ''
+                - ""
             data:
               nullable: true
               example: null
@@ -524,6 +801,7 @@ components:
         - id
         - username
         - email
+        - emailVerified
       properties:
         id:
           type: string
@@ -537,6 +815,8 @@ components:
           type: string
           format: email
           example: user@example.com
+        emailVerified:
+          type: boolean
     AuthPayload:
       type: object
       required:
@@ -547,10 +827,10 @@ components:
           type: string
           description: 15-minute bearer access token.
         user:
-          $ref: '#/components/schemas/AuthUser'
+          $ref: "#/components/schemas/AuthUser"
     AuthResponse:
       allOf:
-        - $ref: '#/components/schemas/BaseResponse'
+        - $ref: "#/components/schemas/BaseResponse"
         - type: object
           required:
             - data
@@ -563,12 +843,46 @@ components:
             message:
               type: string
               enum:
-                - ''
+                - ""
             data:
-              $ref: '#/components/schemas/AuthPayload'
+              $ref: "#/components/schemas/AuthPayload"
+    EmailVerificationPayload:
+      type: object
+      required:
+        - email
+        - expiresInSeconds
+        - resendAfterSeconds
+      properties:
+        email:
+          type: string
+          format: email
+        expiresInSeconds:
+          type: integer
+          minimum: 1
+        resendAfterSeconds:
+          type: integer
+          minimum: 0
+    EmailVerificationResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum:
+                - 0
+            message:
+              type: string
+              enum:
+                - ""
+            data:
+              $ref: "#/components/schemas/EmailVerificationPayload"
     AuthUserResponse:
       allOf:
-        - $ref: '#/components/schemas/BaseResponse'
+        - $ref: "#/components/schemas/BaseResponse"
         - type: object
           required:
             - data
@@ -581,9 +895,9 @@ components:
             message:
               type: string
               enum:
-                - ''
+                - ""
             data:
-              $ref: '#/components/schemas/AuthUser'
+              $ref: "#/components/schemas/AuthUser"
     ResumeStatus:
       type: string
       enum:
@@ -602,6 +916,8 @@ components:
         - id
         - title
         - status
+        - revision
+        - hasAvatar
         - exportCount
         - createdAt
         - updatedAt
@@ -614,7 +930,13 @@ components:
           minLength: 1
           maxLength: 80
         status:
-          $ref: '#/components/schemas/ResumeStatus'
+          $ref: "#/components/schemas/ResumeStatus"
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        hasAvatar:
+          type: boolean
         templateId:
           type: string
           nullable: true
@@ -630,7 +952,7 @@ components:
           format: date-time
     ResumeDetail:
       allOf:
-        - $ref: '#/components/schemas/ResumeSummary'
+        - $ref: "#/components/schemas/ResumeSummary"
         - type: object
           required:
             - contentVersion
@@ -638,10 +960,9 @@ components:
           properties:
             contentVersion:
               type: integer
-              minimum: 1
+              enum: [2]
             content:
-              type: object
-              additionalProperties: true
+              $ref: "#/components/schemas/ResumeContent"
     ResumeStats:
       type: object
       required:
@@ -674,7 +995,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/ResumeSummary'
+            $ref: "#/components/schemas/ResumeSummary"
         page:
           type: integer
           minimum: 1
@@ -694,19 +1015,24 @@ components:
     UpdateResumeRequest:
       type: object
       minProperties: 1
+      required:
+        - expectedRevision
       properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 1
         title:
           type: string
           minLength: 1
           maxLength: 80
         status:
-          $ref: '#/components/schemas/ResumeStatus'
+          $ref: "#/components/schemas/ResumeStatus"
         templateId:
           type: string
           nullable: true
         content:
-          type: object
-          additionalProperties: true
+          $ref: "#/components/schemas/ResumeContent"
     ImportResumeRequest:
       type: object
       required:
@@ -716,17 +1042,116 @@ components:
       properties:
         version:
           type: integer
-          enum: [1]
+          enum: [2]
         title:
           type: string
           minLength: 1
           maxLength: 80
+        templateId:
+          type: string
+          nullable: true
+          enum:
+            - modern-editorial
+            - classic-professional
+        avatar:
+          type: string
+          nullable: true
+          maxLength: 750000
         content:
+          $ref: "#/components/schemas/ResumeContent"
+    ResumeContent:
+      type: object
+      required:
+        - profile
+        - sections
+        - formatting
+      additionalProperties: false
+      properties:
+        profile:
           type: object
           additionalProperties: true
+        sections:
+          type: array
+          maxItems: 64
+          items:
+            type: object
+            additionalProperties: true
+        formatting:
+          $ref: "#/components/schemas/ResumeFormattingV2"
+    ResumeFormattingV2:
+      type: object
+      additionalProperties: false
+      required:
+        - nameFontSizePx
+        - sectionTitleFontSizePx
+        - entryTitleFontSizePx
+        - bodyFontSizePx
+        - lineHeightRatio
+        - pageMarginPx
+        - sectionGapPx
+        - fontFamily
+        - accentColor
+      properties:
+        nameFontSizePx:
+          type: integer
+          minimum: 12
+          maximum: 48
+        sectionTitleFontSizePx:
+          type: integer
+          minimum: 10
+          maximum: 32
+        entryTitleFontSizePx:
+          type: integer
+          minimum: 8
+          maximum: 28
+        bodyFontSizePx:
+          type: integer
+          minimum: 8
+          maximum: 24
+        lineHeightRatio:
+          type: number
+          minimum: 1
+          maximum: 2.5
+        pageMarginPx:
+          type: object
+          additionalProperties: false
+          required:
+            - top
+            - right
+            - bottom
+            - left
+          properties:
+            top:
+              type: integer
+              minimum: 0
+              maximum: 160
+            right:
+              type: integer
+              minimum: 0
+              maximum: 160
+            bottom:
+              type: integer
+              minimum: 0
+              maximum: 160
+            left:
+              type: integer
+              minimum: 0
+              maximum: 160
+        sectionGapPx:
+          type: integer
+          minimum: 0
+          maximum: 64
+        fontFamily:
+          type: string
+          enum:
+            - source-han-sans
+            - source-han-serif
+        accentColor:
+          type: string
+          pattern: "^(plum|navy|teal|rust|charcoal|black|#[0-9A-Fa-f]{6})$"
     ResumeListResponse:
       allOf:
-        - $ref: '#/components/schemas/BaseResponse'
+        - $ref: "#/components/schemas/BaseResponse"
         - type: object
           required:
             - data
@@ -737,12 +1162,12 @@ components:
               enum: [0]
             message:
               type: string
-              enum: ['']
+              enum: [""]
             data:
-              $ref: '#/components/schemas/ResumeListPayload'
+              $ref: "#/components/schemas/ResumeListPayload"
     ResumeDetailResponse:
       allOf:
-        - $ref: '#/components/schemas/BaseResponse'
+        - $ref: "#/components/schemas/BaseResponse"
         - type: object
           required:
             - data
@@ -753,12 +1178,39 @@ components:
               enum: [0]
             message:
               type: string
-              enum: ['']
+              enum: [""]
             data:
-              $ref: '#/components/schemas/ResumeDetail'
+              $ref: "#/components/schemas/ResumeDetail"
+    ResumePrintPayload:
+      type: object
+      required:
+        - resume
+      properties:
+        resume:
+          $ref: "#/components/schemas/ResumeDetail"
+        avatarDataUrl:
+          type: string
+          nullable: true
+          description: Inline data URL of the avatar JPEG, if any.
+    ResumePrintResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum: [0]
+            message:
+              type: string
+              enum: [""]
+            data:
+              $ref: "#/components/schemas/ResumePrintPayload"
     ResumeStatsResponse:
       allOf:
-        - $ref: '#/components/schemas/BaseResponse'
+        - $ref: "#/components/schemas/BaseResponse"
         - type: object
           required:
             - data
@@ -769,9 +1221,9 @@ components:
               enum: [0]
             message:
               type: string
-              enum: ['']
+              enum: [""]
             data:
-              $ref: '#/components/schemas/ResumeStats'
+              $ref: "#/components/schemas/ResumeStats"
     RegisterRequest:
       type: object
       required:
@@ -779,6 +1231,7 @@ components:
         - email
         - password
         - confirmPassword
+        - verificationCode
       properties:
         username:
           type: string
@@ -802,6 +1255,48 @@ components:
           minLength: 8
           maxLength: 128
           example: password1
+        verificationCode:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: "083421"
+    SendRegistrationEmailVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+    ConfirmEmailVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - code
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: "083421"
+    ResendEmailVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 128
     LoginRequest:
       type: object
       required:

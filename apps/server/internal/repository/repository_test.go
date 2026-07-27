@@ -3,6 +3,7 @@ package repository_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -156,7 +157,12 @@ func TestGormMigrationDefinesAuthPersistenceConstraints(t *testing.T) {
 	db := openTestGormStore(t)
 	migrator := db.Migrator()
 
-	for _, table := range []any{&model.User{}, &model.RefreshToken{}, &model.Resume{}} {
+	for _, table := range []any{
+		&model.User{},
+		&model.RegistrationEmailVerification{},
+		&model.RefreshToken{},
+		&model.Resume{},
+	} {
 		if !migrator.HasTable(table) {
 			t.Fatalf("expected table for %T", table)
 		}
@@ -164,6 +170,7 @@ func TestGormMigrationDefinesAuthPersistenceConstraints(t *testing.T) {
 	for _, index := range []string{
 		"users_email_active_uidx",
 		"users_username_active_uidx",
+		"registration_email_verifications_email_active_uidx",
 		"idx_refresh_tokens_token_hash",
 		"idx_refresh_tokens_user_id",
 		"idx_resumes_user_updated",
@@ -171,6 +178,7 @@ func TestGormMigrationDefinesAuthPersistenceConstraints(t *testing.T) {
 	} {
 		if !migrator.HasIndex(&model.RefreshToken{}, index) &&
 			!migrator.HasIndex(&model.User{}, index) &&
+			!migrator.HasIndex(&model.RegistrationEmailVerification{}, index) &&
 			!migrator.HasIndex(&model.Resume{}, index) {
 			t.Fatalf("expected migrated index %q", index)
 		}
@@ -225,6 +233,60 @@ func TestGormRepositoryPersistsAuthRecords(t *testing.T) {
 	}
 	if _, err := store.FindActiveRefreshTokenByHash(ctx, "gorm-old-hash"); !errors.Is(err, repository.ErrNotFound) {
 		t.Fatalf("expected revoked token lookup to miss, got %v", err)
+	}
+}
+
+func TestGormRegistrationVerificationCreatesUserAtomically(t *testing.T) {
+	ctx := context.Background()
+	db := openTestGormStore(t)
+	store := repository.NewGormStore(db)
+	now := time.Now().UTC()
+	challenge := &model.RegistrationEmailVerification{
+		ID:              uuid.New(),
+		Email:           "User@Example.com",
+		EmailNormalized: "user@example.com",
+		CodeMAC:         strings.Repeat("a", 64),
+		ExpiresAt:       now.Add(10 * time.Minute),
+		CreatedAt:       now,
+	}
+	if err := store.ReplaceRegistrationEmailVerification(ctx, challenge, now); err != nil {
+		t.Fatalf("create registration verification: %v", err)
+	}
+	if err := store.MarkRegistrationEmailVerificationSent(ctx, challenge.ID, now); err != nil {
+		t.Fatalf("mark registration verification sent: %v", err)
+	}
+
+	verifiedAt := now.Add(time.Second)
+	user := &model.User{
+		ID:              uuid.New(),
+		Username:        "zhangsan",
+		Email:           challenge.Email,
+		EmailNormalized: challenge.EmailNormalized,
+		PasswordHash:    "hash",
+		EmailVerifiedAt: &verifiedAt,
+		CreatedAt:       verifiedAt,
+		UpdatedAt:       verifiedAt,
+	}
+	if err := store.CreateVerifiedUser(ctx, challenge.ID, user, verifiedAt); err != nil {
+		t.Fatalf("create verified user: %v", err)
+	}
+	if _, err := store.FindActiveUserByEmailNormalized(ctx, challenge.EmailNormalized); err != nil {
+		t.Fatalf("find created user: %v", err)
+	}
+	if _, err := store.FindActiveRegistrationEmailVerification(
+		ctx,
+		challenge.EmailNormalized,
+	); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("consumed challenge must not remain active, got %v", err)
+	}
+	if err := store.CreateVerifiedUser(ctx, challenge.ID, &model.User{
+		ID:              uuid.New(),
+		Username:        "lisi",
+		Email:           challenge.Email,
+		EmailNormalized: challenge.EmailNormalized,
+		PasswordHash:    "hash",
+	}, verifiedAt); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("consumed challenge must not create another user, got %v", err)
 	}
 }
 

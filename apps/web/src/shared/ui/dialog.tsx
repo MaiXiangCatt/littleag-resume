@@ -19,7 +19,11 @@ function DialogOverlay({ className, ...props }: ComponentProps<typeof DialogPrim
   );
 }
 
-function DialogContent({ children, className, ...props }: ComponentProps<typeof DialogPrimitive.Content>) {
+function DialogContent({
+  children,
+  className,
+  ...props
+}: ComponentProps<typeof DialogPrimitive.Content>) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -51,7 +55,10 @@ function DialogTitle({ className, ...props }: ComponentProps<typeof DialogPrimit
   );
 }
 
-function DialogDescription({ className, ...props }: ComponentProps<typeof DialogPrimitive.Description>) {
+function DialogDescription({
+  className,
+  ...props
+}: ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
       className={cn('mt-1 text-sm text-slate-500', className)}
@@ -61,11 +68,16 @@ function DialogDescription({ className, ...props }: ComponentProps<typeof Dialog
   );
 }
 
+function DialogFooter({ className, ...props }: ComponentProps<'div'>) {
+  return <div className={cn('mt-6 flex justify-end gap-2', className)} {...props} />;
+}
+
 export {
   Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogOverlay,
   DialogPortal,
   DialogTitle,

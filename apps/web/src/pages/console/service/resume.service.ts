@@ -77,6 +77,7 @@ const resumeErrorMessages: Record<number, string> = {
   103001: '这份简历不存在或已被删除',
   103004: '简历文件格式不正确',
   105002: '简历文件不能超过 2 MB',
+  106002: 'PDF 服务繁忙，请稍后重试',
 };
 
 export function resumeErrorMessage(error: unknown) {

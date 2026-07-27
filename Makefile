@@ -1,9 +1,9 @@
 # ==========================================
-# Vega Resume - 顶层任务编排
+# LittleAgResume - 顶层任务编排
 # 命令分类：环境/契约/静态/测试/构建/部署/工具
 # ==========================================
 
-.PHONY: help install dev clean
+.PHONY: help install dev clean format format-check
 .DEFAULT_GOAL := help
 
 help: ## 列出所有可用命令
@@ -27,8 +27,12 @@ generate:          ## 从 OpenAPI 契约生成 TS client 与 Go stub
 	cd apps/server && go tool oapi-codegen -config oapi-codegen.yaml ../../contracts/openapi/openapi.yaml
 
 # ---- 静态检查 ----
+format:             ## 使用 Prettier 格式化 Web App
+	pnpm --filter web format
+format-check:       ## 检查 Web App 的 Prettier 格式
+	pnpm --filter web format:check
 lint: lint-web lint-server lint-cli  ## 全量 lint
-lint-web:          ## ESLint + tsc
+lint-web:          ## ESLint + Prettier
 	pnpm --filter web lint
 lint-server:       ## go vet
 	$(MAKE) -C apps/server lint
@@ -60,11 +64,12 @@ build-cli:         ## 构建 vega CLI
 storybook:         ## 启动 Storybook UI 隔离开发环境
 	pnpm --filter web storybook
 docker-build:      ## Docker 镜像构建
-	docker build -t vega-resume:latest .
+	docker compose --env-file .env.prod -f deploy/docker-compose.yml build
 deploy:            ## 部署到自有服务器
-	bash scripts/deploy.sh
+	docker compose --env-file .env.prod -f deploy/docker-compose.yml up -d --build
 smoke:             ## 部署后冒烟测试
-	bash scripts/smoke.sh
+	curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null
+	docker compose --env-file .env.prod -f deploy/docker-compose.yml ps
 
 # ---- 开发环境 ----
 dev-web:           ## 启动前端开发服务器

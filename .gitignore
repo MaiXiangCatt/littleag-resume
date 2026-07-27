@@ -26,6 +26,10 @@ go.work.sum
 
 # env file
 .env
+.env.*
+!.env.dev.example
+!.env.prod.example
+.secrets/
 
 # Editor/IDE
 # .idea/
@@ -53,6 +57,9 @@ lerna-debug.log*
 node_modules/
 dist/
 dist-ssr/
+data/
+playwright-report/
+test-results/
 *.local
 
 # Editor directories and files
@@ -69,3 +76,6 @@ dist-ssr/
 # skills
 skills-lock.json
 */skills/
+
+#docs
+docs/*

@@ -27,7 +27,8 @@ const initialState = {
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
   ...initialState,
-  clearSession: () => set({ accessToken: null, error: null, status: 'unauthenticated', user: null }),
+  clearSession: () =>
+    set({ accessToken: null, error: null, status: 'unauthenticated', user: null }),
   reset: () => set(initialState),
   setFailed: (message) =>
     set({ accessToken: null, error: message, status: 'unauthenticated', user: null }),

@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useState } from 'react';
 
 import type { LoginFormValues } from '@/shared/auth/model/auth';
@@ -52,27 +52,53 @@ export function LoginForm({ isSubmitting, onSubmit }: LoginFormProps) {
 }
 
 type FieldProps = {
+  autoComplete?: string;
+  disabled?: boolean;
   error?: string;
+  inputMode?: 'numeric';
   label: string;
+  maxLength?: number;
   onChange: (value: string) => void;
+  suffix?: ReactNode;
   type: string;
   value: string;
 };
 
-export function Field({ error, label, onChange, type, value }: FieldProps) {
+export function Field({
+  autoComplete,
+  disabled,
+  error,
+  inputMode,
+  label,
+  maxLength,
+  onChange,
+  suffix,
+  type,
+  value,
+}: FieldProps) {
   const id = label;
 
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <Input
-        aria-describedby={error ? `${id}-error` : undefined}
-        aria-invalid={Boolean(error)}
-        id={id}
-        onChange={(event) => onChange(event.target.value)}
-        type={type}
-        value={value}
-      />
+      <div className="relative">
+        <Input
+          aria-describedby={error ? `${id}-error` : undefined}
+          aria-invalid={Boolean(error)}
+          autoComplete={autoComplete}
+          className={suffix ? 'pr-32' : undefined}
+          disabled={disabled}
+          id={id}
+          inputMode={inputMode}
+          maxLength={maxLength}
+          onChange={(event) => onChange(event.target.value)}
+          type={type}
+          value={value}
+        />
+        {suffix ? (
+          <div className="absolute inset-y-0 right-1 flex items-center">{suffix}</div>
+        ) : null}
+      </div>
       {error ? (
         <p className="text-xs text-red-600" id={`${id}-error`}>
           {error}
@@ -82,7 +108,9 @@ export function Field({ error, label, onChange, type, value }: FieldProps) {
   );
 }
 
-function formErrors<T extends Record<string, unknown>>(issues: { message: string; path: PropertyKey[] }[]) {
+function formErrors<T extends Record<string, unknown>>(
+  issues: { message: string; path: PropertyKey[] }[],
+) {
   return issues.reduce<Partial<Record<keyof T, string>>>((acc, issue) => {
     const key = issue.path[0] as keyof T;
     if (key && !acc[key]) {

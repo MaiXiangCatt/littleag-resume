@@ -1,11 +1,78 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/fonts/NotoSansSC-Regular.ttf') format('truetype');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('/fonts/NotoSerifSC-Variable.ttf') format('truetype');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 200 900;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
 
 :root {
+  --background: #f5fbfd;
+  --foreground: #172a31;
+  --card: #ffffff;
+  --card-foreground: #172a31;
+  --popover: #ffffff;
+  --popover-foreground: #172a31;
+  --primary: #087ea4;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf8fc;
+  --secondary-foreground: #135d76;
+  --muted: #eff7f9;
+  --muted-foreground: #647b83;
+  --accent: #e6f7fb;
+  --accent-foreground: #087ea4;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #dbe9ed;
+  --input: #cddfe4;
+  --ring: #41b9e0;
+  --radius: 0.625rem;
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    'Noto Sans SC',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
     sans-serif;
-  color: #1f2328;
-  background: #f7f8fb;
+  color: #172a31;
+  background: #f5fbfd;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -14,6 +81,7 @@
 
 * {
   box-sizing: border-box;
+  border-color: var(--border);
 }
 
 html {

@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-littleag_resume}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: ${POSTGRES_DB:-littleag_resume}
+    secrets:
+      - postgres_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-littleag_resume} -d ${POSTGRES_DB:-littleag_resume}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ..
+      dockerfile: apps/server/Dockerfile
+    # headless Chromium 需要足够的共享内存，双保险（代码里还带 disable-dev-shm-usage）
+    shm_size: 1gb
+    environment:
+      APP_ENV: prod
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${POSTGRES_USER:-littleag_resume}
+      DATABASE_NAME: ${POSTGRES_DB:-littleag_resume}
+      DATABASE_SSLMODE: disable
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
+      # chromedp 在容器内经 compose DNS 访问 web 容器里的打印页
+      WEB_BASE_URL: http://web
+      AVATAR_STORAGE_DIR: /data/avatars
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      ACCESS_TOKEN_KEY: ${ACCESS_TOKEN_KEY:?set ACCESS_TOKEN_KEY in .env.prod or environment}
+      EMAIL_VERIFICATION_KEY: ${EMAIL_VERIFICATION_KEY:?set EMAIL_VERIFICATION_KEY in .env.prod or environment}
+      EMAIL_PROVIDER: resend
+      EMAIL_PRODUCT_NAME: ${EMAIL_PRODUCT_NAME:-LittleAgResume}
+      RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY in .env.prod or environment}
+      MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in .env.prod or environment}
+      PDF_MAX_QUEUE: ${PDF_MAX_QUEUE:-8}
+    secrets:
+      - postgres_password
+    volumes:
+      - avatars:/data/avatars
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    ports:
+      # 只暴露给宿主机反向代理，由 Caddy/Nginx 负责公网 HTTPS。
+      - "127.0.0.1:${WEB_HTTP_PORT:-8080}:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  avatars:
+
+secrets:
+  postgres_password:
+    file: ${POSTGRES_PASSWORD_FILE:-../.secrets/postgres_password}

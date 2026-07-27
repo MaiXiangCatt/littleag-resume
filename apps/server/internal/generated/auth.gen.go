@@ -84,6 +84,36 @@ func (e AuthUserResponseMessage) Valid() bool {
 	}
 }
 
+// Defines values for EmailVerificationResponseCode.
+const (
+	EmailVerificationResponseCodeN0 EmailVerificationResponseCode = 0
+)
+
+// Valid indicates whether the value is a known member of the EmailVerificationResponseCode enum.
+func (e EmailVerificationResponseCode) Valid() bool {
+	switch e {
+	case EmailVerificationResponseCodeN0:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for EmailVerificationResponseMessage.
+const (
+	EmailVerificationResponseMessageEmpty EmailVerificationResponseMessage = ""
+)
+
+// Valid indicates whether the value is a known member of the EmailVerificationResponseMessage enum.
+func (e EmailVerificationResponseMessage) Valid() bool {
+	switch e {
+	case EmailVerificationResponseMessageEmpty:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for EmptyResponseCode.
 const (
 	EmptyResponseCodeN0 EmptyResponseCode = 0
@@ -114,15 +144,48 @@ func (e EmptyResponseMessage) Valid() bool {
 	}
 }
 
+// Defines values for ImportResumeRequestTemplateId.
+const (
+	ImportResumeRequestTemplateIdClassicProfessional ImportResumeRequestTemplateId = "classic-professional"
+	ImportResumeRequestTemplateIdModernEditorial     ImportResumeRequestTemplateId = "modern-editorial"
+)
+
+// Valid indicates whether the value is a known member of the ImportResumeRequestTemplateId enum.
+func (e ImportResumeRequestTemplateId) Valid() bool {
+	switch e {
+	case ImportResumeRequestTemplateIdClassicProfessional:
+		return true
+	case ImportResumeRequestTemplateIdModernEditorial:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ImportResumeRequestVersion.
 const (
-	N1 ImportResumeRequestVersion = 1
+	ImportResumeRequestVersionN2 ImportResumeRequestVersion = 2
 )
 
 // Valid indicates whether the value is a known member of the ImportResumeRequestVersion enum.
 func (e ImportResumeRequestVersion) Valid() bool {
 	switch e {
-	case N1:
+	case ImportResumeRequestVersionN2:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResumeDetailContentVersion.
+const (
+	ResumeDetailContentVersionN2 ResumeDetailContentVersion = 2
+)
+
+// Valid indicates whether the value is a known member of the ResumeDetailContentVersion enum.
+func (e ResumeDetailContentVersion) Valid() bool {
+	switch e {
+	case ResumeDetailContentVersionN2:
 		return true
 	default:
 		return false
@@ -153,6 +216,24 @@ const (
 func (e ResumeDetailResponseMessage) Valid() bool {
 	switch e {
 	case ResumeDetailResponseMessageEmpty:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResumeFormattingV2FontFamily.
+const (
+	SourceHanSans  ResumeFormattingV2FontFamily = "source-han-sans"
+	SourceHanSerif ResumeFormattingV2FontFamily = "source-han-serif"
+)
+
+// Valid indicates whether the value is a known member of the ResumeFormattingV2FontFamily enum.
+func (e ResumeFormattingV2FontFamily) Valid() bool {
+	switch e {
+	case SourceHanSans:
+		return true
+	case SourceHanSerif:
 		return true
 	default:
 		return false
@@ -204,6 +285,36 @@ const (
 func (e ResumeListResponseMessage) Valid() bool {
 	switch e {
 	case ResumeListResponseMessageEmpty:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResumePrintResponseCode.
+const (
+	ResumePrintResponseCodeN0 ResumePrintResponseCode = 0
+)
+
+// Valid indicates whether the value is a known member of the ResumePrintResponseCode enum.
+func (e ResumePrintResponseCode) Valid() bool {
+	switch e {
+	case ResumePrintResponseCodeN0:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResumePrintResponseMessage.
+const (
+	ResumePrintResponseMessageEmpty ResumePrintResponseMessage = ""
+)
+
+// Valid indicates whether the value is a known member of the ResumePrintResponseMessage enum.
+func (e ResumePrintResponseMessage) Valid() bool {
+	switch e {
+	case ResumePrintResponseMessageEmpty:
 		return true
 	default:
 		return false
@@ -303,6 +414,39 @@ func (e ListResumesParamsPageSize) Valid() bool {
 	}
 }
 
+// Defines values for ReplaceResumeImportJSONBodyTemplateId.
+const (
+	ReplaceResumeImportJSONBodyTemplateIdClassicProfessional ReplaceResumeImportJSONBodyTemplateId = "classic-professional"
+	ReplaceResumeImportJSONBodyTemplateIdModernEditorial     ReplaceResumeImportJSONBodyTemplateId = "modern-editorial"
+)
+
+// Valid indicates whether the value is a known member of the ReplaceResumeImportJSONBodyTemplateId enum.
+func (e ReplaceResumeImportJSONBodyTemplateId) Valid() bool {
+	switch e {
+	case ReplaceResumeImportJSONBodyTemplateIdClassicProfessional:
+		return true
+	case ReplaceResumeImportJSONBodyTemplateIdModernEditorial:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReplaceResumeImportJSONBodyVersion.
+const (
+	N2 ReplaceResumeImportJSONBodyVersion = 2
+)
+
+// Valid indicates whether the value is a known member of the ReplaceResumeImportJSONBodyVersion enum.
+func (e ReplaceResumeImportJSONBodyVersion) Valid() bool {
+	switch e {
+	case N2:
+		return true
+	default:
+		return false
+	}
+}
+
 // AuthPayload defines model for AuthPayload.
 type AuthPayload struct {
 	// AccessToken 15-minute bearer access token.
@@ -325,9 +469,10 @@ type AuthResponseMessage string
 
 // AuthUser defines model for AuthUser.
 type AuthUser struct {
-	Email    openapi_types.Email `json:"email"`
-	Id       openapi_types.UUID  `json:"id"`
-	Username string              `json:"username"`
+	Email         openapi_types.Email `json:"email"`
+	EmailVerified bool                `json:"emailVerified"`
+	Id            openapi_types.UUID  `json:"id"`
+	Username      string              `json:"username"`
 }
 
 // AuthUserResponse defines model for AuthUserResponse.
@@ -355,10 +500,36 @@ type BaseResponse struct {
 	Message string `json:"message"`
 }
 
+// ConfirmEmailVerificationRequest defines model for ConfirmEmailVerificationRequest.
+type ConfirmEmailVerificationRequest struct {
+	Code  string              `json:"code"`
+	Email openapi_types.Email `json:"email"`
+}
+
 // CreateResumeRequest defines model for CreateResumeRequest.
 type CreateResumeRequest struct {
 	Title *string `json:"title,omitempty"`
 }
+
+// EmailVerificationPayload defines model for EmailVerificationPayload.
+type EmailVerificationPayload struct {
+	Email              openapi_types.Email `json:"email"`
+	ExpiresInSeconds   int                 `json:"expiresInSeconds"`
+	ResendAfterSeconds int                 `json:"resendAfterSeconds"`
+}
+
+// EmailVerificationResponse defines model for EmailVerificationResponse.
+type EmailVerificationResponse struct {
+	Code    EmailVerificationResponseCode    `json:"code"`
+	Data    EmailVerificationPayload         `json:"data"`
+	Message EmailVerificationResponseMessage `json:"message"`
+}
+
+// EmailVerificationResponseCode defines model for EmailVerificationResponse.Code.
+type EmailVerificationResponseCode int32
+
+// EmailVerificationResponseMessage defines model for EmailVerificationResponse.Message.
+type EmailVerificationResponseMessage string
 
 // EmptyResponse defines model for EmptyResponse.
 type EmptyResponse struct {
@@ -382,10 +553,15 @@ type ErrorResponse struct {
 
 // ImportResumeRequest defines model for ImportResumeRequest.
 type ImportResumeRequest struct {
-	Content map[string]interface{}     `json:"content"`
-	Title   string                     `json:"title"`
-	Version ImportResumeRequestVersion `json:"version"`
+	Avatar     *string                        `json:"avatar,omitempty"`
+	Content    ResumeContent                  `json:"content"`
+	TemplateId *ImportResumeRequestTemplateId `json:"templateId,omitempty"`
+	Title      string                         `json:"title"`
+	Version    ImportResumeRequestVersion     `json:"version"`
 }
+
+// ImportResumeRequestTemplateId defines model for ImportResumeRequest.TemplateId.
+type ImportResumeRequestTemplateId string
 
 // ImportResumeRequestVersion defines model for ImportResumeRequest.Version.
 type ImportResumeRequestVersion int
@@ -398,24 +574,43 @@ type LoginRequest struct {
 
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
-	ConfirmPassword string              `json:"confirmPassword"`
-	Email           openapi_types.Email `json:"email"`
-	Password        string              `json:"password"`
-	Username        string              `json:"username"`
+	ConfirmPassword  string              `json:"confirmPassword"`
+	Email            openapi_types.Email `json:"email"`
+	Password         string              `json:"password"`
+	Username         string              `json:"username"`
+	VerificationCode string              `json:"verificationCode"`
+}
+
+// ResendEmailVerificationRequest defines model for ResendEmailVerificationRequest.
+type ResendEmailVerificationRequest struct {
+	Email    openapi_types.Email `json:"email"`
+	Password string              `json:"password"`
+}
+
+// ResumeContent defines model for ResumeContent.
+type ResumeContent struct {
+	Formatting ResumeFormattingV2       `json:"formatting"`
+	Profile    map[string]interface{}   `json:"profile"`
+	Sections   []map[string]interface{} `json:"sections"`
 }
 
 // ResumeDetail defines model for ResumeDetail.
 type ResumeDetail struct {
-	Content        map[string]interface{} `json:"content"`
-	ContentVersion int                    `json:"contentVersion"`
-	CreatedAt      time.Time              `json:"createdAt"`
-	ExportCount    int64                  `json:"exportCount"`
-	Id             openapi_types.UUID     `json:"id"`
-	Status         ResumeStatus           `json:"status"`
-	TemplateId     *string                `json:"templateId,omitempty"`
-	Title          string                 `json:"title"`
-	UpdatedAt      time.Time              `json:"updatedAt"`
+	Content        ResumeContent              `json:"content"`
+	ContentVersion ResumeDetailContentVersion `json:"contentVersion"`
+	CreatedAt      time.Time                  `json:"createdAt"`
+	ExportCount    int64                      `json:"exportCount"`
+	HasAvatar      bool                       `json:"hasAvatar"`
+	Id             openapi_types.UUID         `json:"id"`
+	Revision       int64                      `json:"revision"`
+	Status         ResumeStatus               `json:"status"`
+	TemplateId     *string                    `json:"templateId,omitempty"`
+	Title          string                     `json:"title"`
+	UpdatedAt      time.Time                  `json:"updatedAt"`
 }
+
+// ResumeDetailContentVersion defines model for ResumeDetail.ContentVersion.
+type ResumeDetailContentVersion int
 
 // ResumeDetailResponse defines model for ResumeDetailResponse.
 type ResumeDetailResponse struct {
@@ -429,6 +624,27 @@ type ResumeDetailResponseCode int32
 
 // ResumeDetailResponseMessage defines model for ResumeDetailResponse.Message.
 type ResumeDetailResponseMessage string
+
+// ResumeFormattingV2 defines model for ResumeFormattingV2.
+type ResumeFormattingV2 struct {
+	AccentColor          string                       `json:"accentColor"`
+	BodyFontSizePx       int                          `json:"bodyFontSizePx"`
+	EntryTitleFontSizePx int                          `json:"entryTitleFontSizePx"`
+	FontFamily           ResumeFormattingV2FontFamily `json:"fontFamily"`
+	LineHeightRatio      float32                      `json:"lineHeightRatio"`
+	NameFontSizePx       int                          `json:"nameFontSizePx"`
+	PageMarginPx         struct {
+		Bottom int `json:"bottom"`
+		Left   int `json:"left"`
+		Right  int `json:"right"`
+		Top    int `json:"top"`
+	} `json:"pageMarginPx"`
+	SectionGapPx           int `json:"sectionGapPx"`
+	SectionTitleFontSizePx int `json:"sectionTitleFontSizePx"`
+}
+
+// ResumeFormattingV2FontFamily defines model for ResumeFormattingV2.FontFamily.
+type ResumeFormattingV2FontFamily string
 
 // ResumeListPayload defines model for ResumeListPayload.
 type ResumeListPayload struct {
@@ -453,6 +669,26 @@ type ResumeListResponseCode int32
 
 // ResumeListResponseMessage defines model for ResumeListResponse.Message.
 type ResumeListResponseMessage string
+
+// ResumePrintPayload defines model for ResumePrintPayload.
+type ResumePrintPayload struct {
+	// AvatarDataUrl Inline data URL of the avatar JPEG, if any.
+	AvatarDataUrl *string      `json:"avatarDataUrl,omitempty"`
+	Resume        ResumeDetail `json:"resume"`
+}
+
+// ResumePrintResponse defines model for ResumePrintResponse.
+type ResumePrintResponse struct {
+	Code    ResumePrintResponseCode    `json:"code"`
+	Data    ResumePrintPayload         `json:"data"`
+	Message ResumePrintResponseMessage `json:"message"`
+}
+
+// ResumePrintResponseCode defines model for ResumePrintResponse.Code.
+type ResumePrintResponseCode int32
+
+// ResumePrintResponseMessage defines model for ResumePrintResponse.Message.
+type ResumePrintResponseMessage string
 
 // ResumeSort defines model for ResumeSort.
 type ResumeSort string
@@ -485,19 +721,27 @@ type ResumeStatus string
 type ResumeSummary struct {
 	CreatedAt   time.Time          `json:"createdAt"`
 	ExportCount int64              `json:"exportCount"`
+	HasAvatar   bool               `json:"hasAvatar"`
 	Id          openapi_types.UUID `json:"id"`
+	Revision    int64              `json:"revision"`
 	Status      ResumeStatus       `json:"status"`
 	TemplateId  *string            `json:"templateId,omitempty"`
 	Title       string             `json:"title"`
 	UpdatedAt   time.Time          `json:"updatedAt"`
 }
 
+// SendRegistrationEmailVerificationRequest defines model for SendRegistrationEmailVerificationRequest.
+type SendRegistrationEmailVerificationRequest struct {
+	Email openapi_types.Email `json:"email"`
+}
+
 // UpdateResumeRequest defines model for UpdateResumeRequest.
 type UpdateResumeRequest struct {
-	Content    *map[string]interface{} `json:"content,omitempty"`
-	Status     *ResumeStatus           `json:"status,omitempty"`
-	TemplateId *string                 `json:"templateId,omitempty"`
-	Title      *string                 `json:"title,omitempty"`
+	Content          *ResumeContent `json:"content,omitempty"`
+	ExpectedRevision int64          `json:"expectedRevision"`
+	Status           *ResumeStatus  `json:"status,omitempty"`
+	TemplateId       *string        `json:"templateId,omitempty"`
+	Title            *string        `json:"title,omitempty"`
 }
 
 // RefreshTokenCookie defines model for RefreshTokenCookie.
@@ -512,11 +756,17 @@ type BadRequest = ErrorResponse
 // Conflict defines model for Conflict.
 type Conflict = ErrorResponse
 
+// Forbidden defines model for Forbidden.
+type Forbidden = ErrorResponse
+
 // InternalServerError defines model for InternalServerError.
 type InternalServerError = ErrorResponse
 
 // NotFound defines model for NotFound.
 type NotFound = ErrorResponse
+
+// ServiceUnavailable defines model for ServiceUnavailable.
+type ServiceUnavailable = ErrorResponse
 
 // TooManyRequests defines model for TooManyRequests.
 type TooManyRequests = ErrorResponse
@@ -551,11 +801,41 @@ type ListResumesParams struct {
 // ListResumesParamsPageSize defines parameters for ListResumes.
 type ListResumesParamsPageSize int
 
+// ReplaceResumeImportJSONBody defines parameters for ReplaceResumeImport.
+type ReplaceResumeImportJSONBody struct {
+	Avatar           *string                                `json:"avatar,omitempty"`
+	Content          ResumeContent                          `json:"content"`
+	ExpectedRevision int64                                  `json:"expectedRevision"`
+	TemplateId       *ReplaceResumeImportJSONBodyTemplateId `json:"templateId,omitempty"`
+	Title            string                                 `json:"title"`
+	Version          ReplaceResumeImportJSONBodyVersion     `json:"version"`
+}
+
+// ReplaceResumeImportJSONBodyTemplateId defines parameters for ReplaceResumeImport.
+type ReplaceResumeImportJSONBodyTemplateId string
+
+// ReplaceResumeImportJSONBodyVersion defines parameters for ReplaceResumeImport.
+type ReplaceResumeImportJSONBodyVersion int
+
+// GetResumePrintDataParams defines parameters for GetResumePrintData.
+type GetResumePrintDataParams struct {
+	XPrintToken string `json:"X-Print-Token"`
+}
+
+// ConfirmAuthEmailVerificationJSONRequestBody defines body for ConfirmAuthEmailVerification for application/json ContentType.
+type ConfirmAuthEmailVerificationJSONRequestBody = ConfirmEmailVerificationRequest
+
+// ResendAuthEmailVerificationJSONRequestBody defines body for ResendAuthEmailVerification for application/json ContentType.
+type ResendAuthEmailVerificationJSONRequestBody = ResendEmailVerificationRequest
+
 // LoginAuthUserJSONRequestBody defines body for LoginAuthUser for application/json ContentType.
 type LoginAuthUserJSONRequestBody = LoginRequest
 
 // RegisterAuthUserJSONRequestBody defines body for RegisterAuthUser for application/json ContentType.
 type RegisterAuthUserJSONRequestBody = RegisterRequest
+
+// SendAuthRegistrationEmailVerificationJSONRequestBody defines body for SendAuthRegistrationEmailVerification for application/json ContentType.
+type SendAuthRegistrationEmailVerificationJSONRequestBody = SendRegistrationEmailVerificationRequest
 
 // CreateResumeJSONRequestBody defines body for CreateResume for application/json ContentType.
 type CreateResumeJSONRequestBody = CreateResumeRequest
@@ -566,8 +846,17 @@ type ImportResumeJSONRequestBody = ImportResumeRequest
 // UpdateResumeJSONRequestBody defines body for UpdateResume for application/json ContentType.
 type UpdateResumeJSONRequestBody = UpdateResumeRequest
 
+// ReplaceResumeImportJSONRequestBody defines body for ReplaceResumeImport for application/json ContentType.
+type ReplaceResumeImportJSONRequestBody ReplaceResumeImportJSONBody
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Confirm a registration email verification code and issue a session
+	// (POST /api/auth/email-verification/confirm)
+	ConfirmAuthEmailVerification(c *gin.Context)
+	// Resend a verification code for a legacy unverified account
+	// (POST /api/auth/email-verification/resend)
+	ResendAuthEmailVerification(c *gin.Context)
 	// Login with email and password
 	// (POST /api/auth/login)
 	LoginAuthUser(c *gin.Context)
@@ -583,13 +872,16 @@ type ServerInterface interface {
 	// Register a user
 	// (POST /api/auth/register)
 	RegisterAuthUser(c *gin.Context)
+	// Send or resend a registration email verification code
+	// (POST /api/auth/registration-email-verification)
+	SendAuthRegistrationEmailVerification(c *gin.Context)
 	// List the current user's resumes
 	// (GET /api/resumes)
 	ListResumes(c *gin.Context, params ListResumesParams)
 	// Create a blank draft resume
 	// (POST /api/resumes)
 	CreateResume(c *gin.Context)
-	// Import a VegaResume envelope as a new draft
+	// Import a LittleAgResume envelope as a new draft
 	// (POST /api/resumes/import)
 	ImportResume(c *gin.Context)
 	// Get resume statistics for the current user
@@ -604,9 +896,27 @@ type ServerInterface interface {
 	// Update resume metadata or opaque content
 	// (PATCH /api/resumes/{resumeId})
 	UpdateResume(c *gin.Context, resumeId ResumeId)
+	// Delete the current resume avatar
+	// (DELETE /api/resumes/{resumeId}/avatar)
+	DeleteResumeAvatar(c *gin.Context, resumeId ResumeId)
+	// Get the current resume avatar
+	// (GET /api/resumes/{resumeId}/avatar)
+	GetResumeAvatar(c *gin.Context, resumeId ResumeId)
+	// Replace the current resume avatar
+	// (PUT /api/resumes/{resumeId}/avatar)
+	PutResumeAvatar(c *gin.Context, resumeId ResumeId)
 	// Copy a resume as a new draft
 	// (POST /api/resumes/{resumeId}/copy)
 	CopyResume(c *gin.Context, resumeId ResumeId)
+	// Render the resume to a PDF via headless Chrome; records the export on success
+	// (POST /api/resumes/{resumeId}/export/pdf)
+	ExportResumePdf(c *gin.Context, resumeId ResumeId)
+	// Replace an existing resume from a LittleAgResume envelope
+	// (PUT /api/resumes/{resumeId}/import)
+	ReplaceResumeImport(c *gin.Context, resumeId ResumeId)
+	// Print-page data endpoint authorized by a short-lived print token
+	// (GET /api/resumes/{resumeId}/print)
+	GetResumePrintData(c *gin.Context, resumeId ResumeId, params GetResumePrintDataParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -617,6 +927,32 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
+
+// ConfirmAuthEmailVerification operation middleware
+func (siw *ServerInterfaceWrapper) ConfirmAuthEmailVerification(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ConfirmAuthEmailVerification(c)
+}
+
+// ResendAuthEmailVerification operation middleware
+func (siw *ServerInterfaceWrapper) ResendAuthEmailVerification(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ResendAuthEmailVerification(c)
+}
 
 // LoginAuthUser operation middleware
 func (siw *ServerInterfaceWrapper) LoginAuthUser(c *gin.Context) {
@@ -725,6 +1061,19 @@ func (siw *ServerInterfaceWrapper) RegisterAuthUser(c *gin.Context) {
 	}
 
 	siw.Handler.RegisterAuthUser(c)
+}
+
+// SendAuthRegistrationEmailVerification operation middleware
+func (siw *ServerInterfaceWrapper) SendAuthRegistrationEmailVerification(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SendAuthRegistrationEmailVerification(c)
 }
 
 // ListResumes operation middleware
@@ -914,6 +1263,87 @@ func (siw *ServerInterfaceWrapper) UpdateResume(c *gin.Context) {
 	siw.Handler.UpdateResume(c, resumeId)
 }
 
+// DeleteResumeAvatar operation middleware
+func (siw *ServerInterfaceWrapper) DeleteResumeAvatar(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteResumeAvatar(c, resumeId)
+}
+
+// GetResumeAvatar operation middleware
+func (siw *ServerInterfaceWrapper) GetResumeAvatar(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetResumeAvatar(c, resumeId)
+}
+
+// PutResumeAvatar operation middleware
+func (siw *ServerInterfaceWrapper) PutResumeAvatar(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutResumeAvatar(c, resumeId)
+}
+
 // CopyResume operation middleware
 func (siw *ServerInterfaceWrapper) CopyResume(c *gin.Context) {
 
@@ -939,6 +1369,112 @@ func (siw *ServerInterfaceWrapper) CopyResume(c *gin.Context) {
 	}
 
 	siw.Handler.CopyResume(c, resumeId)
+}
+
+// ExportResumePdf operation middleware
+func (siw *ServerInterfaceWrapper) ExportResumePdf(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ExportResumePdf(c, resumeId)
+}
+
+// ReplaceResumeImport operation middleware
+func (siw *ServerInterfaceWrapper) ReplaceResumeImport(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(string(BearerAuthScopes), []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ReplaceResumeImport(c, resumeId)
+}
+
+// GetResumePrintData operation middleware
+func (siw *ServerInterfaceWrapper) GetResumePrintData(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resumeId" -------------
+	var resumeId ResumeId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resumeId", c.Param("resumeId"), &resumeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resumeId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetResumePrintDataParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "X-Print-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Print-Token")]; found {
+		var XPrintToken string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Print-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Print-Token", valueList[0], &XPrintToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Print-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XPrintToken = XPrintToken
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter X-Print-Token is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetResumePrintData(c, resumeId, params)
 }
 
 // GinServerOptions provides options for the Gin server.
@@ -968,11 +1504,14 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
+	router.POST(options.BaseURL+"/api/auth/email-verification/confirm", wrapper.ConfirmAuthEmailVerification)
+	router.POST(options.BaseURL+"/api/auth/email-verification/resend", wrapper.ResendAuthEmailVerification)
 	router.POST(options.BaseURL+"/api/auth/login", wrapper.LoginAuthUser)
 	router.POST(options.BaseURL+"/api/auth/logout", wrapper.LogoutAuthUser)
 	router.GET(options.BaseURL+"/api/auth/me", wrapper.GetCurrentAuthUser)
 	router.POST(options.BaseURL+"/api/auth/refresh", wrapper.RefreshAuthSession)
 	router.POST(options.BaseURL+"/api/auth/register", wrapper.RegisterAuthUser)
+	router.POST(options.BaseURL+"/api/auth/registration-email-verification", wrapper.SendAuthRegistrationEmailVerification)
 	router.GET(options.BaseURL+"/api/resumes", wrapper.ListResumes)
 	router.POST(options.BaseURL+"/api/resumes", wrapper.CreateResume)
 	router.POST(options.BaseURL+"/api/resumes/import", wrapper.ImportResume)
@@ -980,7 +1519,13 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/resumes/:resumeId", wrapper.DeleteResume)
 	router.GET(options.BaseURL+"/api/resumes/:resumeId", wrapper.GetResume)
 	router.PATCH(options.BaseURL+"/api/resumes/:resumeId", wrapper.UpdateResume)
+	router.DELETE(options.BaseURL+"/api/resumes/:resumeId/avatar", wrapper.DeleteResumeAvatar)
+	router.GET(options.BaseURL+"/api/resumes/:resumeId/avatar", wrapper.GetResumeAvatar)
+	router.PUT(options.BaseURL+"/api/resumes/:resumeId/avatar", wrapper.PutResumeAvatar)
 	router.POST(options.BaseURL+"/api/resumes/:resumeId/copy", wrapper.CopyResume)
+	router.POST(options.BaseURL+"/api/resumes/:resumeId/export/pdf", wrapper.ExportResumePdf)
+	router.PUT(options.BaseURL+"/api/resumes/:resumeId/import", wrapper.ReplaceResumeImport)
+	router.GET(options.BaseURL+"/api/resumes/:resumeId/print", wrapper.GetResumePrintData)
 }
 
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
@@ -988,50 +1533,72 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"xf8DAAD//w==",
+	"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",
+	"ZTFOp0zI0UF0EKmn/xEAAP//",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

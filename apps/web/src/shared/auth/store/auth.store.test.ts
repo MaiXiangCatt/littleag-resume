@@ -13,7 +13,7 @@ describe('auth store', () => {
 
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     expect(useAuthStore.getState()).toMatchObject({
@@ -34,7 +34,7 @@ describe('auth store', () => {
   it('captures auth failures without persisting stale tokens', () => {
     useAuthStore.getState().setSession({
       accessToken: 'access-token',
-      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com' },
+      user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
 
     useAuthStore.getState().setFailed('Session expired');

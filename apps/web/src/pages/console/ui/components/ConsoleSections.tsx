@@ -30,13 +30,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu';
 import { Label } from '@/shared/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 
 import type {
   ConsolePageSize,
@@ -65,11 +59,17 @@ export function FeedbackNotice({ feedback, onClose }: { feedback: Feedback; onCl
       aria-live="polite"
       className={cn(
         'fixed left-1/2 top-24 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-xl border bg-white px-4 py-3 text-sm shadow-[0_14px_42px_rgba(43,29,46,0.16)]',
-        feedback.kind === 'error' ? 'border-red-200 text-red-700' : 'border-[#dfd3df] text-[#5e2358]',
+        feedback.kind === 'error'
+          ? 'border-red-200 text-red-700'
+          : 'border-[#dfd3df] text-[#5e2358]',
       )}
     >
       <span>{feedback.message}</span>
-      <Button variant="ghost" className="h-auto p-0 font-semibold opacity-65 hover:bg-transparent hover:opacity-100" onClick={onClose}>
+      <Button
+        variant="ghost"
+        className="h-auto p-0 font-semibold opacity-65 hover:bg-transparent hover:opacity-100"
+        onClick={onClose}
+      >
         关闭
       </Button>
     </div>
@@ -94,7 +94,10 @@ export function ResumeStatsPanel({
   }
 
   return (
-    <section aria-label="简历统计" className="grid min-h-28 grid-cols-2 rounded-2xl border border-[#ebe6ed] bg-white px-2 py-4 shadow-[0_8px_30px_rgba(57,39,61,0.035)] xl:grid-cols-4">
+    <section
+      aria-label="简历统计"
+      className="grid min-h-28 grid-cols-2 rounded-2xl border border-[#ebe6ed] bg-white px-2 py-4 shadow-[0_8px_30px_rgba(57,39,61,0.035)] xl:grid-cols-4"
+    >
       {STAT_ITEMS.map(({ icon: Icon, key, label, unit }, index) => (
         <div
           className={cn(
@@ -105,13 +108,18 @@ export function ResumeStatsPanel({
           )}
           key={key}
         >
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f7eef7] text-[#850477]">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f7eef7] text-[#087EA4]">
             <Icon aria-hidden="true" size={22} strokeWidth={1.7} />
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm text-[#6d6571]">{label}</span>
             <span className="mt-0.5 flex items-baseline gap-1">
-              <span className={cn('text-2xl font-semibold tracking-[-0.04em] text-[#211725]', isLoading ? 'animate-pulse text-[#d9d2dc]' : '')}>
+              <span
+                className={cn(
+                  'text-2xl font-semibold tracking-[-0.04em] text-[#211725]',
+                  isLoading ? 'animate-pulse text-[#d9d2dc]' : '',
+                )}
+              >
                 {isLoading ? '—' : stats[key]}
               </span>
               <span className="text-xs text-[#817985]">{unit}</span>
@@ -150,8 +158,8 @@ export function ResumeToolbar({
             className={cn(
               'h-auto shrink-0 rounded-full border px-5 py-2 text-sm font-medium transition',
               status === filter.value
-                ? 'border-[#850477] bg-[#850477] text-white shadow-[0_7px_18px_rgba(133,4,119,0.2)] hover:bg-[#850477] hover:text-white'
-                : 'border-[#e7e1e9] bg-white text-[#635b67] hover:border-[#cba7c7] hover:bg-white hover:text-[#850477]',
+                ? 'border-[#087EA4] bg-[#087EA4] text-white shadow-[0_7px_18px_rgba(8,126,164,0.2)] hover:bg-[#087EA4] hover:text-white'
+                : 'border-[#e7e1e9] bg-white text-[#635b67] hover:border-[#8ED6E9] hover:bg-white hover:text-[#087EA4]',
             )}
             key={filter.value}
             onClick={() => onStatusChange(filter.value)}
@@ -164,7 +172,10 @@ export function ResumeToolbar({
         <ArrowDownAZ aria-hidden="true" size={18} />
         <Label className="text-sm text-[#5e5662]">排序</Label>
         <Select onValueChange={(value) => onSortChange(value as ConsoleSort)} value={sort}>
-          <SelectTrigger aria-label="简历排序" className="h-auto w-auto border-0 bg-transparent px-1 py-0 font-medium text-[#332936] shadow-none focus-visible:ring-0">
+          <SelectTrigger
+            aria-label="简历排序"
+            className="h-auto w-auto border-0 bg-transparent px-1 py-0 font-medium text-[#332936] shadow-none focus-visible:ring-0"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -179,19 +190,33 @@ export function ResumeToolbar({
   );
 }
 
-export function CreateResumeCard({ isPending, onCreate }: { isPending: boolean; onCreate: () => void }) {
+export function CreateResumeCard({
+  isPending,
+  onCreate,
+}: {
+  isPending: boolean;
+  onCreate: () => void;
+}) {
   return (
     <Button
       variant="ghost"
-      className="group h-auto min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-[#a63498] bg-[radial-gradient(circle_at_50%_20%,rgba(176,56,158,0.08),transparent_52%)] px-8 text-center transition duration-300 hover:-translate-y-1 hover:border-[#850477] hover:bg-[radial-gradient(circle_at_50%_20%,rgba(176,56,158,0.08),transparent_52%)] hover:shadow-[0_18px_38px_rgba(97,32,89,0.11)] focus-visible:ring-4 focus-visible:ring-[#850477]/15 disabled:pointer-events-none disabled:opacity-60"
+      className="group h-auto min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-[#41B9E0] bg-[radial-gradient(circle_at_50%_20%,rgba(65,185,224,0.08),transparent_52%)] px-8 text-center transition duration-300 hover:-translate-y-1 hover:border-[#087EA4] hover:bg-[radial-gradient(circle_at_50%_20%,rgba(65,185,224,0.08),transparent_52%)] hover:shadow-[0_18px_38px_rgba(17,112,144,0.11)] focus-visible:ring-4 focus-visible:ring-[#087EA4]/15 disabled:pointer-events-none disabled:opacity-60"
       disabled={isPending}
       onClick={onCreate}
     >
-      <span className="grid size-14 place-items-center rounded-full bg-[#850477] text-white shadow-[0_10px_24px_rgba(133,4,119,0.28)] transition group-hover:scale-105">
-        {isPending ? <LoaderCircle aria-hidden="true" className="animate-spin" size={25} /> : <Plus aria-hidden="true" size={30} strokeWidth={1.8} />}
+      <span className="grid size-14 place-items-center rounded-full bg-[#087EA4] text-white shadow-[0_10px_24px_rgba(8,126,164,0.28)] transition group-hover:scale-105">
+        {isPending ? (
+          <LoaderCircle aria-hidden="true" className="animate-spin" size={25} />
+        ) : (
+          <Plus aria-hidden="true" size={30} strokeWidth={1.8} />
+        )}
       </span>
-      <span className="mt-5 text-lg font-semibold text-[#7d176f]">{isPending ? '正在创建…' : '创建新简历'}</span>
-      <span className="mt-2 max-w-72 text-sm leading-6 text-[#817684]">从空白模板开始，快速创建你的专属简历</span>
+      <span className="mt-5 text-lg font-semibold text-[#087EA4]">
+        {isPending ? '正在创建…' : '创建新简历'}
+      </span>
+      <span className="mt-2 max-w-72 text-sm leading-6 text-[#817684]">
+        从空白模板开始，快速创建你的专属简历
+      </span>
     </Button>
   );
 }
@@ -200,6 +225,7 @@ type ResumeCardProps = {
   isPending: boolean;
   onCopy: () => void;
   onDelete: () => void;
+  onExport: () => void;
   onOpen: () => void;
   onRename: () => void;
   ownerInitial: string;
@@ -210,6 +236,7 @@ export function ResumeCard({
   isPending,
   onCopy,
   onDelete,
+  onExport,
   onOpen,
   onRename,
   ownerInitial,
@@ -222,7 +249,7 @@ export function ResumeCard({
       <Button
         aria-label={`编辑 ${resume.title}`}
         variant="ghost"
-        className="relative h-auto min-h-48 w-full overflow-hidden rounded-xl border border-[#e5e0e7] bg-[#faf9fb] p-0 text-left hover:bg-[#faf9fb] focus-visible:ring-3 focus-visible:ring-[#850477]/25"
+        className="relative h-auto min-h-48 w-full overflow-hidden rounded-xl border border-[#e5e0e7] bg-[#faf9fb] p-0 text-left hover:bg-[#faf9fb] focus-visible:ring-3 focus-visible:ring-[#087EA4]/25"
         onClick={onOpen}
       >
         <ResumePlaceholder initial={ownerInitial} />
@@ -230,13 +257,19 @@ export function ResumeCard({
 
       <div className="flex min-w-0 flex-col py-1">
         <div className="flex items-start gap-2">
-          <Button variant="ghost" className="h-auto min-w-0 p-0 text-left hover:bg-transparent" onClick={onOpen}>
-            <h2 className="truncate text-lg font-semibold tracking-[-0.025em] text-[#241a27] transition hover:text-[#850477]">{resume.title}</h2>
+          <Button
+            variant="ghost"
+            className="h-auto min-w-0 p-0 text-left hover:bg-transparent"
+            onClick={onOpen}
+          >
+            <h2 className="truncate text-lg font-semibold tracking-[-0.025em] text-[#241a27] transition hover:text-[#087EA4]">
+              {resume.title}
+            </h2>
           </Button>
           <span
             className={cn(
               'mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold',
-              isCompleted ? 'bg-[#f5e9f4] text-[#8a197d]' : 'bg-[#fbf1ff] text-[#9344a2]',
+              isCompleted ? 'bg-[#f5e9f4] text-[#087EA4]' : 'bg-[#fbf1ff] text-[#277F9A]',
             )}
           >
             {isCompleted ? '已完成' : '草稿'}
@@ -249,15 +282,19 @@ export function ResumeCard({
 
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
           <Button
-            aria-label={`导出 ${resume.title} PDF，暂未开放`}
-            className="border-[#d6a7d1] text-[#850477]"
-            disabled
+            aria-label={`导出 ${resume.title} PDF`}
+            className="border-[#8ED6E9] text-[#087EA4]"
+            disabled={isPending}
+            onClick={onExport}
             size="sm"
-            title="PDF 导出将在编辑器完成后开放"
             variant="outline"
           >
-            <Download size={16} />
-            导出 PDF
+            {isPending ? (
+              <LoaderCircle className="animate-spin" size={16} />
+            ) : (
+              <Download size={16} />
+            )}
+            {isPending ? '生成中…' : '导出 PDF'}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -265,34 +302,55 @@ export function ResumeCard({
                 aria-label={`${resume.title} 更多操作`}
                 variant="outline"
                 size="icon"
-                className="size-8 rounded-lg border-[#ded8e1] text-[#564e59] hover:border-[#ba82b3] hover:text-[#850477]"
+                className="size-8 rounded-lg border-[#ded8e1] text-[#564e59] hover:border-[#62C7E4] hover:text-[#087EA4]"
               >
                 <Ellipsis size={18} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36 rounded-xl border-[#e8e2ea] p-1.5 shadow-[0_14px_34px_rgba(48,31,51,0.16)]">
-              <DropdownMenuItem className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#850477]" onClick={onRename}>
-                <Pencil size={15} />重命名
+            <DropdownMenuContent
+              align="end"
+              className="w-36 rounded-xl border-[#e8e2ea] p-1.5 shadow-[0_14px_34px_rgba(48,31,51,0.16)]"
+            >
+              <DropdownMenuItem
+                className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#087EA4]"
+                onClick={onRename}
+              >
+                <Pencil size={15} />
+                重命名
               </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#850477]" onClick={onCopy}>
-                <Copy size={15} />复制简历
+              <DropdownMenuItem
+                className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#087EA4]"
+                onClick={onCopy}
+              >
+                <Copy size={15} />
+                复制简历
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-[#f0ecf1] pt-3">
-          <Button variant="ghost" className="h-auto gap-2 p-0 text-sm text-[#625966] hover:bg-transparent hover:text-[#850477]" onClick={onOpen}>
-            <Pencil aria-hidden="true" size={16} />编辑
+          <Button
+            variant="ghost"
+            className="h-auto gap-2 p-0 text-sm text-[#625966] hover:bg-transparent hover:text-[#087EA4]"
+            onClick={onOpen}
+          >
+            <Pencil aria-hidden="true" size={16} />
+            编辑
           </Button>
-          <Button variant="ghost" className="h-auto gap-2 p-0 text-sm text-[#625966] hover:bg-transparent hover:text-red-600" onClick={onDelete}>
-            <Trash2 aria-hidden="true" size={16} />删除
+          <Button
+            variant="ghost"
+            className="h-auto gap-2 p-0 text-sm text-[#625966] hover:bg-transparent hover:text-red-600"
+            onClick={onDelete}
+          >
+            <Trash2 aria-hidden="true" size={16} />
+            删除
           </Button>
         </div>
       </div>
       {isPending ? (
         <div className="absolute inset-0 z-10 grid place-items-center rounded-2xl bg-white/75 backdrop-blur-[1px]">
-          <LoaderCircle aria-label="正在处理" className="animate-spin text-[#850477]" size={28} />
+          <LoaderCircle aria-label="正在处理" className="animate-spin text-[#087EA4]" size={28} />
         </div>
       ) : null}
     </article>
@@ -304,17 +362,23 @@ function ResumePlaceholder({ initial }: { initial: string }) {
     <span className="absolute inset-0 flex flex-col bg-white p-3 text-[#48394b]">
       <span className="flex items-start justify-between border-b border-[#eaddea] pb-2">
         <span>
-          <span className="block text-[7px] font-bold tracking-[0.16em] text-[#850477]">VEGA RESUME</span>
+          <span className="block text-[7px] font-bold tracking-[0.16em] text-[#087EA4]">
+            LITTLEAG RESUME
+          </span>
           <span className="mt-1 block h-1.5 w-12 rounded-full bg-[#d7c2d5]" />
         </span>
-        <span className="grid size-7 place-items-center rounded-full bg-[#eee3ed] text-[10px] font-bold text-[#850477]">{initial}</span>
+        <span className="grid size-7 place-items-center rounded-full bg-[#eee3ed] text-[10px] font-bold text-[#087EA4]">
+          {initial}
+        </span>
       </span>
       <span className="mt-3 grid gap-2">
         <span className="h-1.5 w-2/3 rounded-full bg-[#3e3041]/80" />
         <span className="h-1 w-full rounded-full bg-[#e2dce4]" />
         <span className="h-1 w-5/6 rounded-full bg-[#e2dce4]" />
       </span>
-      <span className="mt-3 block text-[6px] font-bold tracking-widest text-[#8c2581]">EXPERIENCE</span>
+      <span className="mt-3 block text-[6px] font-bold tracking-widest text-[#1689AF]">
+        EXPERIENCE
+      </span>
       <span className="mt-2 grid gap-1.5">
         <span className="h-1 w-full rounded-full bg-[#ded7e0]" />
         <span className="h-1 w-11/12 rounded-full bg-[#e7e2e8]" />
@@ -323,10 +387,10 @@ function ResumePlaceholder({ initial }: { initial: string }) {
         <span className="h-1 w-3/4 rounded-full bg-[#e7e2e8]" />
       </span>
       <span className="mt-auto grid grid-cols-4 gap-1">
-        <span className="h-1 rounded-full bg-[#b867ad]" />
-        <span className="h-1 rounded-full bg-[#d7afd2]" />
-        <span className="h-1 rounded-full bg-[#b867ad]" />
-        <span className="h-1 rounded-full bg-[#d7afd2]" />
+        <span className="h-1 rounded-full bg-[#41B9E0]" />
+        <span className="h-1 rounded-full bg-[#A9E3F2]" />
+        <span className="h-1 rounded-full bg-[#41B9E0]" />
+        <span className="h-1 rounded-full bg-[#A9E3F2]" />
       </span>
     </span>
   );
@@ -334,10 +398,16 @@ function ResumePlaceholder({ initial }: { initial: string }) {
 
 export function ResumeGridSkeleton() {
   return (
-    <div aria-label="正在加载简历" className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-3">
+    <div
+      aria-label="正在加载简历"
+      className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-3"
+    >
       <div className="min-h-56 animate-pulse rounded-2xl border border-dashed border-[#d8ceda] bg-[#f8f5f8]" />
       {[0, 1, 2, 3, 4].map((item) => (
-        <div className="grid min-h-56 animate-pulse grid-cols-[38%_1fr] gap-5 rounded-2xl border border-[#eee9ef] bg-white p-5" key={item}>
+        <div
+          className="grid min-h-56 animate-pulse grid-cols-[38%_1fr] gap-5 rounded-2xl border border-[#eee9ef] bg-white p-5"
+          key={item}
+        >
           <div className="rounded-xl bg-[#f0edf1]" />
           <div className="py-3">
             <div className="h-5 w-4/5 rounded-full bg-[#ece8ed]" />
@@ -350,18 +420,32 @@ export function ResumeGridSkeleton() {
   );
 }
 
-export function EmptyResults({ hasFilters, onReset }: { hasFilters: boolean; onReset: () => void }) {
+export function EmptyResults({
+  hasFilters,
+  onReset,
+}: {
+  hasFilters: boolean;
+  onReset: () => void;
+}) {
   return (
     <div className="col-span-full flex min-h-64 flex-col items-center justify-center rounded-2xl border border-[#e8e3ea] bg-white px-6 text-center">
-      <span className="grid size-14 place-items-center rounded-2xl bg-[#f6eef6] text-[#850477]">
+      <span className="grid size-14 place-items-center rounded-2xl bg-[#f6eef6] text-[#087EA4]">
         {hasFilters ? <RotateCcw size={24} /> : <FilePlus2 size={24} />}
       </span>
-      <h2 className="mt-4 text-lg font-semibold text-[#2b202e]">{hasFilters ? '没有找到符合条件的简历' : '从第一份简历开始吧'}</h2>
+      <h2 className="mt-4 text-lg font-semibold text-[#2b202e]">
+        {hasFilters ? '没有找到符合条件的简历' : '从第一份简历开始吧'}
+      </h2>
       <p className="mt-2 max-w-md text-sm leading-6 text-[#7c737f]">
-        {hasFilters ? '换个关键词或清除筛选条件，再试一次。' : '点击上方的创建卡片，新建一份可以持续编辑的简历。'}
+        {hasFilters
+          ? '换个关键词或清除筛选条件，再试一次。'
+          : '点击上方的创建卡片，新建一份可以持续编辑的简历。'}
       </p>
       {hasFilters ? (
-        <Button className="mt-5 border-[#d5b4d1] text-[#850477]" onClick={onReset} variant="outline">
+        <Button
+          className="mt-5 border-[#A7DDEA] text-[#087EA4]"
+          onClick={onReset}
+          variant="outline"
+        >
           清除筛选
         </Button>
       ) : null}
@@ -374,7 +458,8 @@ export function ListError({ message, onRetry }: { message: string; onRetry: () =
     <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-red-100 bg-white px-6 text-center">
       <p className="text-sm text-red-600">{message}</p>
       <Button className="mt-4" onClick={onRetry} variant="outline">
-        <RotateCcw size={16} />重新加载
+        <RotateCcw size={16} />
+        重新加载
       </Button>
     </div>
   );
@@ -400,10 +485,19 @@ export function Pagination({
   const pages = paginationWindow(page, totalPages);
 
   return (
-    <nav aria-label="简历分页" className="mt-8 flex flex-col items-center justify-between gap-5 sm:flex-row">
+    <nav
+      aria-label="简历分页"
+      className="mt-8 flex flex-col items-center justify-between gap-5 sm:flex-row"
+    >
       <span className="hidden text-sm text-[#817985] sm:block">共 {total} 份简历</span>
       <div className="flex items-center gap-2">
-        <Button aria-label="上一页" disabled={page <= 1} onClick={() => onPageChange(page - 1)} size="icon" variant="outline">
+        <Button
+          aria-label="上一页"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+          size="icon"
+          variant="outline"
+        >
           <ChevronLeft size={17} />
         </Button>
         {pages.map((pageNumber) => (
@@ -414,7 +508,7 @@ export function Pagination({
             className={cn(
               'size-9 rounded-lg text-sm font-semibold',
               pageNumber === page
-                ? 'bg-[#850477] text-white shadow-[0_7px_18px_rgba(133,4,119,0.2)] hover:bg-[#850477] hover:text-white'
+                ? 'bg-[#087EA4] text-white shadow-[0_7px_18px_rgba(8,126,164,0.2)] hover:bg-[#087EA4] hover:text-white'
                 : 'text-[#514955] hover:bg-[#f5edf5]',
             )}
             key={pageNumber}
@@ -423,14 +517,26 @@ export function Pagination({
             {pageNumber}
           </Button>
         ))}
-        <Button aria-label="下一页" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} size="icon" variant="outline">
+        <Button
+          aria-label="下一页"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          size="icon"
+          variant="outline"
+        >
           <ChevronRight size={17} />
         </Button>
       </div>
       <div className="flex items-center gap-2 text-sm text-[#716976]">
         <Label className="text-sm font-normal leading-normal text-[#716976]">每页显示</Label>
-        <Select onValueChange={(value) => onPageSizeChange(Number(value) as ConsolePageSize)} value={String(pageSize)}>
-          <SelectTrigger aria-label="每页显示数量" className="h-10 w-auto rounded-lg border-[#ded8e1] bg-white px-3 font-semibold text-[#332936] focus-visible:border-[#850477]">
+        <Select
+          onValueChange={(value) => onPageSizeChange(Number(value) as ConsolePageSize)}
+          value={String(pageSize)}
+        >
+          <SelectTrigger
+            aria-label="每页显示数量"
+            className="h-10 w-auto rounded-lg border-[#ded8e1] bg-white px-3 font-semibold text-[#332936] focus-visible:border-[#087EA4]"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

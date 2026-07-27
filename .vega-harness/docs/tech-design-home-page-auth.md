@@ -9,7 +9,7 @@
 - 统一响应规范：`docs/designAndPrd/api_response_and_error_codes.md`
 - 仓库约束：`AGENTS.md`、`CLAUDE.md`、`Makefile`
 
-需求目标是把当前 Vite 示例页替换为 VegaResume 首页，并完成真实认证 MVP：前端 Home Page、AuthModal、最小 Console、OpenAPI 契约、Go/Gin 后端、PostgreSQL 持久化、bcrypt 密码、Access/Refresh 双 Token、接口生成同步。
+需求目标是把当前 Vite 示例页替换为 LittleAgResume 首页，并完成真实认证 MVP：前端 Home Page、AuthModal、最小 Console、OpenAPI 契约、Go/Gin 后端、PostgreSQL 持久化、bcrypt 密码、Access/Refresh 双 Token、接口生成同步。
 
 ## 现有架构与约束
 

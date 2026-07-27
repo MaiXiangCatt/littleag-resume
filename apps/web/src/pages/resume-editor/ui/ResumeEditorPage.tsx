@@ -1,0 +1,1107 @@
+import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  Download,
+  FileDown,
+  FileUp,
+  LoaderCircle,
+  Plus,
+  Save,
+  Settings2,
+  UserRound,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+
+import { useAuthStore } from '@/shared/auth/store/auth.store';
+import { ApiError } from '@/shared/http/http.client';
+import { cn } from '@/shared/lib/utils';
+import { Button } from '@/shared/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@/shared/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu';
+import { Input } from '@/shared/ui/input';
+import { Label } from '@/shared/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
+
+import { useResumeEditor } from '../hooks/useResumeEditor';
+import {
+  ACCENT_COLORS,
+  BUILTIN_TITLES,
+  completionIssues,
+  createCustomSection,
+  createDefaultFormatting,
+  parseImportEnvelope,
+  RESUME_FONT_FAMILIES,
+  resolveAccentColor,
+} from '../model/resume.model';
+import type {
+  AccentColor,
+  PresetAccentColor,
+  ResumeDocument,
+  ResumeFontFamily,
+  ResumeFormatting,
+  ResumeImportEnvelope,
+  ResumeSection,
+  TemplateId,
+} from '../model/resume.types';
+import { resumeEditorService } from '../service/resume-editor.service';
+import { useResumeEditorStore } from '../store/resume-editor.store';
+import { AvatarCropDialog } from './AvatarCropDialog';
+import { ProfileEditor, SectionEditor } from './EditorForms';
+import { ResumeHtmlPreview } from './ResumeHtmlPreview';
+import { StructurePanel } from './StructurePanel';
+
+export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const document = useResumeEditorStore((state) => state.document);
+  const error = useResumeEditorStore((state) => state.error);
+  const isLoading = useResumeEditorStore((state) => state.isLoading);
+  const saveStatus = useResumeEditorStore((state) => state.saveStatus);
+  const { edit, flushSave, load, overwriteServer, reloadServer, replaceImport } =
+    useResumeEditor(resumeId);
+  const [activeId, setActiveId] = useState('profile');
+  const [formatOpen, setFormatOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [cropSource, setCropSource] = useState<string | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<ResumeSection | null>(null);
+  const [importEnvelope, setImportEnvelope] = useState<ResumeImportEnvelope | null>(null);
+  const [issues, setIssues] = useState<{ mode: 'complete' | 'export'; values: string[] } | null>(
+    null,
+  );
+  const [exporting, setExporting] = useState(false);
+  const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const importInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!document?.hasAvatar) return;
+    let disposed = false;
+    void resumeEditorService
+      .getAvatar(document.id)
+      .then(blobToDataURL)
+      .then((value) => {
+        if (!disposed) setAvatar(value);
+      })
+      .catch(() => {
+        if (!disposed) setAvatar(null);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [document?.hasAvatar, document?.id]);
+
+  const deferredDocument = useDeferredValue(document);
+  const visibleAvatar = document?.hasAvatar ? avatar : null;
+  const activeSection =
+    document?.content.sections.find((section) => section.id === activeId) ?? null;
+
+  function mutate(mutator: (draft: ResumeDocument) => void, immediate = false) {
+    edit((current) => {
+      const next = structuredClone(current);
+      mutator(next);
+      return next;
+    }, immediate);
+  }
+
+  function returnToConsole() {
+    if (
+      ['dirty', 'saving', 'failed', 'conflict'].includes(useResumeEditorStore.getState().saveStatus)
+    ) {
+      setExitConfirmationOpen(true);
+      return;
+    }
+    navigate('/console');
+  }
+
+  function updateSection(section: ResumeSection, immediate = false) {
+    mutate((draft) => {
+      draft.content.sections = draft.content.sections.map((item) =>
+        item.id === section.id ? section : item,
+      );
+    }, immediate);
+  }
+
+  function requestRemove(section: ResumeSection) {
+    if (section.type === 'custom') {
+      setPendingRemove(section);
+      return;
+    }
+    mutate((draft) => {
+      const target = draft.content.sections.find((item) => item.id === section.id);
+      if (target) target.enabled = false;
+    }, true);
+    setActiveId('profile');
+  }
+
+  function restoreBuiltin(id: string) {
+    mutate((draft) => {
+      const target = draft.content.sections.find((item) => item.id === id);
+      if (target) target.enabled = true;
+    }, true);
+    setActiveId(id);
+    setAddOpen(false);
+  }
+
+  function addCustom() {
+    if (!customName.trim()) return;
+    const section = createCustomSection(customName);
+    mutate((draft) => {
+      draft.content.sections.push(section);
+    }, true);
+    setActiveId(section.id);
+    setCustomName('');
+    setAddOpen(false);
+  }
+
+  async function saveAvatar(blob: Blob) {
+    if (!document) return;
+    const updated = await resumeEditorService.putAvatar(document.id, blob);
+    const state = useResumeEditorStore.getState();
+    state.mergeServerMetadata(updated);
+    setAvatar(await blobToDataURL(blob));
+    setCropSource(null);
+    toast.success('头像已更新');
+  }
+
+  async function deleteAvatar() {
+    if (!document) return;
+    try {
+      const updated = await resumeEditorService.deleteAvatar(document.id);
+      const state = useResumeEditorStore.getState();
+      state.mergeServerMetadata(updated);
+      setAvatar(null);
+      toast.success('头像已删除');
+    } catch {
+      toast.error('头像删除失败，请稍后重试');
+    }
+  }
+
+  async function readImport(file: File) {
+    try {
+      setImportEnvelope(parseImportEnvelope(JSON.parse(await file.text())));
+    } catch {
+      toast.error('文件格式不正确，需要 LittleAgResume v2 JSON 文件');
+    } finally {
+      if (importInput.current) importInput.current.value = '';
+    }
+  }
+
+  async function confirmImport() {
+    if (!importEnvelope) return;
+    try {
+      await replaceImport(importEnvelope);
+      setImportEnvelope(null);
+      setActiveId('profile');
+      setAvatar(importEnvelope.avatar ?? null);
+      toast.success('简历已导入');
+    } catch {
+      toast.error('导入失败，当前简历未被替换');
+    }
+  }
+
+  function exportJson() {
+    if (!document) return;
+    const envelope: ResumeImportEnvelope = {
+      version: 2,
+      title: document.title,
+      templateId: document.templateId,
+      content: document.content,
+      avatar: visibleAvatar,
+    };
+    downloadBlob(
+      new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' }),
+      `${safeFileName(document.title)}.json`,
+    );
+  }
+
+  async function runPdfExport() {
+    const current = useResumeEditorStore.getState().document;
+    if (!current || exporting) return;
+    let downloaded = false;
+    setIssues(null);
+    setExporting(true);
+    try {
+      await flushSave();
+      downloadBlob(
+        await resumeEditorService.exportPdf(current.id),
+        `${safeFileName(current.title)}.pdf`,
+      );
+      downloaded = true;
+      const updated = await resumeEditorService.get(current.id);
+      useResumeEditorStore.getState().mergeServerMetadata(updated);
+      const finalSaveStatus = useResumeEditorStore.getState().saveStatus;
+      if (finalSaveStatus === 'failed' || finalSaveStatus === 'conflict') {
+        toast.warning('PDF 已开始下载；当前修改仍未保存');
+      } else {
+        toast.success('PDF 已开始下载');
+      }
+    } catch (error) {
+      if (downloaded) {
+        toast.warning('PDF 已开始下载，但导出记录更新失败');
+      } else if (error instanceof ApiError && error.code === 106002) {
+        toast.error('PDF 服务繁忙，请稍后重试');
+      } else {
+        toast.error('PDF 生成失败，请检查内容后重试');
+      }
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function requestExport() {
+    if (!document) return;
+    const values = completionIssues(document.content);
+    if (values.length) setIssues({ mode: 'export', values });
+    else void runPdfExport();
+  }
+
+  function toggleComplete() {
+    if (!document) return;
+    if (document.status === 'completed') {
+      mutate((draft) => {
+        draft.status = 'draft';
+      }, true);
+      return;
+    }
+    const values = completionIssues(document.content);
+    if (values.length) setIssues({ mode: 'complete', values });
+    else
+      mutate((draft) => {
+        draft.status = 'completed';
+      }, true);
+  }
+
+  if (isLoading) return <EditorLoading />;
+  if (!document)
+    return (
+      <EditorFailure
+        message={error ?? '无法加载简历'}
+        onBack={() => navigate('/console')}
+        onRetry={() => void load()}
+      />
+    );
+
+  return (
+    <div className="min-w-[1240px] bg-[#f2eeef] text-[#251d23]">
+      <header className="flex h-[72px] items-center border-b border-[#ded6da] bg-[#fffdfd] px-5 shadow-[0_1px_0_rgba(52,38,47,0.04)]">
+        <Button aria-label="返回控制台" onClick={returnToConsole} size="icon" variant="ghost">
+          <ArrowLeft size={19} />
+        </Button>
+        <div className="ml-3 flex items-center gap-3">
+          <span className="grid size-9 place-items-center rounded-xl bg-[#087EA4] font-serif text-lg font-bold text-white">
+            R
+          </span>
+          <span className="font-serif text-lg font-semibold">LittleAgResume</span>
+        </div>
+        <div className="mx-5 h-7 w-px bg-[#e2dadd]" />
+        <Input
+          aria-label="简历标题"
+          className="h-10 w-72 border-transparent bg-transparent px-2 text-base font-semibold shadow-none hover:border-[#ddd4d9] focus-visible:bg-white"
+          value={document.title}
+          onChange={(event) =>
+            mutate((draft) => {
+              draft.title = event.target.value;
+            })
+          }
+        />
+        <SaveBadge status={saveStatus} />
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            onClick={toggleComplete}
+            variant={document.status === 'completed' ? 'default' : 'outline'}
+          >
+            {document.status === 'completed' ? <Check size={16} /> : null}
+            {document.status === 'completed' ? '已完成' : '标记完成'}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileDown size={16} />
+                JSON
+                <ChevronDown size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => importInput.current?.click()}>
+                <FileUp />
+                导入并覆盖
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportJson}>
+                <FileDown />
+                导出 JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <input
+            accept=".json,application/json"
+            hidden
+            ref={importInput}
+            type="file"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void readImport(file);
+            }}
+          />
+          <Button
+            disabled={saveStatus === 'saving'}
+            onClick={() => void flushSave()}
+            variant="outline"
+          >
+            <Save size={16} />
+            立即保存
+          </Button>
+          <Button
+            className="bg-[#087EA4] px-5 hover:bg-[#066B8E]"
+            disabled={exporting}
+            onClick={requestExport}
+          >
+            {exporting ? (
+              <LoaderCircle className="animate-spin" size={16} />
+            ) : (
+              <Download size={16} />
+            )}
+            {exporting ? '生成中…' : '导出 PDF'}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-label="账号菜单"
+                className="ml-1 rounded-full"
+                size="icon"
+                variant="ghost"
+              >
+                <UserRound size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={returnToConsole}>我的控制台</DropdownMenuItem>
+              <DropdownMenuItem disabled>{user?.username ?? '当前账号'}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+      <main className="grid h-[calc(100vh-72px)] grid-cols-[236px_minmax(430px,0.9fr)_minmax(520px,1.1fr)] overflow-hidden">
+        <StructurePanel
+          activeId={activeId}
+          onAdd={() => setAddOpen(true)}
+          onFormat={() => setFormatOpen(true)}
+          onMove={(sections) =>
+            mutate((draft) => {
+              draft.content.sections = sections;
+            }, true)
+          }
+          onRemove={requestRemove}
+          onSelect={setActiveId}
+          sections={document.content.sections}
+        />
+        <section className="overflow-y-auto bg-[#fffdfd] px-8 py-9">
+          {activeId === 'profile' ? (
+            <ProfileEditor
+              avatar={visibleAvatar}
+              onAvatar={() => avatarInput.current?.click()}
+              onChange={(profile) =>
+                mutate((draft) => {
+                  draft.content.profile = profile;
+                })
+              }
+              onDeleteAvatar={() => void deleteAvatar()}
+              profile={document.content.profile}
+            />
+          ) : activeSection ? (
+            <SectionEditor onChange={(section) => updateSection(section)} section={activeSection} />
+          ) : null}
+          <input
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            ref={avatarInput}
+            type="file"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file && file.size <= 5 * 1024 * 1024) setCropSource(URL.createObjectURL(file));
+              else if (file) toast.error('原图不能超过 5 MB');
+              event.target.value = '';
+            }}
+          />
+        </section>
+        <section className="relative overflow-y-auto bg-[#d9d3d5] px-7 py-10">
+          {deferredDocument ? (
+            <ResumeHtmlPreview avatar={visibleAvatar} resume={deferredDocument} />
+          ) : null}
+        </section>
+      </main>
+
+      {formatOpen ? (
+        <FormattingDialog
+          document={document}
+          onChange={(formatting) =>
+            mutate((draft) => {
+              draft.content.formatting = formatting;
+            })
+          }
+          onClose={() => {
+            setFormatOpen(false);
+            void flushSave();
+          }}
+          onTemplate={(templateId) =>
+            mutate((draft) => {
+              draft.templateId = templateId;
+            }, true)
+          }
+        />
+      ) : null}
+      {addOpen ? (
+        <AddSectionDialog
+          customName={customName}
+          onAddCustom={addCustom}
+          onChangeName={setCustomName}
+          onClose={() => setAddOpen(false)}
+          onRestore={restoreBuiltin}
+          sections={document.content.sections}
+        />
+      ) : null}
+      {cropSource ? (
+        <AvatarCropDialog
+          image={cropSource}
+          onClose={() => {
+            URL.revokeObjectURL(cropSource);
+            setCropSource(null);
+          }}
+          onSave={saveAvatar}
+        />
+      ) : null}
+      {pendingRemove ? (
+        <ConfirmDialog
+          description={`删除“${pendingRemove.title}”后不可恢复。`}
+          onCancel={() => setPendingRemove(null)}
+          onConfirm={() => {
+            mutate((draft) => {
+              draft.content.sections = draft.content.sections.filter(
+                (item) => item.id !== pendingRemove.id,
+              );
+            }, true);
+            setPendingRemove(null);
+            setActiveId('profile');
+          }}
+          title="删除自定义板块？"
+        />
+      ) : null}
+      {importEnvelope ? (
+        <ConfirmDialog
+          description={`将用“${importEnvelope.title}”覆盖当前简历，共 ${importEnvelope.content.sections.filter((item) => item.enabled).length} 个启用板块。`}
+          onCancel={() => setImportEnvelope(null)}
+          onConfirm={() => void confirmImport()}
+          title="确认覆盖当前简历？"
+        />
+      ) : null}
+      {saveStatus === 'conflict' ? (
+        <ConflictDialog onOverwrite={() => void overwriteServer()} onReload={reloadServer} />
+      ) : null}
+      {issues ? (
+        <IssuesDialog
+          issues={issues.values}
+          mode={issues.mode}
+          onCancel={() => setIssues(null)}
+          onContinue={() => {
+            if (issues.mode === 'export') void runPdfExport();
+            setIssues(null);
+          }}
+        />
+      ) : null}
+      {exitConfirmationOpen ? (
+        <ConfirmDialog
+          description="当前修改尚未安全保存，离开后会丢失这些内容。"
+          onCancel={() => setExitConfirmationOpen(false)}
+          onConfirm={() => navigate('/console')}
+          title="仍然离开编辑器？"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function SaveBadge({
+  status,
+}: {
+  status: ReturnType<typeof useResumeEditorStore.getState>['saveStatus'];
+}) {
+  const labels = {
+    idle: '等待保存',
+    dirty: '有未保存修改',
+    saving: '保存中',
+    saved: '已保存',
+    failed: '保存失败',
+    conflict: '版本冲突',
+  };
+  return (
+    <span
+      className={cn(
+        'ml-3 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs',
+        saveBadgeColor(status),
+      )}
+    >
+      {status === 'saving' ? <LoaderCircle className="animate-spin" size={12} /> : null}
+      {labels[status]}
+    </span>
+  );
+}
+
+function saveBadgeColor(status: ReturnType<typeof useResumeEditorStore.getState>['saveStatus']) {
+  if (status === 'saved') return 'bg-emerald-50 text-emerald-700';
+  if (status === 'failed' || status === 'conflict') return 'bg-red-50 text-red-700';
+  return 'bg-amber-50 text-amber-700';
+}
+
+const ACCENT_COLOR_LABELS: Record<PresetAccentColor, string> = {
+  plum: '梅紫',
+  navy: '藏蓝',
+  teal: '青绿',
+  rust: '铁锈',
+  charcoal: '炭灰',
+  black: '纯黑',
+};
+
+export function FormattingDialog({
+  document,
+  onChange,
+  onClose,
+  onTemplate,
+}: {
+  document: ResumeDocument;
+  onChange: (formatting: ResumeFormatting) => void;
+  onClose: () => void;
+  onTemplate: (value: TemplateId) => void;
+}) {
+  const formatting = document.content.formatting;
+  const [fieldRevision, setFieldRevision] = useState(0);
+  const update = (changes: Partial<ResumeFormatting>) => onChange({ ...formatting, ...changes });
+  const updateMargin = (side: keyof ResumeFormatting['pageMarginPx'], value: number) =>
+    update({ pageMarginPx: { ...formatting.pageMarginPx, [side]: value } });
+  return (
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      open
+    >
+      <DialogContent className="max-h-[88vh] w-[min(92vw,680px)] overflow-y-auto rounded-3xl p-7">
+        <DialogTitle className="font-serif text-2xl">排版设置</DialogTitle>
+        <DialogDescription>所有数值都会实时应用到预览与导出的 PDF。</DialogDescription>
+        <div className="mt-6 grid grid-cols-2 gap-4 rounded-2xl border border-[#e8e0e5] bg-[#fbf9fa] p-4">
+          <SelectField
+            label="模板"
+            value={document.templateId}
+            onChange={(value) => onTemplate(value as TemplateId)}
+            options={[
+              ['modern-editorial', '现代编辑'],
+              ['classic-professional', '经典专业'],
+            ]}
+          />
+          <SelectField
+            label="字体"
+            value={formatting.fontFamily}
+            onChange={(value) => update({ fontFamily: value as ResumeFontFamily })}
+            options={[
+              ['source-han-sans', RESUME_FONT_FAMILIES['source-han-sans'].label],
+              ['source-han-serif', RESUME_FONT_FAMILIES['source-han-serif'].label],
+            ]}
+          />
+          <div className="col-span-2">
+            <div className="flex items-center justify-between gap-4">
+              <Label>主题色</Label>
+              <span className="font-mono text-xs uppercase text-[#766a72]">
+                {resolveAccentColor(formatting.accentColor)}
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {(Object.entries(ACCENT_COLORS) as [PresetAccentColor, string][]).map(
+                ([key, color]) => (
+                  <Button
+                    aria-label={`选择${ACCENT_COLOR_LABELS[key]}主题色`}
+                    className={cn(
+                      'size-8 rounded-full border-[3px] p-0',
+                      resolveAccentColor(formatting.accentColor).toLowerCase() ===
+                        color.toLowerCase()
+                        ? 'border-[#241b21]'
+                        : 'border-white',
+                    )}
+                    key={key}
+                    onClick={() => update({ accentColor: key })}
+                    style={{ backgroundColor: color }}
+                  />
+                ),
+              )}
+              <div className="ml-1 flex items-center gap-2 border-l border-[#ddd4d9] pl-3">
+                <Input
+                  aria-label="自定义主题色"
+                  className="h-8 w-11 cursor-pointer rounded-lg border-0 bg-transparent p-0 shadow-none"
+                  onChange={(event) => update({ accentColor: event.target.value as AccentColor })}
+                  type="color"
+                  value={resolveAccentColor(formatting.accentColor)}
+                />
+                <span className="text-xs text-[#766a72]">自定义</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div key={fieldRevision}>
+          <FormattingSection
+            description="四类文字角色全局生效，模板切换不会覆盖这些数值。"
+            title="字号"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <NumericField
+                label="姓名"
+                maximum={48}
+                minimum={12}
+                onChange={(value) => update({ nameFontSizePx: value })}
+                suffix="px"
+                value={formatting.nameFontSizePx}
+              />
+              <NumericField
+                label="模块标题"
+                maximum={32}
+                minimum={10}
+                onChange={(value) => update({ sectionTitleFontSizePx: value })}
+                suffix="px"
+                value={formatting.sectionTitleFontSizePx}
+              />
+              <NumericField
+                label="条目标题"
+                maximum={28}
+                minimum={8}
+                onChange={(value) => update({ entryTitleFontSizePx: value })}
+                suffix="px"
+                value={formatting.entryTitleFontSizePx}
+              />
+              <NumericField
+                label="正文"
+                maximum={24}
+                minimum={8}
+                onChange={(value) => update({ bodyFontSizePx: value })}
+                suffix="px"
+                value={formatting.bodyFontSizePx}
+              />
+            </div>
+          </FormattingSection>
+          <FormattingSection
+            description="行高使用倍数；模块间距控制相邻内容板块的留白。"
+            title="阅读节奏"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <NumericField
+                label="行高"
+                maximum={2.5}
+                minimum={1}
+                onChange={(value) => update({ lineHeightRatio: value })}
+                step={0.05}
+                suffix="×"
+                value={formatting.lineHeightRatio}
+              />
+              <NumericField
+                label="模块间距"
+                maximum={64}
+                minimum={0}
+                onChange={(value) => update({ sectionGapPx: value })}
+                suffix="px"
+                value={formatting.sectionGapPx}
+              />
+            </div>
+          </FormattingSection>
+          <FormattingSection
+            description="四个方向独立控制，数值对应 A4 纸张内容到纸边的距离。"
+            title="页边距"
+          >
+            <div className="grid grid-cols-[1fr_110px_1fr] grid-rows-[auto_76px_auto] items-center gap-3">
+              <div className="col-start-2">
+                <NumericField
+                  label="上"
+                  maximum={160}
+                  minimum={0}
+                  onChange={(value) => updateMargin('top', value)}
+                  suffix="px"
+                  value={formatting.pageMarginPx.top}
+                />
+              </div>
+              <div className="col-start-1 row-start-2">
+                <NumericField
+                  label="左"
+                  maximum={160}
+                  minimum={0}
+                  onChange={(value) => updateMargin('left', value)}
+                  suffix="px"
+                  value={formatting.pageMarginPx.left}
+                />
+              </div>
+              <div
+                aria-hidden="true"
+                className="col-start-2 row-start-2 mx-auto h-16 w-11 rounded-sm border border-[#d8ccd4] bg-white shadow-[0_7px_18px_rgba(54,39,49,0.12)]"
+              />
+              <div className="col-start-3 row-start-2">
+                <NumericField
+                  label="右"
+                  maximum={160}
+                  minimum={0}
+                  onChange={(value) => updateMargin('right', value)}
+                  suffix="px"
+                  value={formatting.pageMarginPx.right}
+                />
+              </div>
+              <div className="col-start-2 row-start-3">
+                <NumericField
+                  label="下"
+                  maximum={160}
+                  minimum={0}
+                  onChange={(value) => updateMargin('bottom', value)}
+                  suffix="px"
+                  value={formatting.pageMarginPx.bottom}
+                />
+              </div>
+            </div>
+          </FormattingSection>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => {
+              onChange(createDefaultFormatting());
+              setFieldRevision((revision) => revision + 1);
+            }}
+            variant="outline"
+          >
+            恢复默认
+          </Button>
+          <Button onClick={onClose}>完成</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FormattingSection({
+  children,
+  description,
+  title,
+}: {
+  children: ReactNode;
+  description: string;
+  title: string;
+}) {
+  return (
+    <section className="mt-5 rounded-2xl border border-[#e8e0e5] bg-white p-4">
+      <h3 className="text-sm font-semibold text-[#3d3038]">{title}</h3>
+      <p className="mt-1 text-xs leading-5 text-[#8a7d86]">{description}</p>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function NumericField({
+  label,
+  maximum,
+  minimum,
+  onChange,
+  step = 1,
+  suffix,
+  value,
+}: {
+  label: string;
+  maximum: number;
+  minimum: number;
+  onChange: (value: number) => void;
+  step?: number;
+  suffix: string;
+  value: number;
+}) {
+  function commit(input: HTMLInputElement) {
+    const rawValue = input.value;
+    const parsed = rawValue === '' ? Number.NaN : Number(rawValue);
+    const next = Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : value;
+    const normalized = step === 1 ? Math.round(next) : Math.round(next / step) * step;
+    input.value = String(normalized);
+    onChange(normalized);
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="relative">
+        <Input
+          aria-label={label}
+          className="pr-10 font-mono tabular-nums"
+          inputMode="decimal"
+          max={maximum}
+          min={minimum}
+          defaultValue={value}
+          onBlur={(event) => commit(event.currentTarget)}
+          onChange={(event) => {
+            const rawValue = event.target.value;
+            const parsed = Number(rawValue);
+            if (rawValue && parsed >= minimum && parsed <= maximum) onChange(parsed);
+          }}
+          step={step}
+          type="number"
+        />
+        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-[#a0929b]">
+          {suffix}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function AddSectionDialog({
+  customName,
+  onAddCustom,
+  onChangeName,
+  onClose,
+  onRestore,
+  sections,
+}: {
+  customName: string;
+  onAddCustom: () => void;
+  onChangeName: (value: string) => void;
+  onClose: () => void;
+  onRestore: (id: string) => void;
+  sections: ResumeSection[];
+}) {
+  const disabled = sections.filter((section) => section.type !== 'custom' && !section.enabled);
+  return (
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      open
+    >
+      <DialogContent className="rounded-3xl p-7">
+        <DialogTitle>添加简历板块</DialogTitle>
+        <DialogDescription>恢复内置板块会保留之前填写的内容。</DialogDescription>
+        <div className="mt-5 space-y-2">
+          {disabled.map((section) => (
+            <Button
+              className="w-full justify-between"
+              key={section.id}
+              onClick={() => onRestore(section.id)}
+              variant="outline"
+            >
+              <span>{BUILTIN_TITLES[section.type as keyof typeof BUILTIN_TITLES]}</span>
+              <Plus size={16} />
+            </Button>
+          ))}
+          {disabled.length === 0 ? (
+            <p className="rounded-xl bg-[#f7f3f5] p-3 text-sm text-[#776b73]">
+              所有内置板块都已启用。
+            </p>
+          ) : null}
+        </div>
+        <div className="mt-6 border-t pt-5">
+          <Label htmlFor="custom-section-name">自定义板块</Label>
+          <div className="mt-2 flex gap-2">
+            <Input
+              id="custom-section-name"
+              placeholder="例如：志愿经历"
+              value={customName}
+              onChange={(event) => onChangeName(event.target.value)}
+            />
+            <Button disabled={!customName.trim()} onClick={onAddCustom}>
+              <Plus size={16} />
+              创建
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SelectField({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: [string, string][];
+  value: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger aria-label={label}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(([key, name]) => (
+            <SelectItem key={key} value={key}>
+              {name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  description,
+  onCancel,
+  onConfirm,
+  title,
+}: {
+  description: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  title: string;
+}) {
+  return (
+    <Dialog open>
+      <DialogContent className="rounded-2xl">
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{description}</DialogDescription>
+        <DialogFooter>
+          <Button onClick={onCancel} variant="outline">
+            取消
+          </Button>
+          <Button onClick={onConfirm}>确认</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+function ConflictDialog({
+  onOverwrite,
+  onReload,
+}: {
+  onOverwrite: () => void;
+  onReload: () => void;
+}) {
+  return (
+    <Dialog open>
+      <DialogContent className="rounded-2xl">
+        <DialogTitle>检测到其他页面的更新</DialogTitle>
+        <DialogDescription>
+          为了避免静默覆盖，请选择加载服务器内容，或明确使用当前页面内容覆盖。
+        </DialogDescription>
+        <DialogFooter>
+          <Button onClick={onReload} variant="outline">
+            加载服务器版本
+          </Button>
+          <Button onClick={onOverwrite}>保留本地版本</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+function IssuesDialog({
+  issues,
+  mode,
+  onCancel,
+  onContinue,
+}: {
+  issues: string[];
+  mode: 'complete' | 'export';
+  onCancel: () => void;
+  onContinue: () => void;
+}) {
+  return (
+    <Dialog open>
+      <DialogContent className="rounded-2xl">
+        <DialogTitle className="flex items-center gap-2">
+          <AlertTriangle className="text-amber-600" size={20} />
+          信息还不完整
+        </DialogTitle>
+        <DialogDescription>
+          {mode === 'complete'
+            ? '标记完成前，请先处理以下问题。'
+            : '这些内容仍不完整，你可以返回修改或继续导出草稿。'}
+        </DialogDescription>
+        <ul className="mt-4 space-y-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+          {issues.map((issue) => (
+            <li key={issue}>• {issue}</li>
+          ))}
+        </ul>
+        <DialogFooter>
+          <Button onClick={onCancel} variant="outline">
+            返回编辑
+          </Button>
+          {mode === 'export' ? <Button onClick={onContinue}>仍然导出</Button> : null}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+function EditorLoading() {
+  return (
+    <main className="grid min-h-screen place-items-center bg-[#f2eeef]">
+      <div className="text-center">
+        <LoaderCircle className="mx-auto animate-spin text-[#087EA4]" size={30} />
+        <p className="mt-3 text-sm text-[#756b72]">正在铺开你的简历工作台…</p>
+      </div>
+    </main>
+  );
+}
+function EditorFailure({
+  message,
+  onBack,
+  onRetry,
+}: {
+  message: string;
+  onBack: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-[#f2eeef] p-6">
+      <div className="max-w-md rounded-3xl bg-white p-8 text-center shadow-xl">
+        <Settings2 className="mx-auto text-[#087EA4]" size={30} />
+        <h1 className="mt-4 font-serif text-2xl font-semibold">编辑器暂时打不开</h1>
+        <p className="mt-2 text-sm text-[#756b72]">{message}</p>
+        <div className="mt-6 flex justify-center gap-2">
+          <Button onClick={onBack} variant="outline">
+            返回控制台
+          </Button>
+          <Button onClick={onRetry}>重试</Button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.hidden = true;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function safeFileName(value: string) {
+  return value.trim().replace(/[\\/:*?"<>|]+/g, '-') || '未命名简历';
+}
+function blobToDataURL(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}

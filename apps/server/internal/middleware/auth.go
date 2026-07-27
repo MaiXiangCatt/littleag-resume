@@ -44,16 +44,24 @@ func Authenticate(validator AccessTokenValidator) generated.MiddlewareFunc {
 }
 
 func CurrentUserID(c *gin.Context) (uuid.UUID, bool) {
-	value, ok := c.Get(currentUserContextKey)
-	if !ok {
-		return uuid.Nil, false
-	}
-	user, ok := value.(*model.AuthUser)
+	user, ok := CurrentUser(c)
 	if !ok {
 		return uuid.Nil, false
 	}
 	userID, err := uuid.Parse(user.ID)
 	return userID, err == nil
+}
+
+func CurrentUser(c *gin.Context) (*model.AuthUser, bool) {
+	value, ok := c.Get(currentUserContextKey)
+	if !ok {
+		return nil, false
+	}
+	user, ok := value.(*model.AuthUser)
+	if !ok {
+		return nil, false
+	}
+	return user, true
 }
 
 func writeMiddlewareError(c *gin.Context, err *model.AppError) {

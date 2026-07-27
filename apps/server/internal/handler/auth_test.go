@@ -1,10 +1,12 @@
 package handler_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,30 +21,92 @@ import (
 )
 
 func newTestRouter(t *testing.T) *gin.Engine {
+	return newTestRouterWithRenderer(t, &stubRenderer{data: []byte("%PDF-stub")})
+}
+
+func newTestRouterWithRenderer(t *testing.T, renderer handler.PdfRenderer) *gin.Engine {
+	t.Helper()
+
+	store := repository.NewMemoryStore()
+	return newTestRouterWithStoreAndRenderer(t, store, renderer)
+}
+
+type testStore interface {
+	repository.UserRepository
+	repository.EmailVerificationRepository
+	repository.RegistrationEmailVerificationRepository
+	repository.RefreshTokenRepository
+	repository.ResumeRepository
+}
+
+var testVerificationCodes sync.Map
+
+type testVerificationSender struct{}
+
+func (testVerificationSender) SendVerificationCode(
+	_ context.Context,
+	recipient string,
+	code string,
+	_ time.Duration,
+) error {
+	testVerificationCodes.Store(recipient, code)
+	return nil
+}
+
+func newTestRouterWithStoreAndRenderer(
+	t *testing.T,
+	store testStore,
+	renderer handler.PdfRenderer,
+) *gin.Engine {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
-	store := repository.NewMemoryStore()
 	auth := service.NewAuthService(service.AuthServiceConfig{
-		Users:            store,
-		RefreshTokens:    store,
-		AccessTokenKey:   []byte("test-access-secret-with-enough-length"),
-		AccessTokenTTL:   15 * time.Minute,
-		RefreshTokenTTL:  7 * 24 * time.Hour,
-		AccountLockLimit: 5,
-		AccountLockTTL:   15 * time.Minute,
+		Users:                     store,
+		EmailVerifications:        store,
+		RegistrationVerifications: store,
+		RefreshTokens:             store,
+		VerificationEmailSender:   testVerificationSender{},
+		EmailVerificationKey:      []byte("test-verification-secret-with-enough-length"),
+		EmailVerificationTTL:      10 * time.Minute,
+		EmailVerificationLimit:    5,
+		EmailResendCooldown:       time.Minute,
+		AccessTokenKey:            []byte("test-access-secret-with-enough-length"),
+		AccessTokenTTL:            15 * time.Minute,
+		RefreshTokenTTL:           7 * 24 * time.Hour,
+		AccountLockLimit:          5,
+		AccountLockTTL:            15 * time.Minute,
 	})
 	resumes := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
 
 	router := gin.New()
 	generated.RegisterHandlersWithOptions(router, handler.NewAPIHandler(
 		handler.NewAuthHandler(auth),
-		handler.NewResumeHandler(resumes),
+		handler.NewResumeHandler(handler.ResumeHandlerConfig{
+			Resumes:     resumes,
+			Renderer:    renderer,
+			PrintTokens: service.NewPrintTokenService(time.Minute),
+			WebBaseURL:  "http://web.test",
+		}),
 	), generated.GinServerOptions{
 		Middlewares:  []generated.MiddlewareFunc{middleware.Authenticate(auth)},
 		ErrorHandler: handler.GeneratedErrorHandler,
 	})
 	return router
+}
+
+type stubRenderer struct {
+	data   []byte
+	err    error
+	gotURL string
+}
+
+func (s *stubRenderer) Render(_ context.Context, url string) ([]byte, error) {
+	s.gotURL = url
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.data, nil
 }
 
 func performJSON(router http.Handler, method, path, body string) *httptest.ResponseRecorder {
@@ -65,22 +129,46 @@ func decodeEnvelope(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
 
 func TestAuthHandlersRegisterLoginMeRefreshAndLogout(t *testing.T) {
 	router := newTestRouter(t)
+	testVerificationCodes.Delete("user@example.com")
 
+	sendVerification := performJSON(
+		router,
+		http.MethodPost,
+		"/api/auth/registration-email-verification",
+		`{"email": "user@example.com"}`,
+	)
+	if sendVerification.Code != http.StatusOK {
+		t.Fatalf(
+			"send verification status=%d body=%s",
+			sendVerification.Code,
+			sendVerification.Body.String(),
+		)
+	}
+	codeValue, ok := testVerificationCodes.Load("user@example.com")
+	if !ok {
+		t.Fatal("verification code was not sent")
+	}
 	register := performJSON(router, http.MethodPost, "/api/auth/register", `{
 		"username": "zhangsan",
 		"email": "user@example.com",
 		"password": "password1",
-		"confirmPassword": "password1"
+		"confirmPassword": "password1",
+		"verificationCode": "`+codeValue.(string)+`"
 	}`)
 	if register.Code != http.StatusOK {
 		t.Fatalf("register status=%d body=%s", register.Code, register.Body.String())
 	}
-	if got := register.Result().Cookies(); len(got) != 1 || got[0].Name != "refresh_token" || !got[0].HttpOnly {
-		t.Fatalf("expected HttpOnly refresh cookie, got %+v", got)
+	if got := register.Result().Cookies(); len(got) != 1 ||
+		got[0].Name != "refresh_token" ||
+		!got[0].HttpOnly {
+		t.Fatalf("expected HttpOnly refresh cookie after registration, got %+v", got)
 	}
 	registerBody := decodeEnvelope(t, register)
 	if registerBody["code"] != float64(0) || registerBody["message"] != "" {
 		t.Fatalf("unexpected register envelope: %+v", registerBody)
+	}
+	if registerBody["data"].(map[string]any)["user"].(map[string]any)["email"] != "user@example.com" {
+		t.Fatalf("unexpected registration response: %+v", registerBody)
 	}
 	accessToken := registerBody["data"].(map[string]any)["accessToken"].(string)
 
@@ -92,7 +180,8 @@ func TestAuthHandlersRegisterLoginMeRefreshAndLogout(t *testing.T) {
 		t.Fatalf("me status=%d body=%s", me.Code, me.Body.String())
 	}
 	meBody := decodeEnvelope(t, me)
-	if meBody["data"].(map[string]any)["email"] != "user@example.com" {
+	if meBody["data"].(map[string]any)["email"] != "user@example.com" ||
+		meBody["data"].(map[string]any)["emailVerified"] != true {
 		t.Fatalf("unexpected me response: %+v", meBody)
 	}
 
@@ -135,7 +224,8 @@ func TestAuthHandlersErrorEnvelopeAndStatusCodes(t *testing.T) {
 		"username": "!",
 		"email": "bad@example.com",
 		"password": "password1",
-		"confirmPassword": "password1"
+		"confirmPassword": "password1",
+		"verificationCode": "000000"
 	}`)
 	if badRegister.Code != http.StatusBadRequest {
 		t.Fatalf("bad register status=%d body=%s", badRegister.Code, badRegister.Body.String())

@@ -11,12 +11,7 @@ describe('AppHeader', () => {
     const user = userEvent.setup();
     const onLogin = vi.fn();
 
-    render(
-      <AppHeader
-        actions={<Button onClick={onLogin}>登录</Button>}
-        currentUser={null}
-      />,
-    );
+    render(<AppHeader actions={<Button onClick={onLogin}>登录</Button>} currentUser={null} />);
 
     expect(screen.getByRole('banner')).toHaveClass('sticky');
     await user.click(screen.getByRole('button', { name: '登录' }));
@@ -27,7 +22,12 @@ describe('AppHeader', () => {
     render(
       <AppHeader
         actions={null}
-        currentUser={{ id: 'user-id', username: 'zhangsan', email: 'user@example.com' }}
+        currentUser={{
+          id: 'user-id',
+          username: 'zhangsan',
+          email: 'user@example.com',
+          emailVerified: true,
+        }}
       />,
     );
 

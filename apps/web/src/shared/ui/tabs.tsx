@@ -4,7 +4,13 @@ import type { ComponentProps } from 'react';
 import { cn } from '@/shared/lib/utils';
 
 function Tabs({ className, ...props }: ComponentProps<typeof TabsPrimitive.Root>) {
-  return <TabsPrimitive.Root className={cn('flex flex-col gap-2', className)} data-slot="tabs" {...props} />;
+  return (
+    <TabsPrimitive.Root
+      className={cn('flex flex-col gap-2', className)}
+      data-slot="tabs"
+      {...props}
+    />
+  );
 }
 
 function TabsList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
@@ -33,7 +39,10 @@ function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsPrimitiv
 function TabsContent({ className, ...props }: ComponentProps<typeof TabsPrimitive.Content>) {
   return (
     <TabsPrimitive.Content
-      className={cn('focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2', className)}
+      className={cn(
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2',
+        className,
+      )}
       data-slot="tabs-content"
       {...props}
     />
