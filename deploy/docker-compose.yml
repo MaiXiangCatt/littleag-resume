@@ -1,3 +1,9 @@
+x-default-logging: &default-logging
+  driver: local
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -19,6 +25,7 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    logging: *default-logging
 
   server:
     build:
@@ -44,6 +51,7 @@ services:
       EMAIL_PRODUCT_NAME: ${EMAIL_PRODUCT_NAME:-LittleAgResume}
       RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY in .env.prod or environment}
       MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in .env.prod or environment}
+      LOGIN_FAILURE_CAPACITY: ${LOGIN_FAILURE_CAPACITY:-10000}
       PDF_MAX_QUEUE: ${PDF_MAX_QUEUE:-8}
     secrets:
       - postgres_password
@@ -53,6 +61,7 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   web:
     build:
@@ -64,6 +73,7 @@ services:
     depends_on:
       - server
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   pgdata:

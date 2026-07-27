@@ -29,7 +29,8 @@ func OpenPostgres(databaseURL string) (*gorm.DB, error) {
 				SlowThreshold:             200 * time.Millisecond,
 				LogLevel:                  logger.Warn,
 				IgnoreRecordNotFoundError: true,
-				Colorful:                  true,
+				ParameterizedQueries:      true,
+				Colorful:                  false,
 			},
 		),
 	})

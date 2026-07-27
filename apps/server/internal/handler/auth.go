@@ -13,19 +13,23 @@ import (
 	"github.com/vega-resume/server/internal/service"
 )
 
-const refreshTokenCookieName = "refresh_token"
+const (
+	refreshTokenCookieName       = "refresh_token"
+	maxAuthBodyBytes       int64 = 16 << 10
+)
 
 type AuthHandler struct {
-	auth *service.AuthService
+	auth          *service.AuthService
+	secureCookies bool
 }
 
-func NewAuthHandler(auth *service.AuthService) *AuthHandler {
-	return &AuthHandler{auth: auth}
+func NewAuthHandler(auth *service.AuthService, secureCookies bool) *AuthHandler {
+	return &AuthHandler{auth: auth, secureCookies: secureCookies}
 }
 
 func (h *AuthHandler) RegisterAuthUser(c *gin.Context) {
 	var body generated.RegisterAuthUserJSONRequestBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := bindJSONWithLimit(c, &body, maxAuthBodyBytes); err != nil {
 		writeError(c, model.ErrInvalidParam)
 		return
 	}
@@ -41,13 +45,13 @@ func (h *AuthHandler) RegisterAuthUser(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	setRefreshCookie(c, refreshToken, 7*24*time.Hour)
+	h.setRefreshCookie(c, refreshToken, 7*24*time.Hour)
 	c.JSON(http.StatusOK, model.OK(payload))
 }
 
 func (h *AuthHandler) SendAuthRegistrationEmailVerification(c *gin.Context) {
 	var body generated.SendAuthRegistrationEmailVerificationJSONRequestBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := bindJSONWithLimit(c, &body, maxAuthBodyBytes); err != nil {
 		writeError(c, model.ErrInvalidParam)
 		return
 	}
@@ -64,7 +68,7 @@ func (h *AuthHandler) SendAuthRegistrationEmailVerification(c *gin.Context) {
 
 func (h *AuthHandler) ConfirmAuthEmailVerification(c *gin.Context) {
 	var body generated.ConfirmAuthEmailVerificationJSONRequestBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := bindJSONWithLimit(c, &body, maxAuthBodyBytes); err != nil {
 		writeError(c, model.ErrInvalidParam)
 		return
 	}
@@ -79,13 +83,13 @@ func (h *AuthHandler) ConfirmAuthEmailVerification(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	setRefreshCookie(c, refreshToken, 7*24*time.Hour)
+	h.setRefreshCookie(c, refreshToken, 7*24*time.Hour)
 	c.JSON(http.StatusOK, model.OK(payload))
 }
 
 func (h *AuthHandler) ResendAuthEmailVerification(c *gin.Context) {
 	var body generated.ResendAuthEmailVerificationJSONRequestBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := bindJSONWithLimit(c, &body, maxAuthBodyBytes); err != nil {
 		writeError(c, model.ErrInvalidParam)
 		return
 	}
@@ -105,7 +109,7 @@ func (h *AuthHandler) ResendAuthEmailVerification(c *gin.Context) {
 
 func (h *AuthHandler) LoginAuthUser(c *gin.Context) {
 	var body generated.LoginAuthUserJSONRequestBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := bindJSONWithLimit(c, &body, maxAuthBodyBytes); err != nil {
 		writeError(c, model.ErrInvalidParam)
 		return
 	}
@@ -118,7 +122,7 @@ func (h *AuthHandler) LoginAuthUser(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	setRefreshCookie(c, refreshToken, 7*24*time.Hour)
+	h.setRefreshCookie(c, refreshToken, 7*24*time.Hour)
 	c.JSON(http.StatusOK, model.OK(payload))
 }
 
@@ -148,7 +152,7 @@ func (h *AuthHandler) RefreshAuthSession(c *gin.Context, params generated.Refres
 		writeError(c, err)
 		return
 	}
-	setRefreshCookie(c, refreshToken, 7*24*time.Hour)
+	h.setRefreshCookie(c, refreshToken, 7*24*time.Hour)
 	c.JSON(http.StatusOK, model.OK(payload))
 }
 
@@ -161,7 +165,7 @@ func (h *AuthHandler) LogoutAuthUser(c *gin.Context, params generated.LogoutAuth
 		writeError(c, err)
 		return
 	}
-	clearRefreshCookie(c)
+	h.clearRefreshCookie(c)
 	c.JSON(http.StatusOK, model.OK[any](nil))
 }
 
@@ -173,14 +177,22 @@ func bearerToken(header string) string {
 	return strings.TrimSpace(strings.TrimPrefix(header, prefix))
 }
 
-func setRefreshCookie(c *gin.Context, value string, ttl time.Duration) {
+func (h *AuthHandler) setRefreshCookie(c *gin.Context, value string, ttl time.Duration) {
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(refreshTokenCookieName, value, int(ttl.Seconds()), "/api/auth", "", false, true)
+	c.SetCookie(refreshTokenCookieName, value, int(ttl.Seconds()), "/api/auth", "", h.secureCookies, true)
 }
 
-func clearRefreshCookie(c *gin.Context) {
+func (h *AuthHandler) clearRefreshCookie(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(refreshTokenCookieName, "", -1, "/api/auth", "", false, true)
+	c.SetCookie(refreshTokenCookieName, "", -1, "/api/auth", "", h.secureCookies, true)
+}
+
+func bindJSONWithLimit(c *gin.Context, destination any, limit int64) error {
+	if c.Request.ContentLength > limit {
+		return &http.MaxBytesError{Limit: limit}
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit)
+	return c.ShouldBindJSON(destination)
 }
 
 func writeError(c *gin.Context, err error) {

@@ -58,6 +58,7 @@ node_modules/
 dist/
 dist-ssr/
 data/
+backups/
 playwright-report/
 test-results/
 *.local

@@ -105,6 +105,24 @@ func TestResumeHandlersLifecycleAndStats(t *testing.T) {
 	}
 }
 
+func TestResumeHandlersRejectOversizedUpdateBody(t *testing.T) {
+	router := newTestRouter(t)
+	token := registerAccessToken(t, router, "large-update-user", "large-update@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	updated := performAuthorizedJSON(
+		router,
+		token,
+		http.MethodPatch,
+		"/api/resumes/"+resumeID,
+		`{"expectedRevision":1,"content":{"padding":"`+strings.Repeat("x", 600<<10)+`"}}`,
+	)
+	if updated.Code != http.StatusBadRequest {
+		t.Fatalf("oversized update status=%d body=%s", updated.Code, updated.Body.String())
+	}
+}
+
 func TestResumeHandlersRequireAuthenticationAndIsolateOwners(t *testing.T) {
 	router := newTestRouter(t)
 	unauthorized := performJSON(router, http.MethodGet, "/api/resumes", "")

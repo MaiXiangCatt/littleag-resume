@@ -13,6 +13,7 @@ export interface RegisterRequest {
      * @pattern ^[A-Za-z0-9_\u4e00-\u9fa5-]+$
      */
   username: string;
+  /** @maxLength 254 */
   email: string;
   /**
      * @minLength 8

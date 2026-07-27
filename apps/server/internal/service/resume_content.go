@@ -1,14 +1,23 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
+	"unicode/utf8"
 )
 
 const (
-	DefaultTemplateID = "modern-editorial"
-	ContentVersionV2  = 2
+	DefaultTemplateID          = "modern-editorial"
+	ContentVersionV2           = 2
+	MaxResumeContentBytes      = 512 << 10
+	MaxResumeDescriptionRunes  = 20_000
+	maxResumeIDRunes           = 128
+	maxResumeTitleRunes        = 120
+	maxResumeProfileFieldRunes = 320
+	maxResumeItemFieldRunes    = 500
+	maxResumeLinkURLRunes      = 2_048
 )
 
 var validTemplateIDs = map[string]struct{}{
@@ -40,6 +49,10 @@ func DefaultResumeContent() map[string]any {
 }
 
 func ValidateResumeContent(content map[string]any) error {
+	serialized, err := json.Marshal(content)
+	if err != nil || len(serialized) > MaxResumeContentBytes {
+		return fmt.Errorf("content exceeds size limit")
+	}
 	if content == nil || len(content) != 3 {
 		return fmt.Errorf("content must contain profile, sections and formatting")
 	}
@@ -64,7 +77,7 @@ func validateProfile(profile map[string]any) bool {
 		return false
 	}
 	for _, key := range []string{"fullName", "targetRole", "phone", "email", "location"} {
-		if _, ok := profile[key].(string); !ok {
+		if !boundedString(profile[key], maxResumeProfileFieldRunes) {
 			return false
 		}
 	}
@@ -74,7 +87,11 @@ func validateProfile(profile map[string]any) bool {
 	}
 	for _, raw := range links {
 		link, ok := raw.(map[string]any)
-		if !ok || !stringFields(link, []string{"id", "label", "url"}, nil) {
+		if !ok ||
+			!stringFields(link, []string{"id", "label", "url"}, nil) ||
+			!boundedString(link["id"], maxResumeIDRunes) ||
+			!boundedString(link["label"], maxResumeTitleRunes) ||
+			!boundedString(link["url"], maxResumeLinkURLRunes) {
 			return false
 		}
 	}
@@ -141,18 +158,33 @@ func validateSections(sections []any) bool {
 		typeName, typeOK := section["type"].(string)
 		title, titleOK := section["title"].(string)
 		_, enabledOK := section["enabled"].(bool)
-		if !idOK || !typeOK || !titleOK || !enabledOK || strings.TrimSpace(id) == "" || strings.TrimSpace(title) == "" || ids[id] {
+		if !idOK ||
+			!typeOK ||
+			!titleOK ||
+			!enabledOK ||
+			strings.TrimSpace(id) == "" ||
+			strings.TrimSpace(title) == "" ||
+			utf8.RuneCountInString(id) > maxResumeIDRunes ||
+			utf8.RuneCountInString(typeName) > maxResumeIDRunes ||
+			utf8.RuneCountInString(title) > maxResumeTitleRunes ||
+			ids[id] {
 			return false
 		}
 		ids[id] = true
 		switch typeName {
 		case "summary":
-			if builtins[typeName] || id != "summary" || !stringFields(section, []string{"id", "type", "title", "text"}, []string{"enabled"}) {
+			if builtins[typeName] ||
+				id != "summary" ||
+				!stringFields(section, []string{"id", "type", "title", "text"}, []string{"enabled"}) ||
+				!boundedString(section["text"], MaxResumeDescriptionRunes) {
 				return false
 			}
 			builtins[typeName] = true
 		case "skills":
-			if builtins[typeName] || id != "skills" || !stringFields(section, []string{"id", "type", "title", "description"}, []string{"enabled"}) {
+			if builtins[typeName] ||
+				id != "skills" ||
+				!stringFields(section, []string{"id", "type", "title", "description"}, []string{"enabled"}) ||
+				!boundedString(section["description"], MaxResumeDescriptionRunes) {
 				return false
 			}
 			builtins[typeName] = true
@@ -203,7 +235,7 @@ func validateItemSection(section map[string]any, typeName string) bool {
 		if !ok || !onlyAllowed(item, allowed) {
 			return false
 		}
-		if id, ok := item["id"].(string); !ok || id == "" {
+		if id, ok := item["id"].(string); !ok || id == "" || utf8.RuneCountInString(id) > maxResumeIDRunes {
 			return false
 		}
 		for key, value := range item {
@@ -216,7 +248,11 @@ func validateItemSection(section map[string]any, typeName string) bool {
 				}
 				continue
 			}
-			if _, ok := value.(string); !ok {
+			maxRunes := maxResumeItemFieldRunes
+			if key == "description" {
+				maxRunes = MaxResumeDescriptionRunes
+			}
+			if !boundedString(value, maxRunes) {
 				return false
 			}
 		}
@@ -253,6 +289,11 @@ func stringFields(values map[string]any, stringsRequired []string, otherRequired
 		}
 	}
 	return onlyAllowed(values, allowed)
+}
+
+func boundedString(value any, maxRunes int) bool {
+	text, ok := value.(string)
+	return ok && utf8.RuneCountInString(text) <= maxRunes
 }
 
 func oneOf(value any, choices ...string) bool {

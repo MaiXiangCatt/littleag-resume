@@ -95,6 +95,7 @@ func TestLoadFromValidatesResendConfiguration(t *testing.T) {
 	t.Setenv("MAIL_FROM", "Product <verify@example.com>")
 	t.Setenv("EMAIL_PRODUCT_NAME", "Renamed Product")
 	t.Setenv("TRUSTED_PROXIES", "10.0.0.0/8, 172.16.0.0/12")
+	t.Setenv("LOGIN_FAILURE_CAPACITY", "4321")
 	cfg, err := LoadFrom(filepath.Join(t.TempDir(), "missing.env"))
 	if err != nil {
 		t.Fatalf("load resend config: %v", err)
@@ -108,6 +109,9 @@ func TestLoadFromValidatesResendConfiguration(t *testing.T) {
 		cfg.TrustedProxies[0] != "10.0.0.0/8" ||
 		cfg.TrustedProxies[1] != "172.16.0.0/12" {
 		t.Fatalf("unexpected trusted proxies: %+v", cfg.TrustedProxies)
+	}
+	if cfg.LoginFailureCapacity != 4321 {
+		t.Fatalf("unexpected login failure capacity: %d", cfg.LoginFailureCapacity)
 	}
 }
 
