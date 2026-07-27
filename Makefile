@@ -3,7 +3,14 @@
 # 命令分类：环境/契约/静态/测试/构建/部署/工具
 # ==========================================
 
-.PHONY: help install dev clean format format-check
+.PHONY: \
+	help install clean \
+	spec-check generate \
+	format format-check lint lint-web lint-server lint-cli \
+	test test-web test-server test-cli tdd-check e2e \
+	build build-web build-server build-cli storybook docker-build deploy smoke \
+	dev-web dev-server db-up db-down \
+	archive vega-build vega-link
 .DEFAULT_GOAL := help
 
 help: ## 列出所有可用命令
