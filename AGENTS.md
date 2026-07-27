@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Vega Resume is a pnpm monorepo with a separate Go service. `apps/web/` contains the Vite React TypeScript frontend; source lives in `apps/web/src/`, with images and SVGs in `apps/web/src/assets/`. `apps/server/` contains the Go API entry point under `cmd/api/` and manages dependencies with its own `go.mod`. `packages/vega-cli/` contains the Node CLI package, with implementation in `src/` and Vitest tests in `tests/`. Product and design notes live in `docs/`, and OpenSpec configuration starts in `openspec/`.
+LittleAgResume is a pnpm monorepo with a separate Go service. `apps/web/` contains the Vite React TypeScript frontend; source lives in `apps/web/src/`, with images and SVGs in `apps/web/src/assets/`. `apps/server/` contains the Go API entry point under `cmd/api/` and manages dependencies with its own `go.mod`. `packages/vega-cli/` contains the Node CLI package, with implementation in `src/` and Vitest tests in `tests/`. Product and design notes live in `docs/`, and OpenSpec configuration starts in `openspec/`.
 
 ## Build, Test, and Development Commands
 

@@ -5,6 +5,7 @@ import {
   logoutAuthUser,
   registerAuthUser,
   resendAuthEmailVerification,
+  sendAuthRegistrationEmailVerification,
 } from '@/shared/api/generated/auth';
 import type { AuthUser } from '@/shared/api/generated/model';
 
@@ -39,6 +40,17 @@ export const authService = {
       await registerAuthUser(values, {
         credentials: 'include',
       }),
+    ) as AuthSession;
+  },
+
+  async sendRegistrationEmailVerification(email: string) {
+    return unwrap(
+      await sendAuthRegistrationEmailVerification(
+        { email },
+        {
+          credentials: 'include',
+        },
+      ),
     ) as EmailVerification;
   },
 

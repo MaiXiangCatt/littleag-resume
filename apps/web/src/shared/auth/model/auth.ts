@@ -18,10 +18,6 @@ export type EmailVerification = {
   resendAfterSeconds: number;
 };
 
-export type PendingEmailVerification = EmailVerification & {
-  password: string;
-};
-
 export type ApiErrorPayload = {
   code: number;
   message: string;
@@ -37,6 +33,10 @@ export const emailVerificationSchema = z.object({
   code: z.string().regex(/^\d{6}$/, '请输入 6 位数字验证码'),
 });
 
+export const registrationEmailSchema = z.object({
+  email: z.email('请输入有效邮箱'),
+});
+
 export const registerSchema = z
   .object({
     username: z
@@ -47,6 +47,7 @@ export const registerSchema = z
     email: z.email('请输入有效邮箱'),
     password: z.string().min(8, '密码至少 8 位'),
     confirmPassword: z.string().min(8, '请确认密码'),
+    verificationCode: z.string().regex(/^\d{6}$/, '请输入 6 位数字验证码'),
   })
   .refine((value) => value.password === value.confirmPassword, {
     message: '两次输入的密码不一致',

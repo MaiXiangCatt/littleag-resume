@@ -30,12 +30,31 @@ func (h *AuthHandler) RegisterAuthUser(c *gin.Context) {
 		return
 	}
 
-	payload, err := h.auth.Register(c.Request.Context(), service.RegisterInput{
-		Username:        body.Username,
-		Email:           string(body.Email),
-		Password:        body.Password,
-		ConfirmPassword: body.ConfirmPassword,
+	payload, refreshToken, err := h.auth.Register(c.Request.Context(), service.RegisterInput{
+		Username:         body.Username,
+		Email:            string(body.Email),
+		Password:         body.Password,
+		ConfirmPassword:  body.ConfirmPassword,
+		VerificationCode: body.VerificationCode,
 	})
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	setRefreshCookie(c, refreshToken, 7*24*time.Hour)
+	c.JSON(http.StatusOK, model.OK(payload))
+}
+
+func (h *AuthHandler) SendAuthRegistrationEmailVerification(c *gin.Context) {
+	var body generated.SendAuthRegistrationEmailVerificationJSONRequestBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		writeError(c, model.ErrInvalidParam)
+		return
+	}
+	payload, err := h.auth.SendRegistrationEmailVerification(
+		c.Request.Context(),
+		string(body.Email),
+	)
 	if err != nil {
 		writeError(c, err)
 		return

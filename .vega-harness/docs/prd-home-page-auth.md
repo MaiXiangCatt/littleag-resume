@@ -1,4 +1,4 @@
-# VegaResume — Home Page 详细 PRD v3.0
+# LittleAgResume — Home Page 详细 PRD v3.0
 
 > Vega 需求：`home-page-auth`
 > Workflow：`full`
@@ -26,7 +26,7 @@
 
 ### 1.1 背景
 
-Home Page 是用户进入 VegaResume 的第一个页面，承担品牌认知、功能传达、用户转化三重职责。MVP 阶段对应路由 `/`，未登录用户默认落地此页，已登录用户访问 `/` 时直接跳转 `/console`。
+Home Page 是用户进入 LittleAgResume 的第一个页面，承担品牌认知、功能传达、用户转化三重职责。MVP 阶段对应路由 `/`，未登录用户默认落地此页，已登录用户访问 `/` 时直接跳转 `/console`。
 
 ### 1.2 页面目标
 
@@ -43,7 +43,7 @@ Home Page 是用户进入 VegaResume 的第一个页面，承担品牌认知、�
 
 ```
 作为一个正在求职的候选人，
-我希望在首页快速了解 VegaResume 能为我做什么、是否免费，
+我希望在首页快速了解 LittleAgResume 能为我做什么、是否免费，
 以便决定是否注册并开始制作简历。
 ```
 
@@ -100,7 +100,7 @@ interface AppHeaderProps {
 
 | 区域 | 内容 | 行为 |
 |------|------|------|
-| Logo（左侧） | VegaResume 图标 + 文字，使用品牌色 | 点击跳转 `/` |
+| Logo（左侧） | LittleAgResume 图标 + 文字，使用品牌色 | 点击跳转 `/` |
 | 用户区（右侧固定区） | 见下方登录态说明 | — |
 | 页面 actions 插槽（用户区左侧） | 由各页面传入，Home Page 传登录按钮 | — |
 
@@ -247,7 +247,7 @@ interface AppHeaderProps {
 
 ### 7.1 内容
 
-- **左**："© 2026 VegaResume. 基于 MIT 协议开源。"
+- **左**："© 2026 LittleAgResume. 基于 MIT 协议开源。"
 - **右**：GitHub 图标（lucide-react `Github`）链接 → `https://github.com/MaiXiangCatt/vega-resume`（新标签打开）
 
 ### 7.2 视觉规格

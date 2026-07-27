@@ -43,36 +43,36 @@
 }
 
 :root {
-  --background: #f7f8fb;
-  --foreground: #241a27;
+  --background: #f5fbfd;
+  --foreground: #172a31;
   --card: #ffffff;
-  --card-foreground: #241a27;
+  --card-foreground: #172a31;
   --popover: #ffffff;
-  --popover-foreground: #241a27;
-  --primary: #850477;
+  --popover-foreground: #172a31;
+  --primary: #087ea4;
   --primary-foreground: #ffffff;
-  --secondary: #f7eff7;
-  --secondary-foreground: #4f254b;
-  --muted: #f6f3f7;
-  --muted-foreground: #817985;
-  --accent: #f8f2f8;
-  --accent-foreground: #850477;
+  --secondary: #eaf8fc;
+  --secondary-foreground: #135d76;
+  --muted: #eff7f9;
+  --muted-foreground: #647b83;
+  --accent: #e6f7fb;
+  --accent-foreground: #087ea4;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: #e8e2ea;
-  --input: #ded8e1;
-  --ring: #850477;
+  --border: #dbe9ed;
+  --input: #cddfe4;
+  --ring: #41b9e0;
   --radius: 0.625rem;
   font-family:
-    Inter,
+    'Noto Sans SC',
     ui-sans-serif,
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  color: #1f2328;
-  background: #f7f8fb;
+  color: #172a31;
+  background: #f5fbfd;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

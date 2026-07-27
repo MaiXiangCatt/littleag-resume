@@ -20,8 +20,8 @@ describe('HomePage', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { level: 1, name: /VegaResume/ })).toBeInTheDocument();
-    expect(screen.getByText('用一页好简历，开始下一次机会')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /LittleAgResume/ })).toBeInTheDocument();
+    expect(screen.getByText('把经历写清楚，把版式交给你')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: '简历示例预览' })).toBeInTheDocument();
     expect(screen.getAllByTestId('home-feature-card')).toHaveLength(3);
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();

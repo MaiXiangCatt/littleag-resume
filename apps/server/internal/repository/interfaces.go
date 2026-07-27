@@ -44,6 +44,27 @@ type EmailVerificationRepository interface {
 	InvalidateEmailVerificationChallenge(ctx context.Context, id uuid.UUID, invalidatedAt time.Time) error
 }
 
+type RegistrationEmailVerificationRepository interface {
+	ReplaceRegistrationEmailVerification(
+		ctx context.Context,
+		challenge *model.RegistrationEmailVerification,
+		invalidatedAt time.Time,
+	) error
+	FindActiveRegistrationEmailVerification(
+		ctx context.Context,
+		emailNormalized string,
+	) (*model.RegistrationEmailVerification, error)
+	IncrementRegistrationEmailVerificationFailures(ctx context.Context, id uuid.UUID) (int, error)
+	MarkRegistrationEmailVerificationSent(ctx context.Context, id uuid.UUID, sentAt time.Time) error
+	InvalidateRegistrationEmailVerification(ctx context.Context, id uuid.UUID, invalidatedAt time.Time) error
+	CreateVerifiedUser(
+		ctx context.Context,
+		challengeID uuid.UUID,
+		user *model.User,
+		consumedAt time.Time,
+	) error
+}
+
 type RefreshTokenRepository interface {
 	CreateRefreshToken(ctx context.Context, token *model.RefreshToken) error
 	FindActiveRefreshTokenByHash(ctx context.Context, tokenHash string) (*model.RefreshToken, error)

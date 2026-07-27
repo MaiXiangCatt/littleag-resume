@@ -43,19 +43,20 @@ func main() {
 		log.Fatalf("configure verification email sender: %v", err)
 	}
 	authService := service.NewAuthService(service.AuthServiceConfig{
-		Users:                   store,
-		EmailVerifications:      store,
-		RefreshTokens:           store,
-		VerificationEmailSender: verificationEmailSender,
-		EmailVerificationKey:    cfg.EmailVerificationKey,
-		EmailVerificationTTL:    cfg.EmailVerificationTTL,
-		EmailVerificationLimit:  cfg.EmailVerificationLimit,
-		EmailResendCooldown:     cfg.EmailResendCooldown,
-		AccessTokenKey:          cfg.AccessTokenKey,
-		AccessTokenTTL:          cfg.AccessTokenTTL,
-		RefreshTokenTTL:         cfg.RefreshTokenTTL,
-		AccountLockLimit:        cfg.AccountLockLimit,
-		AccountLockTTL:          cfg.AccountLockTTL,
+		Users:                     store,
+		EmailVerifications:        store,
+		RegistrationVerifications: store,
+		RefreshTokens:             store,
+		VerificationEmailSender:   verificationEmailSender,
+		EmailVerificationKey:      cfg.EmailVerificationKey,
+		EmailVerificationTTL:      cfg.EmailVerificationTTL,
+		EmailVerificationLimit:    cfg.EmailVerificationLimit,
+		EmailResendCooldown:       cfg.EmailResendCooldown,
+		AccessTokenKey:            cfg.AccessTokenKey,
+		AccessTokenTTL:            cfg.AccessTokenTTL,
+		RefreshTokenTTL:           cfg.RefreshTokenTTL,
+		AccountLockLimit:          cfg.AccountLockLimit,
+		AccountLockTTL:            cfg.AccountLockTTL,
 	})
 	resumeService := service.NewResumeService(service.ResumeServiceConfig{Resumes: store, AvatarDir: cfg.AvatarStorageDir})
 	renderer := pdf.NewChromeRenderer(pdf.Config{

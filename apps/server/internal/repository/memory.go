@@ -16,6 +16,7 @@ type MemoryStore struct {
 	mu                          sync.RWMutex
 	users                       map[uuid.UUID]*model.User
 	emailVerificationChallenges map[uuid.UUID]*model.EmailVerificationChallenge
+	registrationVerifications   map[uuid.UUID]*model.RegistrationEmailVerification
 	refreshTokens               map[uuid.UUID]*model.RefreshToken
 	resumes                     map[uuid.UUID]*model.Resume
 }
@@ -24,6 +25,7 @@ func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		users:                       map[uuid.UUID]*model.User{},
 		emailVerificationChallenges: map[uuid.UUID]*model.EmailVerificationChallenge{},
+		registrationVerifications:   map[uuid.UUID]*model.RegistrationEmailVerification{},
 		refreshTokens:               map[uuid.UUID]*model.RefreshToken{},
 		resumes:                     map[uuid.UUID]*model.Resume{},
 	}
@@ -358,6 +360,132 @@ func (s *MemoryStore) InvalidateEmailVerificationChallenge(
 		return ErrNotFound
 	}
 	challenge.InvalidatedAt = &invalidatedAt
+	return nil
+}
+
+func (s *MemoryStore) ReplaceRegistrationEmailVerification(
+	_ context.Context,
+	challenge *model.RegistrationEmailVerification,
+	invalidatedAt time.Time,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, existing := range s.registrationVerifications {
+		if existing.EmailNormalized == challenge.EmailNormalized &&
+			existing.ConsumedAt == nil &&
+			existing.InvalidatedAt == nil {
+			existing.InvalidatedAt = &invalidatedAt
+		}
+	}
+	copy := *challenge
+	s.registrationVerifications[copy.ID] = &copy
+	return nil
+}
+
+func (s *MemoryStore) FindActiveRegistrationEmailVerification(
+	_ context.Context,
+	emailNormalized string,
+) (*model.RegistrationEmailVerification, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var latest *model.RegistrationEmailVerification
+	for _, challenge := range s.registrationVerifications {
+		if challenge.EmailNormalized != emailNormalized ||
+			challenge.ConsumedAt != nil ||
+			challenge.InvalidatedAt != nil {
+			continue
+		}
+		if latest == nil || challenge.CreatedAt.After(latest.CreatedAt) {
+			copy := *challenge
+			latest = &copy
+		}
+	}
+	if latest == nil {
+		return nil, ErrNotFound
+	}
+	return latest, nil
+}
+
+func (s *MemoryStore) IncrementRegistrationEmailVerificationFailures(
+	_ context.Context,
+	id uuid.UUID,
+) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	challenge, ok := s.registrationVerifications[id]
+	if !ok || challenge.ConsumedAt != nil || challenge.InvalidatedAt != nil {
+		return 0, ErrNotFound
+	}
+	challenge.Attempts++
+	return challenge.Attempts, nil
+}
+
+func (s *MemoryStore) MarkRegistrationEmailVerificationSent(
+	_ context.Context,
+	id uuid.UUID,
+	sentAt time.Time,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	challenge, ok := s.registrationVerifications[id]
+	if !ok || challenge.ConsumedAt != nil || challenge.InvalidatedAt != nil {
+		return ErrNotFound
+	}
+	challenge.SentAt = &sentAt
+	return nil
+}
+
+func (s *MemoryStore) InvalidateRegistrationEmailVerification(
+	_ context.Context,
+	id uuid.UUID,
+	invalidatedAt time.Time,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	challenge, ok := s.registrationVerifications[id]
+	if !ok || challenge.ConsumedAt != nil || challenge.InvalidatedAt != nil {
+		return ErrNotFound
+	}
+	challenge.InvalidatedAt = &invalidatedAt
+	return nil
+}
+
+func (s *MemoryStore) CreateVerifiedUser(
+	_ context.Context,
+	challengeID uuid.UUID,
+	user *model.User,
+	consumedAt time.Time,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	challenge, ok := s.registrationVerifications[challengeID]
+	if !ok ||
+		challenge.EmailNormalized != user.EmailNormalized ||
+		challenge.ConsumedAt != nil ||
+		challenge.InvalidatedAt != nil ||
+		!challenge.ExpiresAt.After(consumedAt) {
+		return ErrNotFound
+	}
+	for _, existing := range s.users {
+		if existing.DeletedAt != nil {
+			continue
+		}
+		if existing.EmailNormalized == user.EmailNormalized {
+			return ErrDuplicateEmail
+		}
+		if existing.Username == user.Username {
+			return ErrDuplicateUsername
+		}
+	}
+	copy := *user
+	s.users[copy.ID] = &copy
+	challenge.ConsumedAt = &consumedAt
 	return nil
 }
 

@@ -50,7 +50,7 @@ test('unauthenticated home and login to console', async ({ page }) => {
   );
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /VegaResume/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /LittleAgResume/ })).toBeVisible();
   await page.getByRole('button', { name: '登录' }).click();
   await page.getByLabel('邮箱').fill('user@example.com');
   await page.getByLabel('密码').fill('password1');

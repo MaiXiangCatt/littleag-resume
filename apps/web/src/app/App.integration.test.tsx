@@ -14,6 +14,7 @@ const authServiceMock = vi.hoisted(() => ({
   refresh: vi.fn(),
   register: vi.fn(),
   resendEmailVerification: vi.fn(),
+  sendRegistrationEmailVerification: vi.fn(),
 }));
 
 vi.mock('@/shared/auth/api/auth.service', () => ({
@@ -37,6 +38,7 @@ describe('app auth flow integration', () => {
     authServiceMock.refresh.mockReset();
     authServiceMock.register.mockReset();
     authServiceMock.resendEmailVerification.mockReset();
+    authServiceMock.sendRegistrationEmailVerification.mockReset();
     authServiceMock.refresh.mockRejectedValue(new Error('no session'));
   });
 
@@ -44,18 +46,18 @@ describe('app auth flow integration', () => {
     renderApp('/');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: /VegaResume/ }),
+      await screen.findByRole('heading', { level: 1, name: /LittleAgResume/ }),
     ).toBeInTheDocument();
   });
 
   it('registers from home and lands on console', async () => {
     const user = userEvent.setup();
-    authServiceMock.register.mockResolvedValueOnce({
+    authServiceMock.sendRegistrationEmailVerification.mockResolvedValueOnce({
       email: 'user@example.com',
       expiresInSeconds: 600,
       resendAfterSeconds: 60,
     });
-    authServiceMock.confirmEmailVerification.mockResolvedValueOnce({
+    authServiceMock.register.mockResolvedValueOnce({
       accessToken: 'access-token',
       user: { id: 'user-id', username: 'zhangsan', email: 'user@example.com', emailVerified: true },
     });
@@ -63,13 +65,13 @@ describe('app auth flow integration', () => {
     renderApp('/');
 
     await user.click(await screen.findByRole('button', { name: '免费开始' }));
-    await user.type(screen.getByLabelText('用户名'), 'zhangsan');
     await user.type(screen.getByLabelText('邮箱'), 'user@example.com');
+    await user.click(screen.getByRole('button', { name: '发送验证码' }));
+    await user.type(screen.getByLabelText('用户名'), 'zhangsan');
     await user.type(screen.getByLabelText('密码'), 'password1');
     await user.type(screen.getByLabelText('确认密码'), 'password1');
-    await user.click(screen.getByRole('button', { name: '创建账号' }));
     await user.type(await screen.findByLabelText('邮箱验证码'), '123456');
-    await user.click(screen.getByRole('button', { name: '验证并登录' }));
+    await user.click(screen.getByRole('button', { name: '验证并创建账号' }));
 
     expect(await screen.findByText('zhangsan')).toBeInTheDocument();
   });
@@ -115,7 +117,7 @@ describe('app auth flow integration', () => {
     await user.click(await screen.findByRole('button', { name: /zhangsan/ }));
     await user.click(await screen.findByRole('menuitem', { name: /退出登录/ }));
     expect(
-      await screen.findByRole('heading', { level: 1, name: /VegaResume/ }),
+      await screen.findByRole('heading', { level: 1, name: /LittleAgResume/ }),
     ).toBeInTheDocument();
     expect(authServiceMock.logout).toHaveBeenCalledTimes(1);
   });
@@ -135,7 +137,7 @@ describe('app auth flow integration', () => {
     renderApp('/console');
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: /VegaResume/ })).toBeInTheDocument(),
+      expect(screen.getByRole('heading', { level: 1, name: /LittleAgResume/ })).toBeInTheDocument(),
     );
   });
 });

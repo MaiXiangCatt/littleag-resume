@@ -25,27 +25,27 @@ var errAny = errors.New("renderer boom")
 func registerAccessToken(t *testing.T, router http.Handler, username, email string) string {
 	t.Helper()
 	testVerificationCodes.Delete(email)
-	response := performJSON(router, http.MethodPost, "/api/auth/register", `{
-		"username": "`+username+`",
-		"email": "`+email+`",
-		"password": "password1",
-		"confirmPassword": "password1"
+	sent := performJSON(router, http.MethodPost, "/api/auth/registration-email-verification", `{
+		"email": "`+email+`"
 	}`)
-	if response.Code != http.StatusOK {
-		t.Fatalf("register status=%d body=%s", response.Code, response.Body.String())
+	if sent.Code != http.StatusOK {
+		t.Fatalf("send verification status=%d body=%s", sent.Code, sent.Body.String())
 	}
 	code, ok := testVerificationCodes.Load(email)
 	if !ok {
 		t.Fatalf("verification code was not sent to %s", email)
 	}
-	confirmed := performJSON(router, http.MethodPost, "/api/auth/email-verification/confirm", `{
+	response := performJSON(router, http.MethodPost, "/api/auth/register", `{
+		"username": "`+username+`",
 		"email": "`+email+`",
-		"code": "`+code.(string)+`"
+		"password": "password1",
+		"confirmPassword": "password1",
+		"verificationCode": "`+code.(string)+`"
 	}`)
-	if confirmed.Code != http.StatusOK {
-		t.Fatalf("confirm status=%d body=%s", confirmed.Code, confirmed.Body.String())
+	if response.Code != http.StatusOK {
+		t.Fatalf("register status=%d body=%s", response.Code, response.Body.String())
 	}
-	return decodeEnvelope(t, confirmed)["data"].(map[string]any)["accessToken"].(string)
+	return decodeEnvelope(t, response)["data"].(map[string]any)["accessToken"].(string)
 }
 
 func performAuthorizedJSON(router http.Handler, token, method, path, body string) *httptest.ResponseRecorder {

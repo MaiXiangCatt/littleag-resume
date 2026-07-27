@@ -1,4 +1,4 @@
-# VegaResume — API 响应规范与错误码设计
+# LittleAgResume — API 响应规范与错误码设计
 
 **文档状态**: 草稿  
 **创建日期**: 2026-07-01  

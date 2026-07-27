@@ -30,7 +30,7 @@ export function HomePage({ currentUser, onLogin, onRegister, onViewExample }: Ho
 
   return (
     <div
-      className="min-h-screen overflow-x-hidden bg-[#f6f3ee] text-slate-950"
+      className="min-h-screen overflow-x-hidden bg-[#f4fbfd] text-[#172a31]"
       data-testid="home-page"
     >
       <AppHeader

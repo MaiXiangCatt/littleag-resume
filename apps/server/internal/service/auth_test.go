@@ -54,24 +54,25 @@ func newTestAuthService(
 	store := repository.NewMemoryStore()
 	sender := newFakeVerificationEmailSender()
 	auth := service.NewAuthService(service.AuthServiceConfig{
-		Users:                   store,
-		EmailVerifications:      store,
-		RefreshTokens:           store,
-		VerificationEmailSender: sender,
-		EmailVerificationKey:    []byte("test-email-verification-key-with-enough-length"),
-		EmailVerificationTTL:    10 * time.Minute,
-		EmailVerificationLimit:  5,
-		EmailResendCooldown:     time.Minute,
-		AccessTokenKey:          []byte("test-access-secret-with-enough-length"),
-		AccessTokenTTL:          15 * time.Minute,
-		RefreshTokenTTL:         7 * 24 * time.Hour,
-		AccountLockLimit:        5,
-		AccountLockTTL:          15 * time.Minute,
+		Users:                     store,
+		EmailVerifications:        store,
+		RegistrationVerifications: store,
+		RefreshTokens:             store,
+		VerificationEmailSender:   sender,
+		EmailVerificationKey:      []byte("test-email-verification-key-with-enough-length"),
+		EmailVerificationTTL:      10 * time.Minute,
+		EmailVerificationLimit:    5,
+		EmailResendCooldown:       time.Minute,
+		AccessTokenKey:            []byte("test-access-secret-with-enough-length"),
+		AccessTokenTTL:            15 * time.Minute,
+		RefreshTokenTTL:           7 * 24 * time.Hour,
+		AccountLockLimit:          5,
+		AccountLockTTL:            15 * time.Minute,
 	})
 	return auth, store, sender
 }
 
-func registerAndVerify(
+func sendCodeAndRegister(
 	t *testing.T,
 	auth *service.AuthService,
 	sender *fakeVerificationEmailSender,
@@ -79,45 +80,36 @@ func registerAndVerify(
 ) (*model.AuthPayload, string) {
 	t.Helper()
 	ctx := context.Background()
-	if _, err := auth.Register(ctx, service.RegisterInput{
-		Username:        username,
-		Email:           email,
-		Password:        "password1",
-		ConfirmPassword: "password1",
-	}); err != nil {
-		t.Fatalf("register failed: %v", err)
+	if _, err := auth.SendRegistrationEmailVerification(ctx, email); err != nil {
+		t.Fatalf("send verification failed: %v", err)
 	}
-	payload, refreshToken, err := auth.ConfirmEmailVerification(
-		ctx,
-		service.ConfirmEmailVerificationInput{Email: email, Code: sender.code(email)},
-	)
+	payload, refreshToken, err := auth.Register(ctx, service.RegisterInput{
+		Username:         username,
+		Email:            email,
+		Password:         "password1",
+		ConfirmPassword:  "password1",
+		VerificationCode: sender.code(email),
+	})
 	if err != nil {
-		t.Fatalf("confirm email failed: %v", err)
+		t.Fatalf("register failed: %v", err)
 	}
 	return payload, refreshToken
 }
 
-func TestAuthServiceRegisterRequiresEmailVerification(t *testing.T) {
+func TestAuthServiceRegistrationVerifiesEmailBeforeCreatingUser(t *testing.T) {
 	ctx := context.Background()
 	auth, store, sender := newTestAuthService(t)
 
-	if _, err := auth.Register(ctx, service.RegisterInput{
-		Username:        "!",
-		Email:           "bad@example.com",
-		Password:        "password1",
-		ConfirmPassword: "password1",
-	}); !errors.Is(err, model.ErrUsernameFormatInvalid) {
-		t.Fatalf("expected username format error, got %v", err)
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "not-an-email"); !errors.Is(
+		err,
+		model.ErrEmailFormatInvalid,
+	) {
+		t.Fatalf("expected email format error, got %v", err)
 	}
 
-	pending, err := auth.Register(ctx, service.RegisterInput{
-		Username:        "zhangsan",
-		Email:           "User@Example.com",
-		Password:        "password1",
-		ConfirmPassword: "password1",
-	})
+	pending, err := auth.SendRegistrationEmailVerification(ctx, "User@Example.com")
 	if err != nil {
-		t.Fatalf("register failed: %v", err)
+		t.Fatalf("send verification failed: %v", err)
 	}
 	if pending.Email != "User@Example.com" || pending.ExpiresInSeconds != 600 {
 		t.Fatalf("unexpected verification payload: %+v", pending)
@@ -125,37 +117,33 @@ func TestAuthServiceRegisterRequiresEmailVerification(t *testing.T) {
 	if sender.code("User@Example.com") == "" {
 		t.Fatal("verification email was not sent")
 	}
-	user, err := store.FindActiveUserByEmailNormalized(ctx, "user@example.com")
-	if err != nil {
-		t.Fatalf("find pending user: %v", err)
+	if _, err := store.FindActiveUserByEmailNormalized(ctx, "user@example.com"); !errors.Is(
+		err,
+		repository.ErrNotFound,
+	) {
+		t.Fatalf("sending a code must not create a user, got %v", err)
 	}
-	challenge, err := store.FindActiveEmailVerificationChallengeByUserID(ctx, user.ID)
+	challenge, err := store.FindActiveRegistrationEmailVerification(ctx, "user@example.com")
 	if err != nil {
 		t.Fatalf("find verification challenge: %v", err)
 	}
 	if challenge.CodeMAC == sender.code("User@Example.com") || len(challenge.CodeMAC) != 64 {
 		t.Fatalf("verification code must only be stored as an HMAC, got %q", challenge.CodeMAC)
 	}
-	if _, _, err := auth.Login(ctx, service.LoginInput{
-		Email: "user@example.com", Password: "password1",
-	}); !errors.Is(err, model.ErrEmailNotVerified) {
-		t.Fatalf("unverified user should not log in, got %v", err)
-	}
-
-	result, refreshToken, err := auth.ConfirmEmailVerification(
-		ctx,
-		service.ConfirmEmailVerificationInput{
-			Email: "user@example.com",
-			Code:  sender.code("User@Example.com"),
-		},
-	)
+	result, refreshToken, err := auth.Register(ctx, service.RegisterInput{
+		Username:         "zhangsan",
+		Email:            "user@example.com",
+		Password:         "password1",
+		ConfirmPassword:  "password1",
+		VerificationCode: sender.code("User@Example.com"),
+	})
 	if err != nil {
-		t.Fatalf("confirm failed: %v", err)
+		t.Fatalf("register failed: %v", err)
 	}
 	if result.AccessToken == "" || refreshToken == "" || !result.User.EmailVerified {
 		t.Fatalf("expected verified session, got %+v", result)
 	}
-	user, err = store.FindActiveUserByEmailNormalized(ctx, "user@example.com")
+	user, err := store.FindActiveUserByEmailNormalized(ctx, "user@example.com")
 	if err != nil || user.EmailVerifiedAt == nil {
 		t.Fatalf("user should be verified, user=%+v err=%v", user, err)
 	}
@@ -163,12 +151,10 @@ func TestAuthServiceRegisterRequiresEmailVerification(t *testing.T) {
 		t.Fatal("password must be stored as a non-empty hash")
 	}
 
-	if _, err := auth.Register(ctx, service.RegisterInput{
-		Username:        "lisi",
-		Email:           "user@example.com",
-		Password:        "password1",
-		ConfirmPassword: "password1",
-	}); !errors.Is(err, model.ErrEmailExists) {
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); !errors.Is(
+		err,
+		model.ErrEmailExists,
+	) {
 		t.Fatalf("expected duplicate email error, got %v", err)
 	}
 }
@@ -176,27 +162,28 @@ func TestAuthServiceRegisterRequiresEmailVerification(t *testing.T) {
 func TestAuthServiceVerificationAttemptLimit(t *testing.T) {
 	ctx := context.Background()
 	auth, _, sender := newTestAuthService(t)
-	if _, err := auth.Register(ctx, service.RegisterInput{
-		Username:        "zhangsan",
-		Email:           "user@example.com",
-		Password:        "password1",
-		ConfirmPassword: "password1",
-	}); err != nil {
-		t.Fatalf("register failed: %v", err)
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); err != nil {
+		t.Fatalf("send verification failed: %v", err)
 	}
 	validCode := sender.code("user@example.com")
 	for attempt := 0; attempt < 5; attempt++ {
-		if _, _, err := auth.ConfirmEmailVerification(
-			ctx,
-			service.ConfirmEmailVerificationInput{Email: "user@example.com", Code: "000000"},
-		); !errors.Is(err, model.ErrVerificationInvalid) {
+		if _, _, err := auth.Register(ctx, service.RegisterInput{
+			Username:         "zhangsan",
+			Email:            "user@example.com",
+			Password:         "password1",
+			ConfirmPassword:  "password1",
+			VerificationCode: "000000",
+		}); !errors.Is(err, model.ErrVerificationInvalid) {
 			t.Fatalf("attempt %d expected invalid verification code, got %v", attempt+1, err)
 		}
 	}
-	if _, _, err := auth.ConfirmEmailVerification(
-		ctx,
-		service.ConfirmEmailVerificationInput{Email: "user@example.com", Code: validCode},
-	); !errors.Is(err, model.ErrVerificationInvalid) {
+	if _, _, err := auth.Register(ctx, service.RegisterInput{
+		Username:         "zhangsan",
+		Email:            "user@example.com",
+		Password:         "password1",
+		ConfirmPassword:  "password1",
+		VerificationCode: validCode,
+	}); !errors.Is(err, model.ErrVerificationInvalid) {
 		t.Fatalf("challenge should stay invalid after attempt limit, got %v", err)
 	}
 }
@@ -207,28 +194,22 @@ func TestAuthServiceResendHonorsCooldownAndInvalidatesOldCode(t *testing.T) {
 	sender := newFakeVerificationEmailSender()
 	now := time.Date(2026, 7, 24, 12, 0, 0, 0, time.UTC)
 	auth := service.NewAuthService(service.AuthServiceConfig{
-		Users:                   store,
-		EmailVerifications:      store,
-		RefreshTokens:           store,
-		VerificationEmailSender: sender,
-		EmailVerificationKey:    []byte("test-email-verification-key-with-enough-length"),
-		EmailVerificationTTL:    10 * time.Minute,
-		EmailResendCooldown:     time.Minute,
-		AccessTokenKey:          []byte("test-access-secret-with-enough-length"),
-		Now:                     func() time.Time { return now },
+		Users:                     store,
+		EmailVerifications:        store,
+		RegistrationVerifications: store,
+		RefreshTokens:             store,
+		VerificationEmailSender:   sender,
+		EmailVerificationKey:      []byte("test-email-verification-key-with-enough-length"),
+		EmailVerificationTTL:      10 * time.Minute,
+		EmailResendCooldown:       time.Minute,
+		AccessTokenKey:            []byte("test-access-secret-with-enough-length"),
+		Now:                       func() time.Time { return now },
 	})
-	if _, err := auth.Register(ctx, service.RegisterInput{
-		Username:        "zhangsan",
-		Email:           "user@example.com",
-		Password:        "password1",
-		ConfirmPassword: "password1",
-	}); err != nil {
-		t.Fatalf("register failed: %v", err)
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); err != nil {
+		t.Fatalf("send verification failed: %v", err)
 	}
 	oldCode := sender.code("user@example.com")
-	if _, err := auth.ResendEmailVerification(ctx, service.ResendEmailVerificationInput{
-		Email: "user@example.com", Password: "password1",
-	}); err != nil {
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); err != nil {
 		t.Fatalf("cooldown resend should return current challenge: %v", err)
 	}
 	if sender.calls != 1 {
@@ -236,24 +217,28 @@ func TestAuthServiceResendHonorsCooldownAndInvalidatesOldCode(t *testing.T) {
 	}
 
 	now = now.Add(61 * time.Second)
-	if _, err := auth.ResendEmailVerification(ctx, service.ResendEmailVerificationInput{
-		Email: "user@example.com", Password: "password1",
-	}); err != nil {
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); err != nil {
 		t.Fatalf("resend failed: %v", err)
 	}
 	if sender.calls != 2 {
 		t.Fatalf("expected second email, calls=%d", sender.calls)
 	}
-	if _, _, err := auth.ConfirmEmailVerification(
-		ctx,
-		service.ConfirmEmailVerificationInput{Email: "user@example.com", Code: oldCode},
-	); !errors.Is(err, model.ErrVerificationInvalid) {
+	if _, _, err := auth.Register(ctx, service.RegisterInput{
+		Username:         "zhangsan",
+		Email:            "user@example.com",
+		Password:         "password1",
+		ConfirmPassword:  "password1",
+		VerificationCode: oldCode,
+	}); !errors.Is(err, model.ErrVerificationInvalid) {
 		t.Fatalf("old code should be invalid, got %v", err)
 	}
-	if _, _, err := auth.ConfirmEmailVerification(
-		ctx,
-		service.ConfirmEmailVerificationInput{Email: "user@example.com", Code: sender.code("user@example.com")},
-	); err != nil {
+	if _, _, err := auth.Register(ctx, service.RegisterInput{
+		Username:         "zhangsan",
+		Email:            "user@example.com",
+		Password:         "password1",
+		ConfirmPassword:  "password1",
+		VerificationCode: sender.code("user@example.com"),
+	}); err != nil {
 		t.Fatalf("new code should verify: %v", err)
 	}
 }
@@ -261,7 +246,7 @@ func TestAuthServiceResendHonorsCooldownAndInvalidatesOldCode(t *testing.T) {
 func TestAuthServiceLoginTokenRefreshAndLogout(t *testing.T) {
 	ctx := context.Background()
 	auth, _, sender := newTestAuthService(t)
-	registered, firstRefresh := registerAndVerify(t, auth, sender, "zhangsan", "user@example.com")
+	registered, firstRefresh := sendCodeAndRegister(t, auth, sender, "zhangsan", "user@example.com")
 
 	user, err := auth.ValidateAccessToken(ctx, registered.AccessToken)
 	if err != nil || !user.EmailVerified {
@@ -331,7 +316,7 @@ func (r failingRefreshRepository) RotateRefreshToken(context.Context, uuid.UUID,
 func TestAuthServiceAccountLockout(t *testing.T) {
 	ctx := context.Background()
 	auth, _, sender := newTestAuthService(t)
-	registerAndVerify(t, auth, sender, "zhangsan", "user@example.com")
+	sendCodeAndRegister(t, auth, sender, "zhangsan", "user@example.com")
 
 	for attempt := 1; attempt <= 4; attempt++ {
 		if _, _, err := auth.Login(ctx, service.LoginInput{

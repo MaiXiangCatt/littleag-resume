@@ -490,7 +490,7 @@ function EditorPanel({
 }) {
   return (
     <div className="mx-auto w-full max-w-3xl">
-      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#9a4c8f]">{eyebrow}</p>
+      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2B89A8]">{eyebrow}</p>
       <h2 className="mt-2 font-serif text-3xl font-semibold tracking-[-0.035em] text-[#251d23]">
         {title}
       </h2>

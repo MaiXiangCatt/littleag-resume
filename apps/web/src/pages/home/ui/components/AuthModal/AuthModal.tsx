@@ -2,9 +2,9 @@ import { useState } from 'react';
 
 import type {
   AuthSession,
+  EmailVerification,
   EmailVerificationFormValues,
   LoginFormValues,
-  PendingEmailVerification,
   RegisterFormValues,
 } from '@/shared/auth/model/auth';
 import { authErrorMessage } from '@/shared/auth/model/auth';
@@ -20,6 +20,13 @@ import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 
 type AuthMode = 'login' | 'register';
+type VerificationFlow = 'login' | 'register';
+
+type PendingVerification = EmailVerification & {
+  flow: VerificationFlow;
+  password?: string;
+  resendAvailableAt: number;
+};
 
 type AuthModalProps = {
   defaultMode: AuthMode;
@@ -50,9 +57,7 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
-  const [pendingVerification, setPendingVerification] = useState<PendingEmailVerification | null>(
-    null,
-  );
+  const [pendingVerification, setPendingVerification] = useState<PendingVerification | null>(null);
   const [verificationRevision, setVerificationRevision] = useState(0);
   const setSession = useAuthStore((state) => state.setSession);
 
@@ -71,7 +76,12 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
             values.email,
             values.password,
           );
-          setPendingVerification({ ...verification, password: values.password });
+          setPendingVerification({
+            ...verification,
+            flow: 'login',
+            password: values.password,
+            resendAvailableAt: verificationDeadline(verification.resendAfterSeconds),
+          });
           setVerificationRevision((current) => current + 1);
           return;
         } catch (resendError) {
@@ -85,6 +95,26 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
     }
   }
 
+  async function sendRegistrationVerification(email: string) {
+    if (isSubmitting) {
+      return;
+    }
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      const verification = await authService.sendRegistrationEmailVerification(email);
+      setPendingVerification({
+        ...verification,
+        flow: 'register',
+        resendAvailableAt: verificationDeadline(verification.resendAfterSeconds),
+      });
+    } catch (error) {
+      setFormError(authErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function submitRegister(values: RegisterFormValues) {
     if (isSubmitting) {
       return;
@@ -92,9 +122,7 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
     setSubmitting(true);
     setFormError(null);
     try {
-      const verification = await authService.register(values);
-      setPendingVerification({ ...verification, password: values.password });
-      setVerificationRevision((current) => current + 1);
+      completeAuthentication(await authService.register(values));
     } catch (error) {
       setFormError(authErrorMessage(error));
     } finally {
@@ -103,7 +131,7 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
   }
 
   async function submitVerification(values: EmailVerificationFormValues) {
-    if (!pendingVerification || isSubmitting) {
+    if (!pendingVerification || !pendingVerification.password || isSubmitting) {
       return;
     }
     setSubmitting(true);
@@ -120,7 +148,7 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
   }
 
   async function resendVerification() {
-    if (!pendingVerification || isSubmitting) {
+    if (!pendingVerification || !pendingVerification.password || isSubmitting) {
       return;
     }
     setSubmitting(true);
@@ -130,8 +158,14 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
         pendingVerification.email,
         pendingVerification.password,
       );
-      setPendingVerification({ ...pendingVerification, ...verification });
-      setVerificationRevision((current) => current + 1);
+      setPendingVerification({
+        ...pendingVerification,
+        ...verification,
+        resendAvailableAt: verificationDeadline(verification.resendAfterSeconds),
+      });
+      if (pendingVerification.flow === 'login') {
+        setVerificationRevision((current) => current + 1);
+      }
     } catch (error) {
       setFormError(authErrorMessage(error));
     } finally {
@@ -145,14 +179,12 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
     onOpenChange(false);
   }
 
+  const standaloneVerification = pendingVerification?.flow === 'login';
+
   return (
     <DialogContent>
-      <DialogTitle>{pendingVerification ? '验证邮箱' : '账号登录'}</DialogTitle>
-      <DialogDescription>
-        {pendingVerification
-          ? '输入邮件中的 6 位验证码，验证成功后将自动登录。'
-          : '登录或注册后进入 Console。'}
-      </DialogDescription>
+      <DialogTitle>{authDialogTitle(mode, standaloneVerification)}</DialogTitle>
+      <DialogDescription>{authDialogDescription(mode, standaloneVerification)}</DialogDescription>
 
       {formError ? (
         <Alert className="mt-4">
@@ -160,7 +192,7 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
         </Alert>
       ) : null}
 
-      {pendingVerification ? (
+      {standaloneVerification && pendingVerification ? (
         <EmailVerificationForm
           email={pendingVerification.email}
           isSubmitting={isSubmitting}
@@ -191,10 +223,55 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
             <LoginForm isSubmitting={isSubmitting} onSubmit={submitLogin} />
           </TabsContent>
           <TabsContent value="register">
-            <RegisterForm isSubmitting={isSubmitting} onSubmit={submitRegister} />
+            <RegisterForm
+              isSubmitting={isSubmitting}
+              onEmailChange={(email) => {
+                if (
+                  pendingVerification?.flow === 'register' &&
+                  normalizeEmail(email) !== normalizeEmail(pendingVerification.email)
+                ) {
+                  setPendingVerification(null);
+                }
+              }}
+              onSendCode={sendRegistrationVerification}
+              onSubmit={submitRegister}
+              resendAvailableAt={
+                pendingVerification?.flow === 'register'
+                  ? pendingVerification.resendAvailableAt
+                  : undefined
+              }
+              verificationEmail={
+                pendingVerification?.flow === 'register' ? pendingVerification.email : undefined
+              }
+            />
           </TabsContent>
         </Tabs>
       )}
     </DialogContent>
   );
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function verificationDeadline(resendAfterSeconds: number): number {
+  return Date.now() + resendAfterSeconds * 1_000;
+}
+
+function authDialogTitle(mode: AuthMode, standaloneVerification: boolean): string {
+  if (standaloneVerification) {
+    return '验证邮箱';
+  }
+  return mode === 'register' ? '创建账号' : '账号登录';
+}
+
+function authDialogDescription(mode: AuthMode, standaloneVerification: boolean): string {
+  if (standaloneVerification) {
+    return '输入邮件中的 6 位验证码，验证成功后将自动登录。';
+  }
+  if (mode === 'register') {
+    return '填写注册信息并完成邮箱验证，验证成功后将自动登录。';
+  }
+  return '登录后进入 Console。';
 }

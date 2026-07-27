@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -17,6 +19,7 @@ const (
 )
 
 type Config struct {
+	Environment      string
 	Addr             string
 	DatabaseURL      string
 	AccessTokenKey   []byte
@@ -46,7 +49,22 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	return LoadFrom("apps/server/.env", ".env")
+	environment := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
+	if environment == "" {
+		environment = "dev"
+	}
+	if environment != "dev" && environment != "prod" {
+		return Config{}, fmt.Errorf("APP_ENV must be dev or prod")
+	}
+	config, err := LoadFrom(
+		"apps/server/.env."+environment,
+		".env."+environment,
+	)
+	if err != nil {
+		return Config{}, err
+	}
+	config.Environment = environment
+	return config, nil
 }
 
 func LoadFrom(dotenvPaths ...string) (Config, error) {
@@ -74,10 +92,14 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 	if emailProvider == "resend" && (resendAPIKey == "" || mailFrom == "") {
 		return Config{}, fmt.Errorf("RESEND_API_KEY and MAIL_FROM are required when EMAIL_PROVIDER=resend")
 	}
+	databaseURL, err := resolveDatabaseURL()
+	if err != nil {
+		return Config{}, err
+	}
 
 	return Config{
 		Addr:             env("SERVER_ADDR", ":8080"),
-		DatabaseURL:      env("DATABASE_URL", "postgres://vega_resume:vega_resume@localhost:5432/vega_resume?sslmode=disable"),
+		DatabaseURL:      databaseURL,
 		AccessTokenKey:   []byte(accessTokenKey),
 		AccessTokenTTL:   durationEnv("ACCESS_TOKEN_TTL", 15*time.Minute),
 		RefreshTokenTTL:  durationEnv("REFRESH_TOKEN_TTL", 7*24*time.Hour),
@@ -89,7 +111,7 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 		EmailProvider:          emailProvider,
 		ResendAPIKey:           resendAPIKey,
 		MailFrom:               mailFrom,
-		EmailProductName:       env("EMAIL_PRODUCT_NAME", "Vega Resume"),
+		EmailProductName:       env("EMAIL_PRODUCT_NAME", "LittleAgResume"),
 		EmailVerificationKey:   []byte(emailVerificationKey),
 		EmailVerificationTTL:   durationEnv("EMAIL_VERIFICATION_TTL", 10*time.Minute),
 		EmailVerificationLimit: intEnv("EMAIL_VERIFICATION_ATTEMPT_LIMIT", 5),
@@ -103,6 +125,36 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 		PdfMaxQueue:       intEnv("PDF_MAX_QUEUE", 8),
 		PrintTokenTTL:     durationEnv("PRINT_TOKEN_TTL", 90*time.Second),
 	}, nil
+}
+
+func resolveDatabaseURL() (string, error) {
+	if configuredURL := strings.TrimSpace(os.Getenv("DATABASE_URL")); configuredURL != "" {
+		return configuredURL, nil
+	}
+
+	passwordFile := strings.TrimSpace(os.Getenv("DATABASE_PASSWORD_FILE"))
+	if passwordFile == "" {
+		return "postgres://vega_resume:vega_resume@localhost:5432/vega_resume?sslmode=disable", nil
+	}
+	passwordBytes, err := os.ReadFile(passwordFile)
+	if err != nil {
+		return "", fmt.Errorf("read DATABASE_PASSWORD_FILE: %w", err)
+	}
+	password := strings.TrimSpace(string(passwordBytes))
+	if password == "" {
+		return "", fmt.Errorf("DATABASE_PASSWORD_FILE must not be empty")
+	}
+
+	query := url.Values{}
+	query.Set("sslmode", env("DATABASE_SSLMODE", "disable"))
+	databaseURL := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(env("DATABASE_USER", "littleag_resume"), password),
+		Host:     net.JoinHostPort(env("DATABASE_HOST", "localhost"), env("DATABASE_PORT", "5432")),
+		Path:     "/" + env("DATABASE_NAME", "littleag_resume"),
+		RawQuery: query.Encode(),
+	}
+	return databaseURL.String(), nil
 }
 
 func loadDotEnv(paths ...string) error {

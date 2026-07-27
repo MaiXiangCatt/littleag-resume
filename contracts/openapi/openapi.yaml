@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: VegaResume API
+  title: LittleAgResume API
   version: 0.2.0
   description: Contract for authentication and resume management.
 servers:
@@ -20,7 +20,39 @@ paths:
               $ref: "#/components/schemas/RegisterRequest"
       responses:
         "200":
-          description: User created and verification code sent.
+          description: Verified user created and session issued.
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/RefreshTokenSetCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/auth/registration-email-verification:
+    post:
+      operationId: sendAuthRegistrationEmailVerification
+      tags:
+        - Auth
+      summary: Send or resend a registration email verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendRegistrationEmailVerificationRequest"
+      responses:
+        "200":
+          description: Verification challenge is ready.
           content:
             application/json:
               schema:
@@ -68,7 +100,7 @@ paths:
       operationId: resendAuthEmailVerification
       tags:
         - Auth
-      summary: Resend a registration email verification code after validating credentials
+      summary: Resend a verification code for a legacy unverified account
       requestBody:
         required: true
         content:
@@ -310,7 +342,7 @@ paths:
       operationId: importResume
       tags:
         - Resume
-      summary: Import a VegaResume envelope as a new draft
+      summary: Import a LittleAgResume envelope as a new draft
       security:
         - bearerAuth: []
       requestBody:
@@ -435,7 +467,7 @@ paths:
       operationId: replaceResumeImport
       tags:
         - Resume
-      summary: Replace an existing resume from a VegaResume envelope
+      summary: Replace an existing resume from a LittleAgResume envelope
       security:
         - bearerAuth: []
       requestBody:
@@ -1199,6 +1231,7 @@ components:
         - email
         - password
         - confirmPassword
+        - verificationCode
       properties:
         username:
           type: string
@@ -1222,6 +1255,19 @@ components:
           minLength: 8
           maxLength: 128
           example: password1
+        verificationCode:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: "083421"
+    SendRegistrationEmailVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
     ConfirmEmailVerificationRequest:
       type: object
       additionalProperties: false

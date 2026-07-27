@@ -31,6 +31,19 @@ type EmailVerificationChallenge struct {
 	User          *User      `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE"`
 }
 
+type RegistrationEmailVerification struct {
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Email           string    `gorm:"type:text;not null"`
+	EmailNormalized string    `gorm:"type:text;not null;index"`
+	CodeMAC         string    `gorm:"type:char(64);not null"`
+	Attempts        int       `gorm:"not null;default:0"`
+	ExpiresAt       time.Time `gorm:"not null;index"`
+	SentAt          *time.Time
+	ConsumedAt      *time.Time `gorm:"index"`
+	InvalidatedAt   *time.Time `gorm:"index"`
+	CreatedAt       time.Time  `gorm:"not null;autoCreateTime"`
+}
+
 type RefreshToken struct {
 	ID                uuid.UUID  `gorm:"type:uuid;primaryKey"`
 	UserID            uuid.UUID  `gorm:"type:uuid;not null;index:idx_refresh_tokens_user_id"`

@@ -2,7 +2,7 @@
 
 ## 背景与问题
 
-VegaResume 需要把当前 Vite 示例页替换为真实首页，并打通从首页转化到注册、登录、进入控制台的 MVP 链路。原首页 PRD 只覆盖前端落地页和 AuthModal；本需求已扩大为 Full workflow，纳入前端 Home Page、最小 Console、后端登录/注册 API、OpenAPI 契约，以及前后端接口生成同步。
+LittleAgResume 需要把当前 Vite 示例页替换为真实首页，并打通从首页转化到注册、登录、进入控制台的 MVP 链路。原首页 PRD 只覆盖前端落地页和 AuthModal；本需求已扩大为 Full workflow，纳入前端 Home Page、最小 Console、后端登录/注册 API、OpenAPI 契约，以及前后端接口生成同步。
 
 当前仓库状态仍是初始骨架：前端为 Vite 示例，后端为 Go Hello World，OpenAPI 目录为空。因此本需求需要先形成跨前端、后端、契约的业务设计，后续再进入技术设计、模块拆解、OpenSpec 和实现。
 
@@ -10,7 +10,7 @@ VegaResume 需要把当前 Vite 示例页替换为真实首页，并打通从首
 
 目标：
 
-- 未登录用户访问 `/` 时看到 VegaResume Home Page。
+- 未登录用户访问 `/` 时看到 LittleAgResume Home Page。
 - 点击「立即开始」打开注册 Dialog，注册成功后进入最小占位 `/console`。
 - 点击 Header「登录」打开登录 Dialog，登录成功后进入 `/console`。
 - 已登录用户访问 `/` 自动跳转 `/console`。
@@ -31,7 +31,7 @@ VegaResume 需要把当前 Vite 示例页替换为真实首页，并打通从首
 
 核心场景：
 
-- 未登录用户打开首页，在 10 秒内理解 VegaResume 的价值和免费特性。
+- 未登录用户打开首页，在 10 秒内理解 LittleAgResume 的价值和免费特性。
 - 用户点击「立即开始」，填写 username、email、password 和 confirmPassword 完成注册。
 - 注册成功后系统自动进入 Console，占位页面作为后续简历工作台落点。
 - 已有账号用户点击「登录」，填写 email 和 password 登录。

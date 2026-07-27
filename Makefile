@@ -1,5 +1,5 @@
 # ==========================================
-# Vega Resume - 顶层任务编排
+# LittleAgResume - 顶层任务编排
 # 命令分类：环境/契约/静态/测试/构建/部署/工具
 # ==========================================
 
@@ -64,11 +64,12 @@ build-cli:         ## 构建 vega CLI
 storybook:         ## 启动 Storybook UI 隔离开发环境
 	pnpm --filter web storybook
 docker-build:      ## Docker 镜像构建
-	docker compose -f deploy/docker-compose.yml build
+	docker compose --env-file .env.prod -f deploy/docker-compose.yml build
 deploy:            ## 部署到自有服务器
-	bash scripts/deploy.sh
+	docker compose --env-file .env.prod -f deploy/docker-compose.yml up -d --build
 smoke:             ## 部署后冒烟测试
-	bash scripts/smoke.sh
+	curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null
+	docker compose --env-file .env.prod -f deploy/docker-compose.yml ps
 
 # ---- 开发环境 ----
 dev-web:           ## 启动前端开发服务器

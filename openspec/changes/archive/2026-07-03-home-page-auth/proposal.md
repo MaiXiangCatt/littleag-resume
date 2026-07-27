@@ -1,6 +1,6 @@
 ## Why
 
-VegaResume currently still serves a Vite starter page and has no real authentication API, so users cannot complete the intended homepage conversion flow from product discovery to registration and Console entry. This change establishes the first contract-driven full-stack authentication MVP needed for the Home Page PRD.
+LittleAgResume currently still serves a Vite starter page and has no real authentication API, so users cannot complete the intended homepage conversion flow from product discovery to registration and Console entry. This change establishes the first contract-driven full-stack authentication MVP needed for the Home Page PRD.
 
 ## What Changes
 

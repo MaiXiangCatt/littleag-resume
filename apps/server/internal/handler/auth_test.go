@@ -34,6 +34,7 @@ func newTestRouterWithRenderer(t *testing.T, renderer handler.PdfRenderer) *gin.
 type testStore interface {
 	repository.UserRepository
 	repository.EmailVerificationRepository
+	repository.RegistrationEmailVerificationRepository
 	repository.RefreshTokenRepository
 	repository.ResumeRepository
 }
@@ -61,19 +62,20 @@ func newTestRouterWithStoreAndRenderer(
 
 	gin.SetMode(gin.TestMode)
 	auth := service.NewAuthService(service.AuthServiceConfig{
-		Users:                   store,
-		EmailVerifications:      store,
-		RefreshTokens:           store,
-		VerificationEmailSender: testVerificationSender{},
-		EmailVerificationKey:    []byte("test-verification-secret-with-enough-length"),
-		EmailVerificationTTL:    10 * time.Minute,
-		EmailVerificationLimit:  5,
-		EmailResendCooldown:     time.Minute,
-		AccessTokenKey:          []byte("test-access-secret-with-enough-length"),
-		AccessTokenTTL:          15 * time.Minute,
-		RefreshTokenTTL:         7 * 24 * time.Hour,
-		AccountLockLimit:        5,
-		AccountLockTTL:          15 * time.Minute,
+		Users:                     store,
+		EmailVerifications:        store,
+		RegistrationVerifications: store,
+		RefreshTokens:             store,
+		VerificationEmailSender:   testVerificationSender{},
+		EmailVerificationKey:      []byte("test-verification-secret-with-enough-length"),
+		EmailVerificationTTL:      10 * time.Minute,
+		EmailVerificationLimit:    5,
+		EmailResendCooldown:       time.Minute,
+		AccessTokenKey:            []byte("test-access-secret-with-enough-length"),
+		AccessTokenTTL:            15 * time.Minute,
+		RefreshTokenTTL:           7 * 24 * time.Hour,
+		AccountLockLimit:          5,
+		AccountLockTTL:            15 * time.Minute,
 	})
 	resumes := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
 
@@ -129,50 +131,46 @@ func TestAuthHandlersRegisterLoginMeRefreshAndLogout(t *testing.T) {
 	router := newTestRouter(t)
 	testVerificationCodes.Delete("user@example.com")
 
+	sendVerification := performJSON(
+		router,
+		http.MethodPost,
+		"/api/auth/registration-email-verification",
+		`{"email": "user@example.com"}`,
+	)
+	if sendVerification.Code != http.StatusOK {
+		t.Fatalf(
+			"send verification status=%d body=%s",
+			sendVerification.Code,
+			sendVerification.Body.String(),
+		)
+	}
+	codeValue, ok := testVerificationCodes.Load("user@example.com")
+	if !ok {
+		t.Fatal("verification code was not sent")
+	}
 	register := performJSON(router, http.MethodPost, "/api/auth/register", `{
 		"username": "zhangsan",
 		"email": "user@example.com",
 		"password": "password1",
-		"confirmPassword": "password1"
+		"confirmPassword": "password1",
+		"verificationCode": "`+codeValue.(string)+`"
 	}`)
 	if register.Code != http.StatusOK {
 		t.Fatalf("register status=%d body=%s", register.Code, register.Body.String())
 	}
-	if got := register.Result().Cookies(); len(got) != 0 {
-		t.Fatalf("register must not create a session before verification, got %+v", got)
+	if got := register.Result().Cookies(); len(got) != 1 ||
+		got[0].Name != "refresh_token" ||
+		!got[0].HttpOnly {
+		t.Fatalf("expected HttpOnly refresh cookie after registration, got %+v", got)
 	}
 	registerBody := decodeEnvelope(t, register)
 	if registerBody["code"] != float64(0) || registerBody["message"] != "" {
 		t.Fatalf("unexpected register envelope: %+v", registerBody)
 	}
-	if registerBody["data"].(map[string]any)["email"] != "user@example.com" {
+	if registerBody["data"].(map[string]any)["user"].(map[string]any)["email"] != "user@example.com" {
 		t.Fatalf("unexpected registration response: %+v", registerBody)
 	}
-
-	unverifiedLogin := performJSON(router, http.MethodPost, "/api/auth/login", `{
-		"email": "user@example.com",
-		"password": "password1"
-	}`)
-	if unverifiedLogin.Code != http.StatusForbidden {
-		t.Fatalf("unverified login status=%d body=%s", unverifiedLogin.Code, unverifiedLogin.Body.String())
-	}
-
-	codeValue, ok := testVerificationCodes.Load("user@example.com")
-	if !ok {
-		t.Fatal("verification code was not sent")
-	}
-	confirm := performJSON(router, http.MethodPost, "/api/auth/email-verification/confirm", `{
-		"email": "user@example.com",
-		"code": "`+codeValue.(string)+`"
-	}`)
-	if confirm.Code != http.StatusOK {
-		t.Fatalf("confirm status=%d body=%s", confirm.Code, confirm.Body.String())
-	}
-	if got := confirm.Result().Cookies(); len(got) != 1 || got[0].Name != "refresh_token" || !got[0].HttpOnly {
-		t.Fatalf("expected HttpOnly refresh cookie after verification, got %+v", got)
-	}
-	confirmBody := decodeEnvelope(t, confirm)
-	accessToken := confirmBody["data"].(map[string]any)["accessToken"].(string)
+	accessToken := registerBody["data"].(map[string]any)["accessToken"].(string)
 
 	meReq := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
 	meReq.Header.Set("Authorization", "Bearer "+accessToken)
@@ -226,7 +224,8 @@ func TestAuthHandlersErrorEnvelopeAndStatusCodes(t *testing.T) {
 		"username": "!",
 		"email": "bad@example.com",
 		"password": "password1",
-		"confirmPassword": "password1"
+		"confirmPassword": "password1",
+		"verificationCode": "000000"
 	}`)
 	if badRegister.Code != http.StatusBadRequest {
 		t.Fatalf("bad register status=%d body=%s", badRegister.Code, badRegister.Body.String())

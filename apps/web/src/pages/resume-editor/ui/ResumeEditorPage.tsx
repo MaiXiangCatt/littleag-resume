@@ -197,7 +197,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
     try {
       setImportEnvelope(parseImportEnvelope(JSON.parse(await file.text())));
     } catch {
-      toast.error('文件格式不正确，需要 VegaResume v2 JSON 文件');
+      toast.error('文件格式不正确，需要 LittleAgResume v2 JSON 文件');
     } finally {
       if (importInput.current) importInput.current.value = '';
     }
@@ -305,10 +305,10 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
           <ArrowLeft size={19} />
         </Button>
         <div className="ml-3 flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-[#850477] font-serif text-lg font-bold text-white">
+          <span className="grid size-9 place-items-center rounded-xl bg-[#087EA4] font-serif text-lg font-bold text-white">
             R
           </span>
-          <span className="font-serif text-lg font-semibold">VegaResume</span>
+          <span className="font-serif text-lg font-semibold">LittleAgResume</span>
         </div>
         <div className="mx-5 h-7 w-px bg-[#e2dadd]" />
         <Input
@@ -368,7 +368,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
             立即保存
           </Button>
           <Button
-            className="bg-[#850477] px-5 hover:bg-[#6f0364]"
+            className="bg-[#087EA4] px-5 hover:bg-[#066B8E]"
             disabled={exporting}
             onClick={requestExport}
           >
@@ -1051,7 +1051,7 @@ function EditorLoading() {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f2eeef]">
       <div className="text-center">
-        <LoaderCircle className="mx-auto animate-spin text-[#850477]" size={30} />
+        <LoaderCircle className="mx-auto animate-spin text-[#087EA4]" size={30} />
         <p className="mt-3 text-sm text-[#756b72]">正在铺开你的简历工作台…</p>
       </div>
     </main>
@@ -1069,7 +1069,7 @@ function EditorFailure({
   return (
     <main className="grid min-h-screen place-items-center bg-[#f2eeef] p-6">
       <div className="max-w-md rounded-3xl bg-white p-8 text-center shadow-xl">
-        <Settings2 className="mx-auto text-[#850477]" size={30} />
+        <Settings2 className="mx-auto text-[#087EA4]" size={30} />
         <h1 className="mt-4 font-serif text-2xl font-semibold">编辑器暂时打不开</h1>
         <p className="mt-2 text-sm text-[#756b72]">{message}</p>
         <div className="mt-6 flex justify-center gap-2">

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-VegaResume is an open-source Chinese resume online builder. It's a full-stack monorepo with JS (frontend + CLI) and Go (backend), orchestrated through a custom "vega harness" system that drives AI-assisted development via Skills + state machine + CLI.
+LittleAgResume is an open-source Chinese resume online builder. It's a full-stack monorepo with JS (frontend + CLI) and Go (backend), orchestrated through a custom "vega harness" system that drives AI-assisted development via Skills + state machine + CLI.
 
 ## Commands
 

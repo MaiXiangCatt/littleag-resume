@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { MarkdownEditor } from './MarkdownEditor';
 
 function EditorFixture() {
-  const [value, setValue] = useState('Vega Resume');
+  const [value, setValue] = useState('Alpha Resume');
   return (
     <MarkdownEditor ariaLabel="工作描述" onChange={setValue} placeholder="输入描述" value={value} />
   );
@@ -19,10 +19,10 @@ describe('MarkdownEditor', () => {
     const editor = screen.getByRole('textbox', { name: '工作描述' }) as HTMLTextAreaElement;
 
     editor.focus();
-    editor.setSelectionRange(0, 4);
+    editor.setSelectionRange(0, 5);
     await user.click(screen.getByRole('button', { name: '加粗' }));
 
-    expect(editor).toHaveValue('**Vega** Resume');
+    expect(editor).toHaveValue('**Alpha** Resume');
   });
 
   it('prefixes selected lines as an ordered list', async () => {

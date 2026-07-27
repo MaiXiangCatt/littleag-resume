@@ -22,7 +22,7 @@ function createResume(): ResumeDocument {
   if (work?.type === 'work') {
     work.items.push({
       id: 'work-1',
-      company: 'Vega Resume',
+      company: 'LittleAgResume',
       role: '前端工程师',
       location: '上海',
       startDate: '2025-01',
@@ -89,7 +89,7 @@ describe('ResumeHtmlPreview', () => {
       fontSize: '16px',
     });
     const workHeading = screen.getByRole('heading', {
-      name: /Vega Resume\s+前端工程师\s+上海/,
+      name: /LittleAgResume\s+前端工程师\s+上海/,
     });
     expect(workHeading).toHaveStyle({
       fontSize: '14px',

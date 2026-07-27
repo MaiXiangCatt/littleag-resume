@@ -98,7 +98,7 @@ export function MarkdownEditor({
         {toolbarActions.map(({ action, icon: Icon, label }) => (
           <Button
             aria-label={label}
-            className="size-8 rounded-lg text-[#685c65] hover:bg-white hover:text-[#850477]"
+            className="size-8 rounded-lg text-[#685c65] hover:bg-white hover:text-[#087EA4]"
             key={action}
             onClick={() => applyAction(action)}
             size="icon"

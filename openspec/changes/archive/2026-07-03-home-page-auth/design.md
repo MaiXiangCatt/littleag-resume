@@ -1,6 +1,6 @@
 ## Context
 
-VegaResume is currently a monorepo with a Vite React frontend under `apps/web/`, a Go service under `apps/server/`, an empty OpenAPI contract directory under `contracts/openapi/`, and OpenSpec configured as `schema: spec-driven`. The current frontend still renders a Vite starter page, and the backend `apps/server/cmd/api/main.go` only prints a message.
+LittleAgResume is currently a monorepo with a Vite React frontend under `apps/web/`, a Go service under `apps/server/`, an empty OpenAPI contract directory under `contracts/openapi/`, and OpenSpec configured as `schema: spec-driven`. The current frontend still renders a Vite starter page, and the backend `apps/server/cmd/api/main.go` only prints a message.
 
 This change implements the first real Home Page and authentication MVP. The approved Full workflow documents split the work into five modules:
 

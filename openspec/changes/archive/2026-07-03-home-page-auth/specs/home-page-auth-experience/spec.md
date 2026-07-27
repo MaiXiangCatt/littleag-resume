@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Home page for unauthenticated users
-The system SHALL render the VegaResume Home Page at `/` for unauthenticated users.
+The system SHALL render the LittleAgResume Home Page at `/` for unauthenticated users.
 
 #### Scenario: Unauthenticated home visit
 - **WHEN** an unauthenticated user visits `/`

@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: vega_resume
-      POSTGRES_PASSWORD: vega_resume
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vega_resume}
       POSTGRES_DB: vega_resume
     ports:
       - "5432:5432"
