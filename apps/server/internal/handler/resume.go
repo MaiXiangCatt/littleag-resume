@@ -23,7 +23,11 @@ import (
 	"github.com/vega-resume/server/internal/service"
 )
 
-const maxImportBodyBytes = 2 << 20
+const (
+	maxImportBodyBytes      int64 = 2 << 20
+	maxResumeWriteBodyBytes int64 = service.MaxResumeContentBytes + (64 << 10)
+	maxCreateBodyBytes      int64 = 16 << 10
+)
 
 // PdfRenderer prints the page at url into PDF bytes.
 type PdfRenderer interface {
@@ -98,7 +102,7 @@ func (h *ResumeHandler) CreateResume(c *gin.Context) {
 		return
 	}
 	var body generated.CreateResumeJSONRequestBody
-	if err := c.ShouldBindJSON(&body); err != nil && !errors.Is(err, io.EOF) {
+	if err := bindJSONWithLimit(c, &body, maxCreateBodyBytes); err != nil && !errors.Is(err, io.EOF) {
 		writeError(c, model.ErrInvalidParam)
 		return
 	}
@@ -119,9 +123,8 @@ func (h *ResumeHandler) ImportResume(c *gin.Context) {
 	if !ok {
 		return
 	}
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxImportBodyBytes)
 	var body generated.ImportResumeJSONRequestBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := bindJSONWithLimit(c, &body, maxImportBodyBytes); err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
 			writeError(c, model.ErrFileTooLarge)
@@ -179,7 +182,7 @@ func (h *ResumeHandler) UpdateResume(c *gin.Context, resumeID generated.ResumeId
 		return
 	}
 	var body generated.UpdateResumeJSONRequestBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := bindJSONWithLimit(c, &body, maxResumeWriteBodyBytes); err != nil {
 		writeError(c, model.ErrInvalidParam)
 		return
 	}
@@ -204,9 +207,8 @@ func (h *ResumeHandler) ReplaceResumeImport(c *gin.Context, resumeID generated.R
 	if !ok {
 		return
 	}
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxImportBodyBytes)
 	var body generated.ReplaceResumeImportJSONRequestBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := bindJSONWithLimit(c, &body, maxImportBodyBytes); err != nil {
 		writeError(c, model.ErrResumeInvalidSchema)
 		return
 	}

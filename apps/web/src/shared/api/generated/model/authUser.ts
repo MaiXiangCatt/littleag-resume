@@ -13,6 +13,7 @@ export interface AuthUser {
      * @maxLength 32
      */
   username: string;
+  /** @maxLength 254 */
   email: string;
   emailVerified: boolean;
 }

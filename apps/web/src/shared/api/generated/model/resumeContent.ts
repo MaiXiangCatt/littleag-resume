@@ -9,6 +9,9 @@ import type { ResumeContentProfile } from './resumeContentProfile';
 import type { ResumeContentSectionsItem } from './resumeContentSectionsItem';
 import type { ResumeFormattingV2 } from './resumeFormattingV2';
 
+/**
+ * Serialized resume content must not exceed 512 KiB.
+ */
 export interface ResumeContent {
   profile: ResumeContentProfile;
   /** @maxItems 64 */

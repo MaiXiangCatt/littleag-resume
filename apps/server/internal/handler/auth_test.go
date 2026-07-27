@@ -58,6 +58,25 @@ func newTestRouterWithStoreAndRenderer(
 	store testStore,
 	renderer handler.PdfRenderer,
 ) *gin.Engine {
+	return newTestRouterWithStoreRendererAndCookieSecurity(t, store, renderer, false)
+}
+
+func newTestRouterWithSecureCookies(t *testing.T) *gin.Engine {
+	t.Helper()
+	return newTestRouterWithStoreRendererAndCookieSecurity(
+		t,
+		repository.NewMemoryStore(),
+		&stubRenderer{data: []byte("%PDF-stub")},
+		true,
+	)
+}
+
+func newTestRouterWithStoreRendererAndCookieSecurity(
+	t *testing.T,
+	store testStore,
+	renderer handler.PdfRenderer,
+	secureCookies bool,
+) *gin.Engine {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
@@ -81,7 +100,7 @@ func newTestRouterWithStoreAndRenderer(
 
 	router := gin.New()
 	generated.RegisterHandlersWithOptions(router, handler.NewAPIHandler(
-		handler.NewAuthHandler(auth),
+		handler.NewAuthHandler(auth, secureCookies),
 		handler.NewResumeHandler(handler.ResumeHandlerConfig{
 			Resumes:     resumes,
 			Renderer:    renderer,
@@ -93,6 +112,54 @@ func newTestRouterWithStoreAndRenderer(
 		ErrorHandler: handler.GeneratedErrorHandler,
 	})
 	return router
+}
+
+func TestAuthHandlersUseSecureRefreshCookieInProduction(t *testing.T) {
+	router := newTestRouterWithSecureCookies(t)
+	email := "secure-cookie@example.com"
+	testVerificationCodes.Delete(email)
+
+	sendVerification := performJSON(
+		router,
+		http.MethodPost,
+		"/api/auth/registration-email-verification",
+		`{"email":"`+email+`"}`,
+	)
+	if sendVerification.Code != http.StatusOK {
+		t.Fatalf("send verification status=%d body=%s", sendVerification.Code, sendVerification.Body.String())
+	}
+	codeValue, ok := testVerificationCodes.Load(email)
+	if !ok {
+		t.Fatal("verification code was not sent")
+	}
+	register := performJSON(router, http.MethodPost, "/api/auth/register", `{
+		"username": "secure-user",
+		"email": "`+email+`",
+		"password": "password1",
+		"confirmPassword": "password1",
+		"verificationCode": "`+codeValue.(string)+`"
+	}`)
+	if register.Code != http.StatusOK {
+		t.Fatalf("register status=%d body=%s", register.Code, register.Body.String())
+	}
+	cookies := register.Result().Cookies()
+	if len(cookies) != 1 || !cookies[0].Secure {
+		t.Fatalf("production refresh cookie must be Secure, got %+v", cookies)
+	}
+}
+
+func TestAuthHandlersRejectOversizedJSONBody(t *testing.T) {
+	router := newTestRouter(t)
+	response := performJSON(
+		router,
+		http.MethodPost,
+		"/api/auth/login",
+		`{"email":"user@example.com","password":"password1","padding":"`+
+			strings.Repeat("x", 20<<10)+`"}`,
+	)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("oversized auth body status=%d body=%s", response.Code, response.Body.String())
+	}
 }
 
 type stubRenderer struct {

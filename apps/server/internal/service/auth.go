@@ -28,6 +28,12 @@ var (
 	verificationCodePattern = regexp.MustCompile(`^[0-9]{6}$`)
 )
 
+const (
+	maxEmailBytes               = 254
+	maxPasswordLength           = 128
+	defaultLoginFailureCapacity = 10_000
+)
+
 type RegisterInput struct {
 	Username         string
 	Email            string
@@ -76,6 +82,7 @@ type AuthServiceConfig struct {
 	RefreshTokenTTL           time.Duration
 	AccountLockLimit          int
 	AccountLockTTL            time.Duration
+	LoginFailureCapacity      int
 	Now                       func() time.Time
 }
 
@@ -94,6 +101,8 @@ type AuthService struct {
 	refreshTTL                time.Duration
 	lockLimit                 int
 	lockTTL                   time.Duration
+	loginFailureCapacity      int
+	loginFailureCleanupAt     time.Time
 	now                       func() time.Time
 	lockMu                    sync.Mutex
 	loginFailure              map[string]loginFailure
@@ -102,6 +111,7 @@ type AuthService struct {
 type loginFailure struct {
 	count       int
 	lockedUntil time.Time
+	expiresAt   time.Time
 }
 
 type accessClaims struct {
@@ -130,9 +140,13 @@ func NewAuthService(config AuthServiceConfig) *AuthService {
 	if config.AccountLockTTL == 0 {
 		config.AccountLockTTL = 15 * time.Minute
 	}
+	if config.LoginFailureCapacity <= 0 {
+		config.LoginFailureCapacity = defaultLoginFailureCapacity
+	}
 	if config.Now == nil {
 		config.Now = func() time.Time { return time.Now().UTC() }
 	}
+	now := config.Now()
 	return &AuthService{
 		users:                     config.Users,
 		emailVerifications:        config.EmailVerifications,
@@ -148,6 +162,8 @@ func NewAuthService(config AuthServiceConfig) *AuthService {
 		refreshTTL:                config.RefreshTokenTTL,
 		lockLimit:                 config.AccountLockLimit,
 		lockTTL:                   config.AccountLockTTL,
+		loginFailureCapacity:      config.LoginFailureCapacity,
+		loginFailureCleanupAt:     now.Add(config.AccountLockTTL),
 		now:                       config.Now,
 		loginFailure:              map[string]loginFailure{},
 	}
@@ -214,7 +230,7 @@ func (s *AuthService) SendRegistrationEmailVerification(
 	email string,
 ) (*EmailVerificationPayload, error) {
 	email = strings.TrimSpace(email)
-	if !strings.Contains(email, "@") {
+	if !validEmail(email) {
 		return nil, model.ErrEmailFormatInvalid
 	}
 	emailNormalized := normalizeEmail(email)
@@ -275,6 +291,9 @@ func (s *AuthService) SendRegistrationEmailVerification(
 }
 
 func (s *AuthService) Login(ctx context.Context, input LoginInput) (*model.AuthPayload, string, error) {
+	if !validEmail(input.Email) || len(input.Password) > maxPasswordLength {
+		return nil, "", model.ErrInvalidCredential
+	}
 	emailNormalized := normalizeEmail(input.Email)
 	if s.isLocked(emailNormalized) {
 		return nil, "", model.ErrAccountLocked
@@ -302,6 +321,9 @@ func (s *AuthService) ConfirmEmailVerification(
 	ctx context.Context,
 	input ConfirmEmailVerificationInput,
 ) (*model.AuthPayload, string, error) {
+	if !validEmail(input.Email) {
+		return nil, "", model.ErrVerificationInvalid
+	}
 	emailNormalized := normalizeEmail(input.Email)
 	if !verificationCodePattern.MatchString(input.Code) {
 		return nil, "", model.ErrVerificationInvalid
@@ -355,6 +377,9 @@ func (s *AuthService) ResendEmailVerification(
 	ctx context.Context,
 	input ResendEmailVerificationInput,
 ) (*EmailVerificationPayload, error) {
+	if !validEmail(input.Email) || len(input.Password) > maxPasswordLength {
+		return nil, model.ErrInvalidCredential
+	}
 	emailNormalized := normalizeEmail(input.Email)
 	user, err := s.users.FindActiveUserByEmailNormalized(ctx, emailNormalized)
 	if err != nil {
@@ -646,10 +671,12 @@ func validateRegister(input RegisterInput) error {
 	if !usernamePattern.MatchString(input.Username) {
 		return model.ErrUsernameFormatInvalid
 	}
-	if !strings.Contains(input.Email, "@") {
+	if !validEmail(input.Email) {
 		return model.ErrEmailFormatInvalid
 	}
-	if len(input.Password) < 8 || !containsLetterAndDigit(input.Password) {
+	if len(input.Password) < 8 ||
+		len(input.Password) > maxPasswordLength ||
+		!containsLetterAndDigit(input.Password) {
 		return model.ErrPasswordTooWeak
 	}
 	if input.Password != input.ConfirmPassword {
@@ -679,22 +706,48 @@ func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
+func validEmail(email string) bool {
+	trimmed := strings.TrimSpace(email)
+	return len(trimmed) <= maxEmailBytes && strings.Contains(trimmed, "@")
+}
+
 func (s *AuthService) isLocked(emailNormalized string) bool {
 	s.lockMu.Lock()
 	defer s.lockMu.Unlock()
 
-	state := s.loginFailure[emailNormalized]
-	return state.lockedUntil.After(s.now())
+	state, exists := s.loginFailure[emailNormalized]
+	if !exists {
+		return false
+	}
+	now := s.now()
+	if !state.expiresAt.After(now) {
+		delete(s.loginFailure, emailNormalized)
+		return false
+	}
+	return state.lockedUntil.After(now)
 }
 
 func (s *AuthService) recordLoginFailure(emailNormalized string) error {
 	s.lockMu.Lock()
 	defer s.lockMu.Unlock()
 
-	state := s.loginFailure[emailNormalized]
+	now := s.now()
+	if !now.Before(s.loginFailureCleanupAt) {
+		s.pruneLoginFailures(now)
+		s.loginFailureCleanupAt = now.Add(s.lockTTL)
+	}
+	state, exists := s.loginFailure[emailNormalized]
+	if !exists && len(s.loginFailure) >= s.loginFailureCapacity {
+		s.pruneLoginFailures(now)
+		s.loginFailureCleanupAt = now.Add(s.lockTTL)
+		if len(s.loginFailure) >= s.loginFailureCapacity {
+			return model.ErrInvalidCredential
+		}
+	}
 	state.count++
+	state.expiresAt = now.Add(s.lockTTL)
 	if state.count >= s.lockLimit {
-		state.lockedUntil = s.now().Add(s.lockTTL)
+		state.lockedUntil = now.Add(s.lockTTL)
 		s.loginFailure[emailNormalized] = state
 		return model.ErrAccountLocked
 	}
@@ -706,6 +759,14 @@ func (s *AuthService) clearLoginFailure(emailNormalized string) {
 	s.lockMu.Lock()
 	defer s.lockMu.Unlock()
 	delete(s.loginFailure, emailNormalized)
+}
+
+func (s *AuthService) pruneLoginFailures(now time.Time) {
+	for email, state := range s.loginFailure {
+		if !state.expiresAt.After(now) {
+			delete(s.loginFailure, email)
+		}
+	}
 }
 
 func newOpaqueToken() (string, error) {

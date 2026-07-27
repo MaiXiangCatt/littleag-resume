@@ -7,6 +7,7 @@
  */
 
 export interface ResendEmailVerificationRequest {
+  /** @maxLength 254 */
   email: string;
   /**
      * @minLength 1

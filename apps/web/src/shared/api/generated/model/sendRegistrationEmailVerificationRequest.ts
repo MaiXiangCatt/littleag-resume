@@ -7,5 +7,6 @@
  */
 
 export interface SendRegistrationEmailVerificationRequest {
+  /** @maxLength 254 */
   email: string;
 }

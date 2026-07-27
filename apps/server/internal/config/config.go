@@ -19,16 +19,17 @@ const (
 )
 
 type Config struct {
-	Environment      string
-	Addr             string
-	DatabaseURL      string
-	AccessTokenKey   []byte
-	AccessTokenTTL   time.Duration
-	RefreshTokenTTL  time.Duration
-	AccountLockLimit int
-	AccountLockTTL   time.Duration
-	AvatarStorageDir string
-	TrustedProxies   []string
+	Environment          string
+	Addr                 string
+	DatabaseURL          string
+	AccessTokenKey       []byte
+	AccessTokenTTL       time.Duration
+	RefreshTokenTTL      time.Duration
+	AccountLockLimit     int
+	AccountLockTTL       time.Duration
+	LoginFailureCapacity int
+	AvatarStorageDir     string
+	TrustedProxies       []string
 
 	EmailProvider          string
 	ResendAPIKey           string
@@ -98,15 +99,16 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 	}
 
 	return Config{
-		Addr:             env("SERVER_ADDR", ":8080"),
-		DatabaseURL:      databaseURL,
-		AccessTokenKey:   []byte(accessTokenKey),
-		AccessTokenTTL:   durationEnv("ACCESS_TOKEN_TTL", 15*time.Minute),
-		RefreshTokenTTL:  durationEnv("REFRESH_TOKEN_TTL", 7*24*time.Hour),
-		AccountLockLimit: intEnv("ACCOUNT_LOCK_LIMIT", 5),
-		AccountLockTTL:   durationEnv("ACCOUNT_LOCK_TTL", 15*time.Minute),
-		AvatarStorageDir: env("AVATAR_STORAGE_DIR", "data/avatars"),
-		TrustedProxies:   stringListEnv("TRUSTED_PROXIES", []string{"127.0.0.1", "::1"}),
+		Addr:                 env("SERVER_ADDR", ":8080"),
+		DatabaseURL:          databaseURL,
+		AccessTokenKey:       []byte(accessTokenKey),
+		AccessTokenTTL:       durationEnv("ACCESS_TOKEN_TTL", 15*time.Minute),
+		RefreshTokenTTL:      durationEnv("REFRESH_TOKEN_TTL", 7*24*time.Hour),
+		AccountLockLimit:     intEnv("ACCOUNT_LOCK_LIMIT", 5),
+		AccountLockTTL:       durationEnv("ACCOUNT_LOCK_TTL", 15*time.Minute),
+		LoginFailureCapacity: intEnv("LOGIN_FAILURE_CAPACITY", 10_000),
+		AvatarStorageDir:     env("AVATAR_STORAGE_DIR", "data/avatars"),
+		TrustedProxies:       stringListEnv("TRUSTED_PROXIES", []string{"127.0.0.1", "::1"}),
 
 		EmailProvider:          emailProvider,
 		ResendAPIKey:           resendAPIKey,

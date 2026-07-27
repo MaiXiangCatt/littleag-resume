@@ -57,6 +57,7 @@ func main() {
 		RefreshTokenTTL:           cfg.RefreshTokenTTL,
 		AccountLockLimit:          cfg.AccountLockLimit,
 		AccountLockTTL:            cfg.AccountLockTTL,
+		LoginFailureCapacity:      cfg.LoginFailureCapacity,
 	})
 	resumeService := service.NewResumeService(service.ResumeServiceConfig{Resumes: store, AvatarDir: cfg.AvatarStorageDir})
 	renderer := pdf.NewChromeRenderer(pdf.Config{
@@ -68,7 +69,7 @@ func main() {
 	})
 	defer renderer.Close()
 	apiHandler := handler.NewAPIHandler(
-		handler.NewAuthHandler(authService),
+		handler.NewAuthHandler(authService, cfg.Environment == "prod"),
 		handler.NewResumeHandler(handler.ResumeHandlerConfig{
 			Resumes:     resumeService,
 			Renderer:    renderer,

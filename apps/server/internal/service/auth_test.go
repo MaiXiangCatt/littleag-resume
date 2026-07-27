@@ -336,3 +336,55 @@ func TestAuthServiceAccountLockout(t *testing.T) {
 		t.Fatalf("locked account should reject correct password, got %v", err)
 	}
 }
+
+func TestAuthServiceLoginFailuresExpire(t *testing.T) {
+	store := repository.NewMemoryStore()
+	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
+	auth := service.NewAuthService(service.AuthServiceConfig{
+		Users:                store,
+		AccessTokenKey:       []byte("test-access-secret-with-enough-length"),
+		AccountLockLimit:     2,
+		AccountLockTTL:       15 * time.Minute,
+		LoginFailureCapacity: 10,
+		Now:                  func() time.Time { return now },
+	})
+
+	if _, _, err := auth.Login(context.Background(), service.LoginInput{
+		Email: "missing@example.com", Password: "wrong-password",
+	}); !errors.Is(err, model.ErrInvalidCredential) {
+		t.Fatalf("first failure = %v", err)
+	}
+	now = now.Add(16 * time.Minute)
+	if _, _, err := auth.Login(context.Background(), service.LoginInput{
+		Email: "missing@example.com", Password: "wrong-password",
+	}); !errors.Is(err, model.ErrInvalidCredential) {
+		t.Fatalf("expired failure must not lock account, got %v", err)
+	}
+}
+
+func TestAuthServiceLoginFailureMapRejectsNewEntriesAtCapacity(t *testing.T) {
+	store := repository.NewMemoryStore()
+	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
+	auth := service.NewAuthService(service.AuthServiceConfig{
+		Users:                store,
+		AccessTokenKey:       []byte("test-access-secret-with-enough-length"),
+		AccountLockLimit:     2,
+		AccountLockTTL:       15 * time.Minute,
+		LoginFailureCapacity: 2,
+		Now:                  func() time.Time { return now },
+	})
+
+	for _, email := range []string{"first@example.com", "second@example.com", "third@example.com"} {
+		if _, _, err := auth.Login(context.Background(), service.LoginInput{
+			Email: email, Password: "wrong-password",
+		}); !errors.Is(err, model.ErrInvalidCredential) {
+			t.Fatalf("failure for %s = %v", email, err)
+		}
+		now = now.Add(time.Second)
+	}
+	if _, _, err := auth.Login(context.Background(), service.LoginInput{
+		Email: "first@example.com", Password: "wrong-password",
+	}); !errors.Is(err, model.ErrAccountLocked) {
+		t.Fatalf("existing failure state should be preserved at capacity, got %v", err)
+	}
+}

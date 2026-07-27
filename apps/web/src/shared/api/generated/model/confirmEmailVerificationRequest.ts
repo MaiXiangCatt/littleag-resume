@@ -7,6 +7,7 @@
  */
 
 export interface ConfirmEmailVerificationRequest {
+  /** @maxLength 254 */
   email: string;
   /** @pattern ^[0-9]{6}$ */
   code: string;

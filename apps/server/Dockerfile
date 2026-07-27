@@ -9,7 +9,7 @@ RUN CGO_ENABLED=0 go build -o /out/server ./cmd/api
 # headless-shell 自带精简版 headless Chromium；中文渲染必须补装 CJK 字体。
 FROM chromedp/headless-shell:stable
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates fontconfig fonts-noto-cjk tzdata \
+      ca-certificates fontconfig fonts-noto-cjk tar tzdata \
     && fc-cache -f && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out/server /usr/local/bin/vega-server
 ENV CHROME_EXEC_PATH=/headless-shell/headless-shell

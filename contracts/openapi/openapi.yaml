@@ -814,6 +814,7 @@ components:
         email:
           type: string
           format: email
+          maxLength: 254
           example: user@example.com
         emailVerified:
           type: boolean
@@ -1061,6 +1062,7 @@ components:
           $ref: "#/components/schemas/ResumeContent"
     ResumeContent:
       type: object
+      description: Serialized resume content must not exceed 512 KiB.
       required:
         - profile
         - sections
@@ -1242,6 +1244,7 @@ components:
         email:
           type: string
           format: email
+          maxLength: 254
           example: user@example.com
         password:
           type: string
@@ -1268,6 +1271,7 @@ components:
         email:
           type: string
           format: email
+          maxLength: 254
     ConfirmEmailVerificationRequest:
       type: object
       additionalProperties: false
@@ -1278,6 +1282,7 @@ components:
         email:
           type: string
           format: email
+          maxLength: 254
         code:
           type: string
           pattern: '^[0-9]{6}$'
@@ -1292,6 +1297,7 @@ components:
         email:
           type: string
           format: email
+          maxLength: 254
         password:
           type: string
           format: password
@@ -1306,6 +1312,7 @@ components:
         email:
           type: string
           format: email
+          maxLength: 254
           example: user@example.com
         password:
           type: string

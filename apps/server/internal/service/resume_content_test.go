@@ -1,6 +1,8 @@
 package service_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/vega-resume/server/internal/service"
@@ -40,6 +42,47 @@ func TestResumeContentV2FormattingValidation(t *testing.T) {
 	formatting["accentColor"] = "#12xyz9"
 	if err := service.ValidateResumeContent(content); err == nil {
 		t.Fatal("invalid custom accent should be rejected")
+	}
+}
+
+func TestResumeContentV2RejectsOversizedTextFields(t *testing.T) {
+	content := service.DefaultResumeContent()
+	sections := content["sections"].([]any)
+	summary := sections[0].(map[string]any)
+	summary["text"] = strings.Repeat("简", service.MaxResumeDescriptionRunes+1)
+
+	if err := service.ValidateResumeContent(content); err == nil {
+		t.Fatal("oversized Markdown description should be rejected")
+	}
+}
+
+func TestResumeContentV2RejectsOversizedSerializedDocument(t *testing.T) {
+	content := service.DefaultResumeContent()
+	sections := content["sections"].([]any)
+	for index := 0; index < 30; index++ {
+		sections = append(sections, map[string]any{
+			"id":      fmt.Sprintf("custom-%d", index),
+			"type":    "custom",
+			"title":   "自定义",
+			"enabled": true,
+			"items": []any{
+				map[string]any{
+					"id":          fmt.Sprintf("item-%d", index),
+					"title":       "条目",
+					"subtitle":    "",
+					"location":    "",
+					"startDate":   "",
+					"endDate":     "",
+					"isCurrent":   false,
+					"description": strings.Repeat("x", service.MaxResumeDescriptionRunes),
+				},
+			},
+		})
+	}
+	content["sections"] = sections
+
+	if err := service.ValidateResumeContent(content); err == nil {
+		t.Fatal("serialized resume above the total size limit should be rejected")
 	}
 }
 
