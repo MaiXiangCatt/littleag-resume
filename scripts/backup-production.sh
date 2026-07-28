@@ -6,7 +6,16 @@ repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 backup_dir="${BACKUP_DIR:-${repo_dir}/backups}"
 compose_file="${repo_dir}/deploy/docker-compose.yml"
 env_file="${repo_dir}/.env.prod"
+current_tag_file="${repo_dir}/.deploy/current-image-tag"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+
+if [[ -z "${IMAGE_TAG:-}" && -f "${current_tag_file}" ]]; then
+  export IMAGE_TAG
+  IMAGE_TAG="$(<"${current_tag_file}")"
+fi
+# `exec` only needs the existing containers, but Compose still validates image
+# interpolation while resolving the project.
+export IMAGE_TAG="${IMAGE_TAG:-validation}"
 
 umask 077
 mkdir -p "${backup_dir}"

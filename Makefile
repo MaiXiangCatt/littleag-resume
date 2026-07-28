@@ -71,16 +71,21 @@ build-cli:         ## 构建 vega CLI
 storybook:         ## 启动 Storybook UI 隔离开发环境
 	pnpm --filter web storybook
 docker-build:      ## Docker 镜像构建
-	docker compose --env-file .env.prod -f deploy/docker-compose.yml build
+	IMAGE_TAG=$${IMAGE_TAG:-local} \
+		SERVER_IMAGE=$${SERVER_IMAGE:-littleag-resume-server} \
+		WEB_IMAGE=$${WEB_IMAGE:-littleag-resume-web} \
+		docker compose --env-file .env.prod \
+			-f deploy/docker-compose.yml \
+			-f deploy/docker-compose.build.yml build
 deploy-check:      ## 只校验生产 Compose，不输出展开后的密钥
-	docker compose --env-file .env.prod -f deploy/docker-compose.yml config --quiet
-deploy:            ## 部署到自有服务器
-	docker compose --env-file .env.prod -f deploy/docker-compose.yml up -d --build
+	IMAGE_TAG=$${IMAGE_TAG:-validation} docker compose --env-file .env.prod -f deploy/docker-compose.yml config --quiet
+deploy:            ## 拉取并部署 IMAGE_TAG（未传时重部署上次成功版本）
+	./scripts/deploy-production.sh "$(IMAGE_TAG)"
 backup:            ## 备份生产 PostgreSQL 与头像到 BACKUP_DIR
 	./scripts/backup-production.sh
 smoke:             ## 部署后冒烟测试
-	curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null
-	docker compose --env-file .env.prod -f deploy/docker-compose.yml ps
+	curl --fail --silent --show-error http://127.0.0.1:8080/api/healthz >/dev/null
+	IMAGE_TAG=$${IMAGE_TAG:-validation} docker compose --env-file .env.prod -f deploy/docker-compose.yml ps
 
 # ---- 开发环境 ----
 dev-web:           ## 启动前端开发服务器
