@@ -1,0 +1,10 @@
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: apps/server/Dockerfile
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile

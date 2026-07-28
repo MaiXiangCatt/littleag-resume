@@ -30,6 +30,7 @@ go.work.sum
 !.env.dev.example
 !.env.prod.example
 .secrets/
+.deploy/
 
 # Editor/IDE
 # .idea/
@@ -80,3 +81,4 @@ skills-lock.json
 
 #docs
 docs/*
+!docs/deployment.md

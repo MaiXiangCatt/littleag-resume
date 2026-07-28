@@ -28,9 +28,7 @@ services:
     logging: *default-logging
 
   server:
-    build:
-      context: ..
-      dockerfile: apps/server/Dockerfile
+    image: ${SERVER_IMAGE:-ghcr.io/maixiangcatt/littleag-resume-server}:${IMAGE_TAG:?set IMAGE_TAG to the commit SHA being deployed}
     # headless Chromium 需要足够的共享内存，双保险（代码里还带 disable-dev-shm-usage）
     shm_size: 1gb
     environment:
@@ -64,9 +62,7 @@ services:
     logging: *default-logging
 
   web:
-    build:
-      context: ..
-      dockerfile: apps/web/Dockerfile
+    image: ${WEB_IMAGE:-ghcr.io/maixiangcatt/littleag-resume-web}:${IMAGE_TAG:?set IMAGE_TAG to the commit SHA being deployed}
     ports:
       # 只暴露给宿主机反向代理，由 Caddy/Nginx 负责公网 HTTPS。
       - "127.0.0.1:${WEB_HTTP_PORT:-8080}:80"

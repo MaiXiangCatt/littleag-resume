@@ -20,6 +20,7 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
+    "lint": "tsc --noEmit",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "release": "bumpp",

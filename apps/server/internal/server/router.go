@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,9 @@ func NewRouter(
 	}
 	router.Use(gin.Recovery())
 	router.Use(middleware.RateLimit(120, time.Minute))
+	router.GET("/api/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	generated.RegisterHandlersWithOptions(router, apiHandler, generated.GinServerOptions{
 		Middlewares:  middlewares,
 		ErrorHandler: handler.GeneratedErrorHandler,
