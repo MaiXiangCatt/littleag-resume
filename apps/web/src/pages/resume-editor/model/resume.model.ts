@@ -31,17 +31,21 @@ export const ACCENT_COLORS: Record<PresetAccentColor, string> = {
   black: '#000000',
 };
 
-export const RESUME_FONT_FAMILIES: Record<ResumeFontFamily, { cssFamily: string; label: string }> =
-  {
-    'source-han-sans': {
-      cssFamily: "'Noto Sans SC', 'PingFang SC', sans-serif",
-      label: '思源黑体',
-    },
-    'source-han-serif': {
-      cssFamily: "'Noto Serif SC', 'Songti SC', serif",
-      label: '思源宋体',
-    },
-  };
+export const RESUME_FONT_FAMILIES: Record<
+  ResumeFontFamily,
+  { cssFamily: string; label: string; pdfFamily: string }
+> = {
+  'source-han-sans': {
+    cssFamily: "'Noto Sans SC', 'PingFang SC', sans-serif",
+    label: '思源黑体',
+    pdfFamily: 'NotoSansSC',
+  },
+  'source-han-serif': {
+    cssFamily: "'Noto Serif SC', 'Songti SC', serif",
+    label: '思源宋体',
+    pdfFamily: 'NotoSerifSC',
+  },
+};
 
 export function resolveAccentColor(value: AccentColor): string {
   return value.startsWith('#') ? value : ACCENT_COLORS[value as PresetAccentColor];

@@ -49,10 +49,25 @@ export function AppRoutes() {
     <Routes>
       <Route element={<HomeRoute />} path="/" />
       <Route element={<ConsoleRoute />} path="/console" />
+      <Route element={<GuestResumeEditorRoute />} path="/guest/edit" />
       <Route element={<ResumeEditorRoute />} path="/resumes/:resumeId/edit" />
       <Route element={<PrintResumeRoute />} path="/print/resumes/:resumeId" />
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
+  );
+}
+
+function GuestResumeEditorRoute() {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center text-slate-600">
+          正在加载游客编辑器
+        </main>
+      }
+    >
+      <ResumeEditorPage mode="guest" resumeId="guest-primary" />
+    </Suspense>
   );
 }
 
@@ -111,6 +126,7 @@ function PrintResumeRoute() {
 }
 
 function HomeRoute() {
+  const navigate = useNavigate();
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const [authMode, setAuthMode] = useState<AuthMode>('login');
@@ -133,6 +149,7 @@ function HomeRoute() {
     <>
       <HomePage
         currentUser={user}
+        onGuest={() => navigate('/guest/edit')}
         onLogin={() => openAuth('login')}
         onRegister={() => openAuth('register')}
         onViewExample={() => undefined}

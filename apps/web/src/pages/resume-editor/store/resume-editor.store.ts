@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import type { PersistenceDurability } from '../model/resume.editor';
 import type { ResumeDocument, SaveStatus } from '../model/resume.types';
 
 type EditorState = {
@@ -7,6 +8,7 @@ type EditorState = {
   error: string | null;
   isLoading: boolean;
   saveStatus: SaveStatus;
+  durability: PersistenceDurability;
   changeVersion: number;
   load: (document: ResumeDocument) => void;
   loadFailed: (message: string) => void;
@@ -18,6 +20,7 @@ type EditorState = {
   setSaveFailed: (message: string) => void;
   setConflict: () => void;
   replaceDocument: (document: ResumeDocument) => void;
+  setDurability: (durability: PersistenceDurability) => void;
   reset: () => void;
 };
 
@@ -26,6 +29,7 @@ const initialState = {
   error: null,
   isLoading: true,
   saveStatus: 'idle' as SaveStatus,
+  durability: 'persistent' as PersistenceDurability,
   changeVersion: 0,
 };
 
@@ -77,5 +81,6 @@ export const useResumeEditorStore = create<EditorState>()((set, get) => ({
     set({ saveStatus: 'conflict', error: '这份简历已在其他页面更新，请选择保留哪个版本。' }),
   replaceDocument: (document) =>
     set({ document, error: null, isLoading: false, saveStatus: 'saved', changeVersion: 0 }),
+  setDurability: (durability) => set({ durability }),
   reset: () => set(initialState),
 }));

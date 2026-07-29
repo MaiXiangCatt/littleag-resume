@@ -1,0 +1,100 @@
+/// <reference types="node" />
+
+import { resolve } from 'node:path';
+import { Font } from '@react-pdf/renderer';
+import { beforeAll, describe, expect, it } from 'vitest';
+
+import { createDefaultContent } from '../model/resume.model';
+import type { ResumeDocument } from '../model/resume.types';
+import { createResumePdfBlob } from './resume-pdf.service';
+
+beforeAll(() => {
+  const sansRegularPath = resolve(process.cwd(), 'public/fonts/NotoSansSC-Pdf-Regular.ttf');
+  const sansBoldPath = resolve(process.cwd(), 'public/fonts/NotoSansSC-Pdf-Bold.ttf');
+  const serifRegularPath = resolve(process.cwd(), 'public/fonts/NotoSerifSC-Pdf-Regular.ttf');
+  const serifBoldPath = resolve(process.cwd(), 'public/fonts/NotoSerifSC-Pdf-Bold.ttf');
+  Font.clear();
+  Font.register({
+    family: 'Helvetica',
+    fonts: [
+      { fontWeight: 400, src: 'Helvetica' },
+      { fontWeight: 700, src: 'Helvetica-Bold' },
+      { fontStyle: 'italic', fontWeight: 400, src: 'Helvetica-Oblique' },
+      { fontStyle: 'italic', fontWeight: 700, src: 'Helvetica-BoldOblique' },
+    ],
+  });
+  Font.register({
+    family: 'NotoSansSC',
+    fonts: [
+      { fontWeight: 400, src: sansRegularPath },
+      { fontWeight: 700, src: sansBoldPath },
+      { fontStyle: 'italic', fontWeight: 400, src: sansRegularPath },
+      { fontStyle: 'italic', fontWeight: 700, src: sansBoldPath },
+    ],
+  });
+  Font.register({
+    family: 'NotoSerifSC',
+    fonts: [
+      { fontWeight: 400, src: serifRegularPath },
+      { fontWeight: 700, src: serifBoldPath },
+      { fontStyle: 'italic', fontWeight: 400, src: serifRegularPath },
+      { fontStyle: 'italic', fontWeight: 700, src: serifBoldPath },
+    ],
+  });
+});
+
+function createResume(templateId: ResumeDocument['templateId']): ResumeDocument {
+  const content = createDefaultContent();
+  content.profile = {
+    fullName: '林清清',
+    targetRole: '前端开发工程师',
+    phone: '13800000000',
+    email: 'qingqing@example.com',
+    location: '杭州',
+    links: [],
+  };
+  const summary = content.sections.find((section) => section.type === 'summary');
+  if (summary?.type === 'summary') {
+    summary.text = '负责**设计系统**\n\n- 建立规范\n- 推动交付';
+  }
+  return {
+    id: 'guest-primary',
+    title: 'Markdown 简历',
+    status: 'draft',
+    revision: 1,
+    hasAvatar: false,
+    templateId,
+    exportCount: 0,
+    contentVersion: 2,
+    content,
+    createdAt: '2026-07-28T00:00:00Z',
+    updatedAt: '2026-07-28T00:00:00Z',
+  };
+}
+
+describe('createResumePdfBlob', () => {
+  it.each(['modern-editorial', 'classic-professional'] as const)(
+    'generates a valid %s PDF with Markdown',
+    async (templateId) => {
+      const blob = await createResumePdfBlob(createResume(templateId), null);
+      const signature = new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 4));
+
+      expect(blob.type).toBe('application/pdf');
+      expect(signature).toBe('%PDF');
+      expect(blob.size).toBeGreaterThan(1_000);
+    },
+    20_000,
+  );
+
+  it('embeds a cropped JPEG avatar', async () => {
+    const onePixelJpeg =
+      'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABAf/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPxB//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPxB//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxB//9k=';
+    const blob = await createResumePdfBlob(
+      { ...createResume('modern-editorial'), hasAvatar: true },
+      onePixelJpeg,
+    );
+
+    expect(blob.type).toBe('application/pdf');
+    expect(blob.size).toBeGreaterThan(1_000);
+  }, 20_000);
+});
