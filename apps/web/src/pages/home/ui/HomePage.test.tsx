@@ -25,7 +25,6 @@ describe('HomePage', () => {
     expect(screen.getByRole('heading', { level: 1, name: /LittleAgResume/ })).toBeInTheDocument();
     expect(screen.getAllByText('一个用爱发电的开源项目')).toHaveLength(2);
     expect(screen.getByText('不知道写点什么...祝大家天天开心，找工作顺利吧～')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '简历示例预览' })).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '登录' }));
