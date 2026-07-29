@@ -15,17 +15,10 @@ type HomePageProps = {
   onViewExample: () => void;
 };
 
-export function HomePage({
-  currentUser,
-  onGuest,
-  onLogin,
-  onRegister,
-}: HomePageProps) {
-
-
+export function HomePage({ currentUser, onGuest, onLogin, onRegister }: HomePageProps) {
   return (
     <div
-      className="min-h-screen overflow-x-hidden bg-[#f4fbfd] text-[#172a31]"
+      className="min-h-screen overflow-x-hidden bg-[#fdf8f6] text-[#2f211f]"
       data-testid="home-page"
     >
       <AppHeader

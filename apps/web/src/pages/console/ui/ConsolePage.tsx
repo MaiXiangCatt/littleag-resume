@@ -292,7 +292,7 @@ function AuthenticatedConsole({
       <main className="mx-auto max-w-[1560px] px-5 py-9 lg:px-10 lg:py-11">
         <section className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2B89A8]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a63a2a]">
               Workspace
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] text-[#1f1722] sm:text-4xl">
@@ -303,7 +303,7 @@ function AuthenticatedConsole({
             </p>
           </div>
           <Button
-            className="h-11 rounded-xl bg-[#087EA4] px-5 text-white shadow-[0_10px_26px_rgba(8,126,164,0.22)] hover:bg-[#066B8E]"
+            className="h-11 rounded-xl bg-[#bf301e] px-5 text-white shadow-[0_10px_26px_rgba(191,48,30,0.22)] hover:bg-[#9f2718]"
             disabled={pendingAction === 'import'}
             onClick={() => importInputRef.current?.click()}
             type="button"
@@ -341,7 +341,7 @@ function AuthenticatedConsole({
 
         <section className="relative mt-7 scroll-mt-28" ref={gridRef}>
           {consoleData.isListRefreshing ? (
-            <div className="absolute -top-2 left-0 h-0.5 w-full overflow-hidden rounded-full bg-[#eaddea] before:block before:h-full before:w-1/3 before:animate-[console-progress_1s_ease-in-out_infinite] before:rounded-full before:bg-[#087EA4]" />
+            <div className="absolute -top-2 left-0 h-0.5 w-full overflow-hidden rounded-full bg-[#eaddea] before:block before:h-full before:w-1/3 before:animate-[console-progress_1s_ease-in-out_infinite] before:rounded-full before:bg-[#bf301e]" />
           ) : null}
           {consoleData.isListLoading ? <ResumeGridSkeleton /> : null}
           {!consoleData.isListLoading && consoleData.listError ? (
@@ -443,7 +443,7 @@ function RenameResumeDialog({
           </Label>
           <Input
             autoFocus
-            className="mt-2 focus:border-[#087EA4] focus-visible:ring-[#087EA4]"
+            className="mt-2 focus:border-[#bf301e] focus-visible:ring-[#bf301e]"
             id="resume-title"
             maxLength={80}
             onChange={(event) => setTitle(event.target.value)}
@@ -454,7 +454,7 @@ function RenameResumeDialog({
               取消
             </Button>
             <Button
-              className="bg-[#087EA4] hover:bg-[#066B8E]"
+              className="bg-[#bf301e] hover:bg-[#9f2718]"
               disabled={!normalizedTitle || isPending}
               type="submit"
             >

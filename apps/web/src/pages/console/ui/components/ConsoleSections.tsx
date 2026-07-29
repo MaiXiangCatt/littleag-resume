@@ -108,7 +108,7 @@ export function ResumeStatsPanel({
           )}
           key={key}
         >
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f7eef7] text-[#087EA4]">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f7eef7] text-[#bf301e]">
             <Icon aria-hidden="true" size={22} strokeWidth={1.7} />
           </span>
           <span className="min-w-0">
@@ -158,8 +158,8 @@ export function ResumeToolbar({
             className={cn(
               'h-auto shrink-0 rounded-full border px-5 py-2 text-sm font-medium transition',
               status === filter.value
-                ? 'border-[#087EA4] bg-[#087EA4] text-white shadow-[0_7px_18px_rgba(8,126,164,0.2)] hover:bg-[#087EA4] hover:text-white'
-                : 'border-[#e7e1e9] bg-white text-[#635b67] hover:border-[#8ED6E9] hover:bg-white hover:text-[#087EA4]',
+                ? 'border-[#bf301e] bg-[#bf301e] text-white shadow-[0_7px_18px_rgba(191,48,30,0.2)] hover:bg-[#bf301e] hover:text-white'
+                : 'border-[#e7e1e9] bg-white text-[#635b67] hover:border-[#e49a8e] hover:bg-white hover:text-[#bf301e]',
             )}
             key={filter.value}
             onClick={() => onStatusChange(filter.value)}
@@ -200,18 +200,18 @@ export function CreateResumeCard({
   return (
     <Button
       variant="ghost"
-      className="group h-auto min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-[#41B9E0] bg-[radial-gradient(circle_at_50%_20%,rgba(65,185,224,0.08),transparent_52%)] px-8 text-center transition duration-300 hover:-translate-y-1 hover:border-[#087EA4] hover:bg-[radial-gradient(circle_at_50%_20%,rgba(65,185,224,0.08),transparent_52%)] hover:shadow-[0_18px_38px_rgba(17,112,144,0.11)] focus-visible:ring-4 focus-visible:ring-[#087EA4]/15 disabled:pointer-events-none disabled:opacity-60"
+      className="group h-auto min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-[#d96657] bg-[radial-gradient(circle_at_50%_20%,rgba(217,102,87,0.08),transparent_52%)] px-8 text-center transition duration-300 hover:-translate-y-1 hover:border-[#bf301e] hover:bg-[radial-gradient(circle_at_50%_20%,rgba(217,102,87,0.08),transparent_52%)] hover:shadow-[0_18px_38px_rgba(159,39,24,0.11)] focus-visible:ring-4 focus-visible:ring-[#bf301e]/15 disabled:pointer-events-none disabled:opacity-60"
       disabled={isPending}
       onClick={onCreate}
     >
-      <span className="grid size-14 place-items-center rounded-full bg-[#087EA4] text-white shadow-[0_10px_24px_rgba(8,126,164,0.28)] transition group-hover:scale-105">
+      <span className="grid size-14 place-items-center rounded-full bg-[#bf301e] text-white shadow-[0_10px_24px_rgba(191,48,30,0.28)] transition group-hover:scale-105">
         {isPending ? (
           <LoaderCircle aria-hidden="true" className="animate-spin" size={25} />
         ) : (
           <Plus aria-hidden="true" size={30} strokeWidth={1.8} />
         )}
       </span>
-      <span className="mt-5 text-lg font-semibold text-[#087EA4]">
+      <span className="mt-5 text-lg font-semibold text-[#bf301e]">
         {isPending ? '正在创建…' : '创建新简历'}
       </span>
       <span className="mt-2 max-w-72 text-sm leading-6 text-[#817684]">
@@ -249,7 +249,7 @@ export function ResumeCard({
       <Button
         aria-label={`编辑 ${resume.title}`}
         variant="ghost"
-        className="relative h-auto min-h-48 w-full overflow-hidden rounded-xl border border-[#e5e0e7] bg-[#faf9fb] p-0 text-left hover:bg-[#faf9fb] focus-visible:ring-3 focus-visible:ring-[#087EA4]/25"
+        className="relative h-auto min-h-48 w-full overflow-hidden rounded-xl border border-[#e5e0e7] bg-[#faf9fb] p-0 text-left hover:bg-[#faf9fb] focus-visible:ring-3 focus-visible:ring-[#bf301e]/25"
         onClick={onOpen}
       >
         <ResumePlaceholder initial={ownerInitial} />
@@ -262,14 +262,14 @@ export function ResumeCard({
             className="h-auto min-w-0 p-0 text-left hover:bg-transparent"
             onClick={onOpen}
           >
-            <h2 className="truncate text-lg font-semibold tracking-[-0.025em] text-[#241a27] transition hover:text-[#087EA4]">
+            <h2 className="truncate text-lg font-semibold tracking-[-0.025em] text-[#241a27] transition hover:text-[#bf301e]">
               {resume.title}
             </h2>
           </Button>
           <span
             className={cn(
               'mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold',
-              isCompleted ? 'bg-[#f5e9f4] text-[#087EA4]' : 'bg-[#fbf1ff] text-[#277F9A]',
+              isCompleted ? 'bg-[#f5e9f4] text-[#bf301e]' : 'bg-[#fbf1ff] text-[#9e4a3d]',
             )}
           >
             {isCompleted ? '已完成' : '草稿'}
@@ -283,7 +283,7 @@ export function ResumeCard({
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
           <Button
             aria-label={`导出 ${resume.title} PDF`}
-            className="border-[#8ED6E9] text-[#087EA4]"
+            className="border-[#e49a8e] text-[#bf301e]"
             disabled={isPending}
             onClick={onExport}
             size="sm"
@@ -302,7 +302,7 @@ export function ResumeCard({
                 aria-label={`${resume.title} 更多操作`}
                 variant="outline"
                 size="icon"
-                className="size-8 rounded-lg border-[#ded8e1] text-[#564e59] hover:border-[#62C7E4] hover:text-[#087EA4]"
+                className="size-8 rounded-lg border-[#ded8e1] text-[#564e59] hover:border-[#dd7668] hover:text-[#bf301e]"
               >
                 <Ellipsis size={18} />
               </Button>
@@ -312,14 +312,14 @@ export function ResumeCard({
               className="w-36 rounded-xl border-[#e8e2ea] p-1.5 shadow-[0_14px_34px_rgba(48,31,51,0.16)]"
             >
               <DropdownMenuItem
-                className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#087EA4]"
+                className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#bf301e]"
                 onClick={onRename}
               >
                 <Pencil size={15} />
                 重命名
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#087EA4]"
+                className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#bf301e]"
                 onClick={onCopy}
               >
                 <Copy size={15} />
@@ -332,7 +332,7 @@ export function ResumeCard({
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-[#f0ecf1] pt-3">
           <Button
             variant="ghost"
-            className="h-auto gap-2 p-0 text-sm text-[#625966] hover:bg-transparent hover:text-[#087EA4]"
+            className="h-auto gap-2 p-0 text-sm text-[#625966] hover:bg-transparent hover:text-[#bf301e]"
             onClick={onOpen}
           >
             <Pencil aria-hidden="true" size={16} />
@@ -350,7 +350,7 @@ export function ResumeCard({
       </div>
       {isPending ? (
         <div className="absolute inset-0 z-10 grid place-items-center rounded-2xl bg-white/75 backdrop-blur-[1px]">
-          <LoaderCircle aria-label="正在处理" className="animate-spin text-[#087EA4]" size={28} />
+          <LoaderCircle aria-label="正在处理" className="animate-spin text-[#bf301e]" size={28} />
         </div>
       ) : null}
     </article>
@@ -362,12 +362,12 @@ function ResumePlaceholder({ initial }: { initial: string }) {
     <span className="absolute inset-0 flex flex-col bg-white p-3 text-[#48394b]">
       <span className="flex items-start justify-between border-b border-[#eaddea] pb-2">
         <span>
-          <span className="block text-[7px] font-bold tracking-[0.16em] text-[#087EA4]">
+          <span className="block text-[7px] font-bold tracking-[0.16em] text-[#bf301e]">
             LITTLEAG RESUME
           </span>
           <span className="mt-1 block h-1.5 w-12 rounded-full bg-[#d7c2d5]" />
         </span>
-        <span className="grid size-7 place-items-center rounded-full bg-[#eee3ed] text-[10px] font-bold text-[#087EA4]">
+        <span className="grid size-7 place-items-center rounded-full bg-[#eee3ed] text-[10px] font-bold text-[#bf301e]">
           {initial}
         </span>
       </span>
@@ -376,7 +376,7 @@ function ResumePlaceholder({ initial }: { initial: string }) {
         <span className="h-1 w-full rounded-full bg-[#e2dce4]" />
         <span className="h-1 w-5/6 rounded-full bg-[#e2dce4]" />
       </span>
-      <span className="mt-3 block text-[6px] font-bold tracking-widest text-[#1689AF]">
+      <span className="mt-3 block text-[6px] font-bold tracking-widest text-[#a63a2a]">
         EXPERIENCE
       </span>
       <span className="mt-2 grid gap-1.5">
@@ -387,10 +387,10 @@ function ResumePlaceholder({ initial }: { initial: string }) {
         <span className="h-1 w-3/4 rounded-full bg-[#e7e2e8]" />
       </span>
       <span className="mt-auto grid grid-cols-4 gap-1">
-        <span className="h-1 rounded-full bg-[#41B9E0]" />
-        <span className="h-1 rounded-full bg-[#A9E3F2]" />
-        <span className="h-1 rounded-full bg-[#41B9E0]" />
-        <span className="h-1 rounded-full bg-[#A9E3F2]" />
+        <span className="h-1 rounded-full bg-[#d96657]" />
+        <span className="h-1 rounded-full bg-[#f1b9b0]" />
+        <span className="h-1 rounded-full bg-[#d96657]" />
+        <span className="h-1 rounded-full bg-[#f1b9b0]" />
       </span>
     </span>
   );
@@ -429,7 +429,7 @@ export function EmptyResults({
 }) {
   return (
     <div className="col-span-full flex min-h-64 flex-col items-center justify-center rounded-2xl border border-[#e8e3ea] bg-white px-6 text-center">
-      <span className="grid size-14 place-items-center rounded-2xl bg-[#f6eef6] text-[#087EA4]">
+      <span className="grid size-14 place-items-center rounded-2xl bg-[#f6eef6] text-[#bf301e]">
         {hasFilters ? <RotateCcw size={24} /> : <FilePlus2 size={24} />}
       </span>
       <h2 className="mt-4 text-lg font-semibold text-[#2b202e]">
@@ -442,7 +442,7 @@ export function EmptyResults({
       </p>
       {hasFilters ? (
         <Button
-          className="mt-5 border-[#A7DDEA] text-[#087EA4]"
+          className="mt-5 border-[#e8aaa0] text-[#bf301e]"
           onClick={onReset}
           variant="outline"
         >
@@ -508,7 +508,7 @@ export function Pagination({
             className={cn(
               'size-9 rounded-lg text-sm font-semibold',
               pageNumber === page
-                ? 'bg-[#087EA4] text-white shadow-[0_7px_18px_rgba(8,126,164,0.2)] hover:bg-[#087EA4] hover:text-white'
+                ? 'bg-[#bf301e] text-white shadow-[0_7px_18px_rgba(191,48,30,0.2)] hover:bg-[#bf301e] hover:text-white'
                 : 'text-[#514955] hover:bg-[#f5edf5]',
             )}
             key={pageNumber}
@@ -535,7 +535,7 @@ export function Pagination({
         >
           <SelectTrigger
             aria-label="每页显示数量"
-            className="h-10 w-auto rounded-lg border-[#ded8e1] bg-white px-3 font-semibold text-[#332936] focus-visible:border-[#087EA4]"
+            className="h-10 w-auto rounded-lg border-[#ded8e1] bg-white px-3 font-semibold text-[#332936] focus-visible:border-[#bf301e]"
           >
             <SelectValue />
           </SelectTrigger>

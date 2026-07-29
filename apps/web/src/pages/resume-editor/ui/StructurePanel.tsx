@@ -84,7 +84,7 @@ export function StructurePanel({
   return (
     <aside className="flex h-full min-h-0 flex-col border-r border-[#e7dfe4] bg-[#f8f5f6]">
       <div className="border-b border-[#e7dfe4] px-5 py-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#2B89A8]">
+        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#a63a2a]">
           Resume map
         </p>
         <h2 className="mt-1 font-serif text-xl font-semibold text-[#30252d]">简历结构</h2>
@@ -93,7 +93,7 @@ export function StructurePanel({
         <Button
           className={cn(
             'mb-2 h-11 w-full justify-start rounded-xl px-3',
-            activeId === 'profile' ? 'bg-white text-[#087EA4] shadow-sm' : 'text-[#62565f]',
+            activeId === 'profile' ? 'bg-white text-[#bf301e] shadow-sm' : 'text-[#62565f]',
           )}
           onClick={() => onSelect('profile')}
           variant="ghost"
@@ -166,7 +166,7 @@ function StructureItem({
       className={cn(
         'group flex items-center rounded-xl border border-transparent px-1 py-1 transition',
         active
-          ? 'border-[#e6d7e3] bg-white text-[#087EA4] shadow-sm'
+          ? 'border-[#e6d7e3] bg-white text-[#bf301e] shadow-sm'
           : 'text-[#655a62] hover:bg-white/70',
       )}
     >

@@ -32,14 +32,14 @@ export function GuestPdfPreview({ preview }: { preview: ResumePdfPreviewControll
       {!preview.current && !preview.pending && preview.status !== 'error' ? (
         <div className="grid h-full min-h-[760px] place-items-center bg-[#f8f6f7]">
           <div className="text-center text-[#756b72]">
-            <LoaderCircle className="mx-auto animate-spin text-[#087EA4]" size={28} />
+            <LoaderCircle className="mx-auto animate-spin text-[#bf301e]" size={28} />
             <p className="mt-3 text-sm">正在生成第一版 PDF…</p>
           </div>
         </div>
       ) : null}
 
       {preview.status === 'generating' || preview.status === 'loading' ? (
-        <div className="pointer-events-none absolute right-4 top-4 flex items-center gap-2 rounded-full border border-[#cfe5eb] bg-white/95 px-3 py-1.5 text-xs font-medium text-[#087EA4] shadow-sm">
+        <div className="pointer-events-none absolute right-4 top-4 flex items-center gap-2 rounded-full border border-[#ead8d4] bg-white/95 px-3 py-1.5 text-xs font-medium text-[#bf301e] shadow-sm">
           <LoaderCircle className="animate-spin" size={12} />
           正在更新 PDF
         </div>

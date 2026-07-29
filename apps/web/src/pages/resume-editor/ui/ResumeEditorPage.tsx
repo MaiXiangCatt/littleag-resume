@@ -306,13 +306,13 @@ export function ResumeEditorPage({
           <ArrowLeft size={19} />
         </Button>
         <div className="ml-3 flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-[#087EA4] font-serif text-lg font-bold text-white">
+          <span className="grid size-9 place-items-center rounded-xl bg-[#bf301e] font-serif text-lg font-bold text-white">
             R
           </span>
           <span className="font-serif text-lg font-semibold">LittleAgResume</span>
         </div>
         {mode === 'guest' ? (
-          <span className="ml-3 rounded-full border border-[#b9dce7] bg-[#eaf8fc] px-3 py-1 text-xs font-semibold text-[#087EA4]">
+          <span className="ml-3 rounded-full border border-[#e5bbb4] bg-[#fbeeea] px-3 py-1 text-xs font-semibold text-[#bf301e]">
             游客模式
           </span>
         ) : null}
@@ -374,7 +374,7 @@ export function ResumeEditorPage({
             立即保存
           </Button>
           <Button
-            className="bg-[#087EA4] px-5 hover:bg-[#066B8E]"
+            className="bg-[#bf301e] px-5 hover:bg-[#9f2718]"
             disabled={exporting}
             onClick={requestExport}
           >
@@ -403,7 +403,7 @@ export function ResumeEditorPage({
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="ml-1 flex items-center gap-2 rounded-full bg-[#eef7f9] px-3 py-2 text-xs font-medium text-[#41606b]">
+            <div className="ml-1 flex items-center gap-2 rounded-full bg-[#f9efec] px-3 py-2 text-xs font-medium text-[#77524c]">
               <HardDrive size={14} />
               仅存此浏览器
             </div>
@@ -1102,7 +1102,7 @@ function EditorLoading() {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f2eeef]">
       <div className="text-center">
-        <LoaderCircle className="mx-auto animate-spin text-[#087EA4]" size={30} />
+        <LoaderCircle className="mx-auto animate-spin text-[#bf301e]" size={30} />
         <p className="mt-3 text-sm text-[#756b72]">正在铺开你的简历工作台…</p>
       </div>
     </main>
@@ -1122,7 +1122,7 @@ function EditorFailure({
   return (
     <main className="grid min-h-screen place-items-center bg-[#f2eeef] p-6">
       <div className="max-w-md rounded-3xl bg-white p-8 text-center shadow-xl">
-        <Settings2 className="mx-auto text-[#087EA4]" size={30} />
+        <Settings2 className="mx-auto text-[#bf301e]" size={30} />
         <h1 className="mt-4 font-serif text-2xl font-semibold">编辑器暂时打不开</h1>
         <p className="mt-2 text-sm text-[#756b72]">{message}</p>
         <div className="mt-6 flex justify-center gap-2">
