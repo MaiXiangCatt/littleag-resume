@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useDeferredValue, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -7,6 +7,7 @@ import {
   Download,
   FileDown,
   FileUp,
+  HardDrive,
   LoaderCircle,
   Plus,
   Save,
@@ -38,6 +39,7 @@ import { Label } from '@/shared/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 
 import { useResumeEditor } from '../hooks/useResumeEditor';
+import type { ResumeEditorMode } from '../model/resume.editor';
 import {
   ACCENT_COLORS,
   BUILTIN_TITLES,
@@ -58,27 +60,45 @@ import type {
   ResumeSection,
   TemplateId,
 } from '../model/resume.types';
-import { resumeEditorService } from '../service/resume-editor.service';
 import { useResumeEditorStore } from '../store/resume-editor.store';
 import { AvatarCropDialog } from './AvatarCropDialog';
 import { ProfileEditor, SectionEditor } from './EditorForms';
+import { GuestPdfPreview } from './GuestPdfPreview';
 import { ResumeHtmlPreview } from './ResumeHtmlPreview';
 import { StructurePanel } from './StructurePanel';
 
-export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
+export function ResumeEditorPage({
+  resumeId,
+  mode = 'cloud',
+}: {
+  resumeId: string;
+  mode?: ResumeEditorMode;
+}) {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const document = useResumeEditorStore((state) => state.document);
   const error = useResumeEditorStore((state) => state.error);
   const isLoading = useResumeEditorStore((state) => state.isLoading);
   const saveStatus = useResumeEditorStore((state) => state.saveStatus);
-  const { edit, flushSave, load, overwriteServer, reloadServer, replaceImport } =
-    useResumeEditor(resumeId);
+  const {
+    avatarUrl,
+    deleteAvatar: removeAvatar,
+    durability,
+    edit,
+    exportPdf,
+    flushSave,
+    getAvatarDataUrl,
+    load,
+    overwrite,
+    pdfPreview,
+    reload,
+    replaceImport,
+    saveAvatar: persistAvatar,
+  } = useResumeEditor(resumeId, mode);
   const [activeId, setActiveId] = useState('profile');
   const [formatOpen, setFormatOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [customName, setCustomName] = useState('');
-  const [avatar, setAvatar] = useState<string | null>(null);
   const [cropSource, setCropSource] = useState<string | null>(null);
   const [pendingRemove, setPendingRemove] = useState<ResumeSection | null>(null);
   const [importEnvelope, setImportEnvelope] = useState<ResumeImportEnvelope | null>(null);
@@ -90,25 +110,8 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
   const avatarInput = useRef<HTMLInputElement>(null);
   const importInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!document?.hasAvatar) return;
-    let disposed = false;
-    void resumeEditorService
-      .getAvatar(document.id)
-      .then(blobToDataURL)
-      .then((value) => {
-        if (!disposed) setAvatar(value);
-      })
-      .catch(() => {
-        if (!disposed) setAvatar(null);
-      });
-    return () => {
-      disposed = true;
-    };
-  }, [document?.hasAvatar, document?.id]);
-
   const deferredDocument = useDeferredValue(document);
-  const visibleAvatar = document?.hasAvatar ? avatar : null;
+  const visibleAvatar = document?.hasAvatar ? avatarUrl : null;
   const activeSection =
     document?.content.sections.find((section) => section.id === activeId) ?? null;
 
@@ -120,14 +123,17 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
     }, immediate);
   }
 
-  function returnToConsole() {
+  function returnFromEditor() {
     if (
-      ['dirty', 'saving', 'failed', 'conflict'].includes(useResumeEditorStore.getState().saveStatus)
+      ['dirty', 'saving', 'failed', 'conflict'].includes(
+        useResumeEditorStore.getState().saveStatus,
+      ) ||
+      durability === 'volatile'
     ) {
       setExitConfirmationOpen(true);
       return;
     }
-    navigate('/console');
+    navigate(mode === 'guest' ? '/' : '/console');
   }
 
   function updateSection(section: ResumeSection, immediate = false) {
@@ -171,22 +177,18 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
   }
 
   async function saveAvatar(blob: Blob) {
-    if (!document) return;
-    const updated = await resumeEditorService.putAvatar(document.id, blob);
-    const state = useResumeEditorStore.getState();
-    state.mergeServerMetadata(updated);
-    setAvatar(await blobToDataURL(blob));
-    setCropSource(null);
-    toast.success('头像已更新');
+    try {
+      await persistAvatar(blob);
+      setCropSource(null);
+      toast.success(mode === 'guest' ? '头像已保存到本机' : '头像已更新');
+    } catch {
+      toast.error('头像保存失败，请稍后重试');
+    }
   }
 
   async function deleteAvatar() {
-    if (!document) return;
     try {
-      const updated = await resumeEditorService.deleteAvatar(document.id);
-      const state = useResumeEditorStore.getState();
-      state.mergeServerMetadata(updated);
-      setAvatar(null);
+      await removeAvatar();
       toast.success('头像已删除');
     } catch {
       toast.error('头像删除失败，请稍后重试');
@@ -209,21 +211,20 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
       await replaceImport(importEnvelope);
       setImportEnvelope(null);
       setActiveId('profile');
-      setAvatar(importEnvelope.avatar ?? null);
       toast.success('简历已导入');
     } catch {
       toast.error('导入失败，当前简历未被替换');
     }
   }
 
-  function exportJson() {
+  async function exportJson() {
     if (!document) return;
     const envelope: ResumeImportEnvelope = {
       version: 2,
       title: document.title,
       templateId: document.templateId,
       content: document.content,
-      avatar: visibleAvatar,
+      avatar: await getAvatarDataUrl(),
     };
     downloadBlob(
       new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' }),
@@ -238,14 +239,8 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
     setIssues(null);
     setExporting(true);
     try {
-      await flushSave();
-      downloadBlob(
-        await resumeEditorService.exportPdf(current.id),
-        `${safeFileName(current.title)}.pdf`,
-      );
+      downloadBlob(await exportPdf(), `${safeFileName(current.title)}.pdf`);
       downloaded = true;
-      const updated = await resumeEditorService.get(current.id);
-      useResumeEditorStore.getState().mergeServerMetadata(updated);
       const finalSaveStatus = useResumeEditorStore.getState().saveStatus;
       if (finalSaveStatus === 'failed' || finalSaveStatus === 'conflict') {
         toast.warning('PDF 已开始下载；当前修改仍未保存');
@@ -255,7 +250,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
     } catch (error) {
       if (downloaded) {
         toast.warning('PDF 已开始下载，但导出记录更新失败');
-      } else if (error instanceof ApiError && error.code === 106002) {
+      } else if (mode === 'cloud' && error instanceof ApiError && error.code === 106002) {
         toast.error('PDF 服务繁忙，请稍后重试');
       } else {
         toast.error('PDF 生成失败，请检查内容后重试');
@@ -293,23 +288,34 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
     return (
       <EditorFailure
         message={error ?? '无法加载简历'}
-        onBack={() => navigate('/console')}
+        onBack={() => navigate(mode === 'guest' ? '/' : '/console')}
         onRetry={() => void load()}
+        returnLabel={mode === 'guest' ? '返回首页' : '返回控制台'}
       />
     );
 
   return (
     <div className="min-w-[1240px] bg-[#f2eeef] text-[#251d23]">
       <header className="flex h-[72px] items-center border-b border-[#ded6da] bg-[#fffdfd] px-5 shadow-[0_1px_0_rgba(52,38,47,0.04)]">
-        <Button aria-label="返回控制台" onClick={returnToConsole} size="icon" variant="ghost">
+        <Button
+          aria-label={mode === 'guest' ? '返回首页' : '返回控制台'}
+          onClick={returnFromEditor}
+          size="icon"
+          variant="ghost"
+        >
           <ArrowLeft size={19} />
         </Button>
         <div className="ml-3 flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-[#087EA4] font-serif text-lg font-bold text-white">
+          <span className="grid size-9 place-items-center rounded-xl bg-[#bf301e] font-serif text-lg font-bold text-white">
             R
           </span>
           <span className="font-serif text-lg font-semibold">LittleAgResume</span>
         </div>
+        {mode === 'guest' ? (
+          <span className="ml-3 rounded-full border border-[#e5bbb4] bg-[#fbeeea] px-3 py-1 text-xs font-semibold text-[#bf301e]">
+            游客模式
+          </span>
+        ) : null}
         <div className="mx-5 h-7 w-px bg-[#e2dadd]" />
         <Input
           aria-label="简历标题"
@@ -321,7 +327,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
             })
           }
         />
-        <SaveBadge status={saveStatus} />
+        <SaveBadge durability={durability} mode={mode} status={saveStatus} />
         <div className="ml-auto flex items-center gap-2">
           <Button
             onClick={toggleComplete}
@@ -343,7 +349,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
                 <FileUp />
                 导入并覆盖
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportJson}>
+              <DropdownMenuItem onClick={() => void exportJson()}>
                 <FileDown />
                 导出 JSON
               </DropdownMenuItem>
@@ -368,7 +374,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
             立即保存
           </Button>
           <Button
-            className="bg-[#087EA4] px-5 hover:bg-[#066B8E]"
+            className="bg-[#bf301e] px-5 hover:bg-[#9f2718]"
             disabled={exporting}
             onClick={requestExport}
           >
@@ -379,25 +385,55 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
             )}
             {exporting ? '生成中…' : '导出 PDF'}
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label="账号菜单"
-                className="ml-1 rounded-full"
-                size="icon"
-                variant="ghost"
-              >
-                <UserRound size={18} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={returnToConsole}>我的控制台</DropdownMenuItem>
-              <DropdownMenuItem disabled>{user?.username ?? '当前账号'}</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {mode === 'cloud' ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-label="账号菜单"
+                  className="ml-1 rounded-full"
+                  size="icon"
+                  variant="ghost"
+                >
+                  <UserRound size={18} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={returnFromEditor}>我的控制台</DropdownMenuItem>
+                <DropdownMenuItem disabled>{user?.username ?? '当前账号'}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="ml-1 flex items-center gap-2 rounded-full bg-[#f9efec] px-3 py-2 text-xs font-medium text-[#77524c]">
+              <HardDrive size={14} />
+              仅存此浏览器
+            </div>
+          )}
         </div>
       </header>
-      <main className="grid h-[calc(100vh-72px)] grid-cols-[236px_minmax(430px,0.9fr)_minmax(520px,1.1fr)] overflow-hidden">
+      {durability === 'volatile' ? (
+        <div
+          className="flex h-10 items-center justify-center gap-2 border-b border-amber-200 bg-amber-50 px-5 text-sm font-medium text-amber-900"
+          role="alert"
+        >
+          <AlertTriangle size={15} />
+          浏览器无法写入本地存储；当前是临时会话，关闭页面后内容会丢失，请及时导出 JSON。
+          <Button
+            className="h-7 bg-white px-2.5"
+            onClick={() => void flushSave()}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            重试保存
+          </Button>
+        </div>
+      ) : null}
+      <main
+        className={cn(
+          'grid grid-cols-[236px_minmax(430px,0.9fr)_minmax(520px,1.1fr)] overflow-hidden',
+          durability === 'volatile' ? 'h-[calc(100vh-112px)]' : 'h-[calc(100vh-72px)]',
+        )}
+      >
         <StructurePanel
           activeId={activeId}
           onAdd={() => setAddOpen(true)}
@@ -440,8 +476,15 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
             }}
           />
         </section>
-        <section className="relative overflow-y-auto bg-[#d9d3d5] px-7 py-10">
-          {deferredDocument ? (
+        <section
+          className={cn(
+            'relative bg-[#d9d3d5] px-7 py-10',
+            mode === 'guest' ? 'overflow-hidden' : 'overflow-y-auto',
+          )}
+        >
+          {mode === 'guest' ? (
+            <GuestPdfPreview preview={pdfPreview} />
+          ) : deferredDocument ? (
             <ResumeHtmlPreview avatar={visibleAvatar} resume={deferredDocument} />
           ) : null}
         </section>
@@ -511,7 +554,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
         />
       ) : null}
       {saveStatus === 'conflict' ? (
-        <ConflictDialog onOverwrite={() => void overwriteServer()} onReload={reloadServer} />
+        <ConflictDialog mode={mode} onOverwrite={() => void overwrite()} onReload={reload} />
       ) : null}
       {issues ? (
         <IssuesDialog
@@ -528,7 +571,7 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
         <ConfirmDialog
           description="当前修改尚未安全保存，离开后会丢失这些内容。"
           onCancel={() => setExitConfirmationOpen(false)}
-          onConfirm={() => navigate('/console')}
+          onConfirm={() => navigate(mode === 'guest' ? '/' : '/console')}
           title="仍然离开编辑器？"
         />
       ) : null}
@@ -537,15 +580,19 @@ export function ResumeEditorPage({ resumeId }: { resumeId: string }) {
 }
 
 function SaveBadge({
+  durability,
+  mode,
   status,
 }: {
+  durability: ReturnType<typeof useResumeEditorStore.getState>['durability'];
+  mode: ResumeEditorMode;
   status: ReturnType<typeof useResumeEditorStore.getState>['saveStatus'];
 }) {
   const labels = {
     idle: '等待保存',
     dirty: '有未保存修改',
     saving: '保存中',
-    saved: '已保存',
+    saved: mode === 'guest' ? '已保存到本机' : '已保存',
     failed: '保存失败',
     conflict: '版本冲突',
   };
@@ -557,7 +604,7 @@ function SaveBadge({
       )}
     >
       {status === 'saving' ? <LoaderCircle className="animate-spin" size={12} /> : null}
-      {labels[status]}
+      {durability === 'volatile' ? '仅本次会话' : labels[status]}
     </span>
   );
 }
@@ -986,9 +1033,11 @@ function ConfirmDialog({
   );
 }
 function ConflictDialog({
+  mode,
   onOverwrite,
   onReload,
 }: {
+  mode: ResumeEditorMode;
   onOverwrite: () => void;
   onReload: () => void;
 }) {
@@ -997,11 +1046,13 @@ function ConflictDialog({
       <DialogContent className="rounded-2xl">
         <DialogTitle>检测到其他页面的更新</DialogTitle>
         <DialogDescription>
-          为了避免静默覆盖，请选择加载服务器内容，或明确使用当前页面内容覆盖。
+          {mode === 'guest'
+            ? '为了避免静默覆盖，请选择加载浏览器中的最新内容，或明确使用当前页面内容覆盖。'
+            : '为了避免静默覆盖，请选择加载服务器内容，或明确使用当前页面内容覆盖。'}
         </DialogDescription>
         <DialogFooter>
           <Button onClick={onReload} variant="outline">
-            加载服务器版本
+            {mode === 'guest' ? '加载浏览器版本' : '加载服务器版本'}
           </Button>
           <Button onClick={onOverwrite}>保留本地版本</Button>
         </DialogFooter>
@@ -1051,7 +1102,7 @@ function EditorLoading() {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f2eeef]">
       <div className="text-center">
-        <LoaderCircle className="mx-auto animate-spin text-[#087EA4]" size={30} />
+        <LoaderCircle className="mx-auto animate-spin text-[#bf301e]" size={30} />
         <p className="mt-3 text-sm text-[#756b72]">正在铺开你的简历工作台…</p>
       </div>
     </main>
@@ -1061,20 +1112,22 @@ function EditorFailure({
   message,
   onBack,
   onRetry,
+  returnLabel,
 }: {
   message: string;
   onBack: () => void;
   onRetry: () => void;
+  returnLabel: string;
 }) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f2eeef] p-6">
       <div className="max-w-md rounded-3xl bg-white p-8 text-center shadow-xl">
-        <Settings2 className="mx-auto text-[#087EA4]" size={30} />
+        <Settings2 className="mx-auto text-[#bf301e]" size={30} />
         <h1 className="mt-4 font-serif text-2xl font-semibold">编辑器暂时打不开</h1>
         <p className="mt-2 text-sm text-[#756b72]">{message}</p>
         <div className="mt-6 flex justify-center gap-2">
           <Button onClick={onBack} variant="outline">
-            返回控制台
+            {returnLabel}
           </Button>
           <Button onClick={onRetry}>重试</Button>
         </div>
@@ -1096,12 +1149,4 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 function safeFileName(value: string) {
   return value.trim().replace(/[\\/:*?"<>|]+/g, '-') || '未命名简历';
-}
-function blobToDataURL(blob: Blob) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
 }

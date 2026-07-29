@@ -122,6 +122,21 @@ describe('app auth flow integration', () => {
     expect(authServiceMock.logout).toHaveBeenCalledTimes(1);
   });
 
+  it('opens the local guest editor without an authenticated session or resume API calls', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    renderApp('/guest/edit');
+
+    expect(await screen.findByText('游客模式')).toBeInTheDocument();
+    expect(screen.getByText('仅存此浏览器')).toBeInTheDocument();
+    expect(screen.queryByLabelText('账号菜单')).not.toBeInTheDocument();
+    expect(fetchSpy.mock.calls.some(([input]) => String(input).includes('/api/resumes'))).toBe(
+      false,
+    );
+
+    fetchSpy.mockRestore();
+  });
+
   it('redirects authenticated home visits and protects console failures', async () => {
     useAuthStore.getState().setSession({
       accessToken: 'access-token',

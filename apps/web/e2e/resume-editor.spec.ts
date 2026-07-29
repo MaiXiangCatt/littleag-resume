@@ -35,7 +35,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     title,
     status: 'draft',
     revision,
-    hasAvatar: false,
+    hasAvatar: true,
     templateId,
     exportCount: 0,
     contentVersion: 2,
@@ -76,6 +76,13 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
       contentType: 'application/pdf',
       status: 200,
       body: '%PDF-1.7 mocked export',
+    });
+  });
+  await page.route(`**/api/resumes/${resumeId}/avatar`, async (route) => {
+    await route.fulfill({
+      contentType: 'image/png',
+      path: 'src/pages/home/assets/hero.png',
+      status: 200,
     });
   });
 
@@ -122,6 +129,13 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   await page.getByRole('button', { name: '完成' }).click();
   await expect.poll(() => templateId, { timeout: 5000 }).toBe('classic-professional');
   await expect(preview).toHaveAttribute('data-template', 'classic-professional');
+  await expect(preview.locator('header img')).toBeVisible();
+  const previewBox = await preview.boundingBox();
+  const nameBox = await preview.getByRole('heading', { name: '林清清' }).boundingBox();
+  if (!previewBox || !nameBox) throw new Error('经典模板预览未生成可测量的布局');
+  const previewCenter = previewBox.x + previewBox.width / 2;
+  const nameCenter = nameBox.x + nameBox.width / 2;
+  expect(Math.abs(nameCenter - previewCenter)).toBeLessThan(1);
   await page.screenshot({ path: 'test-results/resume-editor-classic-desktop.png', fullPage: true });
 
   const classicDownload = page.waitForEvent('download');

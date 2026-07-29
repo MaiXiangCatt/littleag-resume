@@ -11,15 +11,18 @@ type AppHeaderProps = {
 export function AppHeader({ actions, currentUser }: AppHeaderProps) {
   return (
     <header
-      className="sticky top-0 z-30 border-b border-[#cfe5eb]/90 bg-[#f4fbfd]/90 backdrop-blur"
+      className="sticky top-0 z-30 border-b border-[#ead8d4]/90 bg-[#fdf8f6]/90 backdrop-blur"
       role="banner"
     >
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link className="text-lg font-semibold tracking-[-0.025em] no-underline" href="/">
-          LittleAg<span className="text-[#087EA4]">Resume</span>
+        <Link
+          className="text-base font-semibold tracking-[-0.025em] no-underline sm:text-lg"
+          href="/"
+        >
+          LittleAg<span className="text-[#bf301e]">Resume</span>
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {currentUser ? (
             <div className="rounded-md border border-slate-200 px-3 py-1.5 text-right">
               <p className="text-sm font-medium leading-none text-slate-950">
