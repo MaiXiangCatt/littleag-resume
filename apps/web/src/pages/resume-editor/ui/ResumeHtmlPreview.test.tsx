@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createDefaultContent } from '../model/resume.model';
-import { RESUME_PHOTO_SPEC } from '../model/resume.presentation';
+import { createResumePresentation, RESUME_PHOTO_SPEC } from '../model/resume.presentation';
 import type { ResumeDocument } from '../model/resume.types';
 import { ResumeHtmlPreview } from './ResumeHtmlPreview';
 
@@ -163,6 +163,8 @@ describe('ResumeHtmlPreview', () => {
 
     const photo = container.querySelector('header img');
     const header = container.querySelector('header');
+    const identity = screen.getByRole('heading', { name: '林清清' }).parentElement;
+    const presentation = createResumePresentation(resume.content.formatting, true);
 
     expect(photo).toBeInTheDocument();
     expect(
@@ -172,9 +174,17 @@ describe('ResumeHtmlPreview', () => {
     expect(photo).toHaveClass('object-contain');
     expect(photo).not.toHaveClass('rounded-full');
     expect(header).not.toHaveClass('border-b');
-    expect(screen.getByText('求职意向：前端开发工程师').parentElement).toHaveStyle({
+    expect(header).toHaveClass('relative');
+    expect(header).toHaveStyle({
+      minHeight: `${presentation.photoHeightPx + presentation.headerPaddingBottomPx}px`,
+    });
+    expect(identity).toHaveClass('w-full');
+    expect(identity).toHaveStyle({
+      paddingLeft: `${presentation.profileAvatarInsetPx}px`,
+      paddingRight: `${presentation.profileAvatarInsetPx}px`,
       textAlign: 'center',
     });
+    expect(photo).toHaveClass('absolute', 'right-0', 'top-0');
   });
 
   it('uses the printable page content width instead of overflowing the A4 margins', () => {

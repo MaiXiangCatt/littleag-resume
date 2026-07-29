@@ -31,6 +31,7 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   const isClassic = resume.templateId === 'classic-professional';
   const accent = resolveAccentColor(formatting.accentColor);
   const presentation = createResumePresentation(formatting, isClassic);
+  const hasCenteredAvatar = isClassic && Boolean(avatar);
   const style = {
     '--resume-accent': accent,
     ...(isPrint ? {} : { containerType: 'inline-size' }),
@@ -76,12 +77,26 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
           <header
             className={cn(
               'flex',
-              avatar ? 'flex-row items-start justify-between' : 'flex-col',
+              hasCenteredAvatar && 'relative flex-col',
+              avatar && !hasCenteredAvatar && 'flex-row items-start justify-between',
+              !avatar && 'flex-col',
               isClassic ? 'text-center' : 'text-left',
             )}
-            style={{ paddingBottom: presentation.headerPaddingBottomPx }}
+            style={{
+              minHeight: hasCenteredAvatar
+                ? presentation.photoHeightPx + presentation.headerPaddingBottomPx
+                : undefined,
+              paddingBottom: presentation.headerPaddingBottomPx,
+            }}
           >
-            <div className="min-w-0 flex-1" style={{ textAlign: presentation.profileTextAlign }}>
+            <div
+              className={cn('min-w-0', hasCenteredAvatar ? 'w-full' : 'flex-1')}
+              style={{
+                paddingLeft: hasCenteredAvatar ? presentation.profileAvatarInsetPx : undefined,
+                paddingRight: hasCenteredAvatar ? presentation.profileAvatarInsetPx : undefined,
+                textAlign: presentation.profileTextAlign,
+              }}
+            >
               {profile.fullName ? (
                 <h1
                   className="font-bold"
@@ -137,11 +152,14 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
             {avatar ? (
               <img
                 alt=""
-                className="shrink-0 object-contain"
+                className={cn(
+                  'shrink-0 object-contain',
+                  hasCenteredAvatar && 'absolute right-0 top-0',
+                )}
                 src={avatar}
                 style={{
                   height: presentation.photoHeightPx,
-                  marginLeft: presentation.photoGapPx,
+                  marginLeft: hasCenteredAvatar ? undefined : presentation.photoGapPx,
                   width: presentation.photoWidthPx,
                 }}
               />

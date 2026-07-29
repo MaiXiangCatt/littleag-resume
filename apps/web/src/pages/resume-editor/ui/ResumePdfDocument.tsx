@@ -41,6 +41,7 @@ export function ResumePdfDocument({
   const formatting = resume.content.formatting;
   const base = pxToPt(formatting.bodyFontSizePx);
   const presentation = createResumePresentation(formatting, isClassic);
+  const hasCenteredAvatar = isClassic && Boolean(avatar);
   const styles = StyleSheet.create({
     page: {
       backgroundColor: '#ffffff',
@@ -54,12 +55,25 @@ export function ResumePdfDocument({
       paddingTop: pxToPt(formatting.pageMarginPx.top),
     },
     header: {
-      alignItems: avatar ? 'flex-start' : 'stretch',
-      flexDirection: avatar ? 'row' : 'column',
-      justifyContent: avatar ? 'space-between' : 'flex-start',
+      alignItems: avatar && !hasCenteredAvatar ? 'flex-start' : 'stretch',
+      flexDirection: avatar && !hasCenteredAvatar ? 'row' : 'column',
+      justifyContent: avatar && !hasCenteredAvatar ? 'space-between' : 'flex-start',
+      minHeight: hasCenteredAvatar
+        ? pxToPt(presentation.photoHeightPx + presentation.headerPaddingBottomPx)
+        : undefined,
       paddingBottom: pxToPt(presentation.headerPaddingBottomPx),
+      position: hasCenteredAvatar ? 'relative' : 'static',
     },
-    identity: avatar ? { flexBasis: 0, flexGrow: 1 } : {},
+    identity: {
+      ...(hasCenteredAvatar
+        ? {
+            paddingLeft: pxToPt(presentation.profileAvatarInsetPx),
+            paddingRight: pxToPt(presentation.profileAvatarInsetPx),
+            width: '100%',
+          }
+        : {}),
+      ...(avatar && !hasCenteredAvatar ? { flexBasis: 0, flexGrow: 1 } : {}),
+    },
     name: {
       color: isClassic ? '#202027' : accent,
       fontSize: pxToPt(formatting.nameFontSizePx),
@@ -86,8 +100,10 @@ export function ResumePdfDocument({
     },
     avatar: {
       height: pxToPt(presentation.photoHeightPx),
-      marginLeft: pxToPt(presentation.photoGapPx),
       objectFit: 'contain',
+      ...(hasCenteredAvatar
+        ? { position: 'absolute' as const, right: 0, top: 0 }
+        : { marginLeft: pxToPt(presentation.photoGapPx) }),
       width: pxToPt(presentation.photoWidthPx),
     },
     section: { marginTop: pxToPt(formatting.sectionGapPx) },

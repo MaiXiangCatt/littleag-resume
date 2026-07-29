@@ -40,7 +40,17 @@ test('guest resume persists locally, refreshes PDF preview and downloads the cur
   const sansPreviewSource = await page
     .locator('iframe[title^="游客 PDF 预览"]:visible')
     .getAttribute('src');
+  await page
+    .locator('input[type="file"][accept="image/jpeg,image/png,image/webp"]')
+    .setInputFiles('src/pages/home/assets/hero.png');
+  const cropDialog = page.getByRole('dialog', { name: '裁剪简历头像' });
+  await expect(cropDialog).toBeVisible();
+  await cropDialog.getByRole('button', { name: '确认头像' }).click();
+  await expect(cropDialog).not.toBeVisible();
+
   await page.getByRole('button', { name: '排版设置' }).click();
+  await page.getByRole('combobox', { name: '模板' }).click();
+  await page.getByRole('option', { name: '经典专业' }).click();
   await page.getByRole('combobox', { name: '字体' }).click();
   await page.getByRole('option', { name: '思源宋体' }).click();
   await page.getByRole('button', { name: '完成' }).click();
