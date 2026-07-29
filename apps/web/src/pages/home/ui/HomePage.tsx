@@ -1,12 +1,9 @@
-import { Eye, LogIn, Rocket, UserRoundSearch } from 'lucide-react';
-import { useRef } from 'react';
+import { LogIn, Rocket, UserRoundSearch } from 'lucide-react';
 
 import type { AuthUser } from '@/shared/auth/model/auth';
 import { AppHeader } from '@/shared/layout/AppHeader';
 import { Button } from '@/shared/ui/button';
 
-import { ExamplePreview } from './components/ExamplePreview/ExamplePreview';
-import { FeaturesSection } from './components/FeaturesSection/FeaturesSection';
 import { Footer } from './components/Footer/Footer';
 import { HeroSection } from './components/HeroSection/HeroSection';
 
@@ -23,17 +20,8 @@ export function HomePage({
   onGuest,
   onLogin,
   onRegister,
-  onViewExample,
 }: HomePageProps) {
-  const exampleRef = useRef<HTMLElement>(null);
 
-  function viewExample() {
-    onViewExample();
-    exampleRef.current?.focus();
-    if (typeof exampleRef.current?.scrollIntoView === 'function') {
-      exampleRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }
 
   return (
     <div
@@ -75,20 +63,9 @@ export function HomePage({
         currentUser={currentUser}
       />
       <main>
-        <HeroSection onRegister={onRegister} onViewExample={viewExample} />
-        <ExamplePreview ref={exampleRef} />
-        <FeaturesSection />
+        <HeroSection onRegister={onRegister} />
       </main>
       <Footer />
     </div>
-  );
-}
-
-export function ViewExampleButton({ onClick }: { onClick: () => void }) {
-  return (
-    <Button onClick={onClick} size="lg" type="button" variant="outline">
-      <Eye aria-hidden="true" size={17} />
-      查看示例
-    </Button>
   );
 }

@@ -6,7 +6,7 @@ export function Footer() {
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-semibold">LittleAgResume</p>
-        <p>把每一页认真写过的经历，准确地交付出去。</p>
+        <p>一个用爱发电的开源项目</p>
       </div>
     </footer>
   );
