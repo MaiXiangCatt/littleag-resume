@@ -20,7 +20,9 @@ test-results
 .codex
 .claude
 .agents
-docs
+docs/*
+!docs/legal/
+!docs/legal/**
 openspec
 skills
 *.log

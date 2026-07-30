@@ -7,6 +7,7 @@ COPY apps/web/package.json apps/web/
 COPY packages/vega-cli/package.json packages/vega-cli/
 RUN pnpm install --frozen-lockfile --filter web
 COPY contracts/ contracts/
+COPY docs/legal/ docs/legal/
 COPY apps/web/ apps/web/
 RUN pnpm --filter web build
 
