@@ -54,6 +54,46 @@ describe('AuthModal', () => {
     expect(authServiceMock.register).not.toHaveBeenCalled();
   });
 
+  it('requires both agreements before sending a registration code', async () => {
+    const user = userEvent.setup();
+    render(
+      <AuthModal defaultMode="register" onAuthenticated={vi.fn()} onOpenChange={vi.fn()} open />,
+    );
+
+    expect(screen.getByRole('link', { name: '《用户服务协议及内容规则》' })).toHaveAttribute(
+      'href',
+      '/legal/terms',
+    );
+    expect(screen.getByRole('link', { name: '《隐私政策》' })).toHaveAttribute(
+      'href',
+      '/legal/privacy',
+    );
+    expect(screen.getByRole('link', { name: '《个人信息跨境处理说明》' })).toHaveAttribute(
+      'href',
+      '/legal/cross-border',
+    );
+
+    await user.type(screen.getByLabelText('邮箱'), 'user@example.com');
+    await user.click(screen.getByRole('button', { name: '发送验证码' }));
+
+    expect(await screen.findByText('请先阅读并勾选两项协议')).toBeInTheDocument();
+    expect(authServiceMock.sendRegistrationEmailVerification).not.toHaveBeenCalled();
+
+    await acceptRegistrationAgreements(user);
+    authServiceMock.sendRegistrationEmailVerification.mockResolvedValueOnce({
+      email: 'user@example.com',
+      expiresInSeconds: 600,
+      resendAfterSeconds: 60,
+    });
+    await user.click(screen.getByRole('button', { name: '发送验证码' }));
+
+    await waitFor(() =>
+      expect(authServiceMock.sendRegistrationEmailVerification).toHaveBeenCalledWith(
+        'user@example.com',
+      ),
+    );
+  });
+
   it('maps backend error codes and prevents duplicate submit while loading', async () => {
     const user = userEvent.setup();
     let rejectSend: (error: unknown) => void = () => {};
@@ -68,6 +108,7 @@ describe('AuthModal', () => {
     );
 
     await user.type(screen.getByLabelText('邮箱'), 'user@example.com');
+    await acceptRegistrationAgreements(user);
     await user.click(screen.getByRole('button', { name: '发送验证码' }));
     await user.click(await screen.findByRole('button', { name: '发送中…' }));
 
@@ -138,6 +179,7 @@ describe('AuthModal', () => {
     );
 
     await user.type(screen.getByLabelText('邮箱'), 'user@example.com');
+    await acceptRegistrationAgreements(user);
     await user.click(screen.getByRole('button', { name: '发送验证码' }));
 
     expect(await screen.findByText(/验证码已发送至/)).toBeInTheDocument();
@@ -188,3 +230,8 @@ describe('AuthModal', () => {
     );
   });
 });
+
+async function acceptRegistrationAgreements(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('checkbox', { name: '同意用户服务协议及内容规则和隐私政策' }));
+  await user.click(screen.getByRole('checkbox', { name: '单独同意个人信息跨境处理说明' }));
+}
