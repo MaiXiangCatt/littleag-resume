@@ -1,13 +1,14 @@
-import { Rocket } from 'lucide-react';
+import { Rocket, UserRoundSearch } from 'lucide-react';
 
 // import example from '@/pages/home/assets/example.png';
 import { Button } from '@/shared/ui/button';
 
 type HeroSectionProps = {
   onRegister: () => void;
+  onGuest: () => void;
 };
 
-export function HeroSection({ onRegister }: HeroSectionProps) {
+export function HeroSection({ onRegister, onGuest }: HeroSectionProps) {
   return (
     <section className="mx-auto grid min-h-[calc(100vh-64px)] max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr]">
       <div>
@@ -23,6 +24,10 @@ export function HeroSection({ onRegister }: HeroSectionProps) {
           <Button onClick={onRegister} size="lg" type="button">
             <Rocket aria-hidden="true" size={17} />
             免费开始
+          </Button>
+          <Button onClick={onGuest} size="lg" type="button" variant="outline">
+            <UserRoundSearch aria-hidden="true" size={17} />
+            游客模式
           </Button>
         </div>
       </div>

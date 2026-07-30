@@ -6,9 +6,12 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface SendRegistrationEmailVerificationRequest {
-  /** @maxLength 254 */
-  email: string;
-  /** @maxLength 64 */
-  invitationCode?: string;
+export interface InvitationCodePayload {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  invitationCode: string;
+  /** @minimum 1 */
+  expiresInSeconds: number;
 }

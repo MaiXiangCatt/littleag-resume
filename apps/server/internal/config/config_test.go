@@ -163,6 +163,132 @@ func TestLoadFromRejectsInvalidDatabasePasswordFile(t *testing.T) {
 	}
 }
 
+func TestLoadFromLoadsAndValidatesInvitationChallenges(t *testing.T) {
+	setMinimalConfigEnvironment(t)
+	challengesPath := filepath.Join(t.TempDir(), "challenges.json")
+	if err := os.WriteFile(challengesPath, []byte(`{
+		"challenges": [
+			{"id":"first","prompt":"山色有无中，","answer":"不如就春风"},
+			{"id":"second","prompt":"异次临倾，","answer":"步步唯银"}
+		]
+	}`), 0o600); err != nil {
+		t.Fatalf("write challenges: %v", err)
+	}
+	t.Setenv("REGISTRATION_MODE", "invite")
+	t.Setenv("INVITATION_CHALLENGES_FILE", challengesPath)
+
+	cfg, err := LoadFrom(filepath.Join(t.TempDir(), "missing.env"))
+	if err != nil {
+		t.Fatalf("load invite config: %v", err)
+	}
+	if cfg.RegistrationMode != "invite" || len(cfg.InvitationChallenges) != 2 {
+		t.Fatalf("unexpected invitation config: %+v", cfg.InvitationChallenges)
+	}
+}
+
+func TestLoadFromRejectsInvalidInvitationConfiguration(t *testing.T) {
+	testCases := []struct {
+		name     string
+		contents string
+		want     string
+	}{
+		{name: "malformed", contents: `{`, want: "decode invitation challenges"},
+		{
+			name:     "unknown field",
+			contents: `{"challenges":[{"id":"first","prompt":"a","answer":"b","hint":"c"}]}`,
+			want:     "unknown field",
+		},
+		{name: "empty", contents: `{"challenges":[]}`, want: "at least one challenge"},
+		{
+			name: "duplicate id",
+			contents: `{"challenges":[
+				{"id":"same","prompt":"a","answer":"b"},
+				{"id":"same","prompt":"c","answer":"d"}
+			]}`,
+			want: "duplicated",
+		},
+		{
+			name:     "missing field",
+			contents: `{"challenges":[{"id":"first","prompt":"","answer":"b"}]}`,
+			want:     "non-empty",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			setMinimalConfigEnvironment(t)
+			challengesPath := filepath.Join(t.TempDir(), "challenges.json")
+			if err := os.WriteFile(challengesPath, []byte(testCase.contents), 0o600); err != nil {
+				t.Fatalf("write challenges: %v", err)
+			}
+			t.Setenv("REGISTRATION_MODE", "invite")
+			t.Setenv("INVITATION_CHALLENGES_FILE", challengesPath)
+
+			_, err := LoadFrom(filepath.Join(t.TempDir(), "missing.env"))
+			if err == nil || !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("expected %q error, got %v", testCase.want, err)
+			}
+		})
+	}
+}
+
+func TestLoadFromRegistrationModes(t *testing.T) {
+	t.Run("invite requires challenge file", func(t *testing.T) {
+		setMinimalConfigEnvironment(t)
+		t.Setenv("REGISTRATION_MODE", "invite")
+		withoutEnvironment(t, "INVITATION_CHALLENGES_FILE")
+		_, err := LoadFrom(filepath.Join(t.TempDir(), "missing.env"))
+		if err == nil || !strings.Contains(err.Error(), "INVITATION_CHALLENGES_FILE") {
+			t.Fatalf("expected missing challenge file error, got %v", err)
+		}
+	})
+
+	t.Run("open uses bundled examples", func(t *testing.T) {
+		setMinimalConfigEnvironment(t)
+		t.Setenv("REGISTRATION_MODE", "open")
+		withoutEnvironment(t, "INVITATION_CHALLENGES_FILE")
+		cfg, err := LoadFrom(filepath.Join(t.TempDir(), "missing.env"))
+		if err != nil {
+			t.Fatalf("load open config: %v", err)
+		}
+		if len(cfg.InvitationChallenges) != 2 ||
+			cfg.InvitationChallenges[1].Answer != "步步唯银" {
+			t.Fatalf("unexpected bundled challenges: %+v", cfg.InvitationChallenges)
+		}
+	})
+
+	t.Run("closed has no default challenge", func(t *testing.T) {
+		setMinimalConfigEnvironment(t)
+		t.Setenv("REGISTRATION_MODE", "closed")
+		withoutEnvironment(t, "INVITATION_CHALLENGES_FILE")
+		cfg, err := LoadFrom(filepath.Join(t.TempDir(), "missing.env"))
+		if err != nil {
+			t.Fatalf("load closed config: %v", err)
+		}
+		if len(cfg.InvitationChallenges) != 0 {
+			t.Fatalf("closed mode should not load default challenges")
+		}
+	})
+
+	t.Run("unknown mode is rejected", func(t *testing.T) {
+		setMinimalConfigEnvironment(t)
+		t.Setenv("REGISTRATION_MODE", "friends")
+		_, err := LoadFrom(filepath.Join(t.TempDir(), "missing.env"))
+		if err == nil || !strings.Contains(err.Error(), "REGISTRATION_MODE") {
+			t.Fatalf("expected mode validation error, got %v", err)
+		}
+	})
+}
+
+func setMinimalConfigEnvironment(t *testing.T) {
+	t.Helper()
+	t.Setenv("ACCESS_TOKEN_KEY", "test-access-token-key-with-enough-length")
+	t.Setenv("EMAIL_VERIFICATION_KEY", "test-email-verification-key-with-enough-length")
+	t.Setenv("EMAIL_PROVIDER", "console")
+	withoutEnvironment(t, "DATABASE_PASSWORD_FILE")
+	withoutEnvironment(t, "DATABASE_URL")
+}
+
 func withoutEnvironment(t *testing.T, key string) {
 	t.Helper()
 	value, existed := os.LookupEnv(key)

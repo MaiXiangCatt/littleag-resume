@@ -17,6 +17,7 @@ type MemoryStore struct {
 	users                       map[uuid.UUID]*model.User
 	emailVerificationChallenges map[uuid.UUID]*model.EmailVerificationChallenge
 	registrationVerifications   map[uuid.UUID]*model.RegistrationEmailVerification
+	registrationInvitations     map[uuid.UUID]*model.RegistrationInvitation
 	refreshTokens               map[uuid.UUID]*model.RefreshToken
 	resumes                     map[uuid.UUID]*model.Resume
 }
@@ -26,6 +27,7 @@ func NewMemoryStore() *MemoryStore {
 		users:                       map[uuid.UUID]*model.User{},
 		emailVerificationChallenges: map[uuid.UUID]*model.EmailVerificationChallenge{},
 		registrationVerifications:   map[uuid.UUID]*model.RegistrationEmailVerification{},
+		registrationInvitations:     map[uuid.UUID]*model.RegistrationInvitation{},
 		refreshTokens:               map[uuid.UUID]*model.RefreshToken{},
 		resumes:                     map[uuid.UUID]*model.Resume{},
 	}
@@ -458,6 +460,7 @@ func (s *MemoryStore) InvalidateRegistrationEmailVerification(
 func (s *MemoryStore) CreateVerifiedUser(
 	_ context.Context,
 	challengeID uuid.UUID,
+	invitationID *uuid.UUID,
 	user *model.User,
 	consumedAt time.Time,
 ) error {
@@ -471,6 +474,14 @@ func (s *MemoryStore) CreateVerifiedUser(
 		challenge.InvalidatedAt != nil ||
 		!challenge.ExpiresAt.After(consumedAt) {
 		return ErrNotFound
+	}
+	var invitation *model.RegistrationInvitation
+	if invitationID != nil {
+		candidate, exists := s.registrationInvitations[*invitationID]
+		if !exists || candidate.ConsumedAt != nil || !candidate.ExpiresAt.After(consumedAt) {
+			return ErrInvitationInvalid
+		}
+		invitation = candidate
 	}
 	for _, existing := range s.users {
 		if existing.DeletedAt != nil {
@@ -486,7 +497,46 @@ func (s *MemoryStore) CreateVerifiedUser(
 	copy := *user
 	s.users[copy.ID] = &copy
 	challenge.ConsumedAt = &consumedAt
+	if invitation != nil {
+		invitation.ConsumedAt = &consumedAt
+	}
 	return nil
+}
+
+func (s *MemoryStore) CreateRegistrationInvitation(
+	_ context.Context,
+	invitation *model.RegistrationInvitation,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, existing := range s.registrationInvitations {
+		if existing.CodeHash == invitation.CodeHash {
+			return ErrConflict
+		}
+	}
+	copy := *invitation
+	s.registrationInvitations[copy.ID] = &copy
+	return nil
+}
+
+func (s *MemoryStore) FindActiveRegistrationInvitationByCodeHash(
+	_ context.Context,
+	codeHash string,
+	now time.Time,
+) (*model.RegistrationInvitation, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, invitation := range s.registrationInvitations {
+		if invitation.CodeHash == codeHash &&
+			invitation.ConsumedAt == nil &&
+			invitation.ExpiresAt.After(now) {
+			copy := *invitation
+			return &copy, nil
+		}
+	}
+	return nil, ErrNotFound
 }
 
 func (s *MemoryStore) CreateRefreshToken(_ context.Context, token *model.RefreshToken) error {

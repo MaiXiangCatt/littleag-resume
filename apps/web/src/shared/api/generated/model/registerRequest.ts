@@ -27,4 +27,6 @@ export interface RegisterRequest {
   confirmPassword: string;
   /** @pattern ^[0-9]{6}$ */
   verificationCode: string;
+  /** @maxLength 64 */
+  invitationCode?: string;
 }

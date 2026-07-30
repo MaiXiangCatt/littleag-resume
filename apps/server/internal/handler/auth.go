@@ -20,11 +20,58 @@ const (
 
 type AuthHandler struct {
 	auth          *service.AuthService
+	invitations   *service.InvitationService
 	secureCookies bool
 }
 
-func NewAuthHandler(auth *service.AuthService, secureCookies bool) *AuthHandler {
-	return &AuthHandler{auth: auth, secureCookies: secureCookies}
+func NewAuthHandler(
+	auth *service.AuthService,
+	invitations *service.InvitationService,
+	secureCookies bool,
+) *AuthHandler {
+	return &AuthHandler{auth: auth, invitations: invitations, secureCookies: secureCookies}
+}
+
+func (h *AuthHandler) GetAuthRegistrationPolicy(c *gin.Context) {
+	policy := h.invitations.Policy()
+	c.JSON(http.StatusOK, model.OK(generated.RegistrationPolicyPayload{
+		ChallengeAvailable: policy.ChallengeAvailable,
+		Mode:               generated.RegistrationMode(policy.Mode),
+	}))
+}
+
+func (h *AuthHandler) GetAuthInvitationChallenge(c *gin.Context) {
+	payload, err := h.invitations.RandomChallenge()
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, model.OK(generated.InvitationChallengePayload{
+		ChallengeId: payload.ChallengeID,
+		Prompt:      payload.Prompt,
+	}))
+}
+
+func (h *AuthHandler) AnswerAuthInvitationChallenge(c *gin.Context) {
+	var body generated.AnswerAuthInvitationChallengeJSONRequestBody
+	if err := bindJSONWithLimit(c, &body, maxAuthBodyBytes); err != nil {
+		writeError(c, model.ErrInvalidParam)
+		return
+	}
+	payload, err := h.invitations.AnswerChallenge(
+		c.Request.Context(),
+		c.ClientIP(),
+		body.ChallengeId,
+		body.Answer,
+	)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, model.OK(generated.InvitationCodePayload{
+		ExpiresInSeconds: int(payload.ExpiresIn / time.Second),
+		InvitationCode:   payload.InvitationCode,
+	}))
 }
 
 func (h *AuthHandler) RegisterAuthUser(c *gin.Context) {
@@ -40,6 +87,7 @@ func (h *AuthHandler) RegisterAuthUser(c *gin.Context) {
 		Password:         body.Password,
 		ConfirmPassword:  body.ConfirmPassword,
 		VerificationCode: body.VerificationCode,
+		InvitationCode:   stringValue(body.InvitationCode),
 	})
 	if err != nil {
 		writeError(c, err)
@@ -58,12 +106,20 @@ func (h *AuthHandler) SendAuthRegistrationEmailVerification(c *gin.Context) {
 	payload, err := h.auth.SendRegistrationEmailVerification(
 		c.Request.Context(),
 		string(body.Email),
+		stringValue(body.InvitationCode),
 	)
 	if err != nil {
 		writeError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, model.OK(payload))
+}
+
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (h *AuthHandler) ConfirmAuthEmailVerification(c *gin.Context) {

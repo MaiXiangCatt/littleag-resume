@@ -1,5 +1,8 @@
 import {
+  answerAuthInvitationChallenge,
   confirmAuthEmailVerification,
+  getAuthInvitationChallenge,
+  getAuthRegistrationPolicy,
   getCurrentAuthUser,
   loginAuthUser,
   logoutAuthUser,
@@ -15,6 +18,9 @@ import type {
   EmailVerificationFormValues,
   LoginFormValues,
   RegisterFormValues,
+  InvitationChallenge,
+  InvitationCode,
+  RegistrationPolicy,
 } from '@/shared/auth/model/auth';
 import { ApiError, httpRequest, refreshSession } from '@/shared/http/http.client';
 
@@ -35,18 +41,34 @@ function unwrap<T>(response: GeneratedResponse<T>) {
 }
 
 export const authService = {
+  async getRegistrationPolicy() {
+    return unwrap(await getAuthRegistrationPolicy()) as RegistrationPolicy;
+  },
+
+  async getInvitationChallenge() {
+    return unwrap(await getAuthInvitationChallenge()) as InvitationChallenge;
+  },
+
+  async answerInvitationChallenge(challengeId: string, answer: string) {
+    return unwrap(await answerAuthInvitationChallenge({ challengeId, answer })) as InvitationCode;
+  },
+
   async register(values: RegisterFormValues) {
+    const request = {
+      ...values,
+      invitationCode: values.invitationCode || undefined,
+    };
     return unwrap(
-      await registerAuthUser(values, {
+      await registerAuthUser(request, {
         credentials: 'include',
       }),
     ) as AuthSession;
   },
 
-  async sendRegistrationEmailVerification(email: string) {
+  async sendRegistrationEmailVerification(email: string, invitationCode?: string) {
     return unwrap(
       await sendAuthRegistrationEmailVerification(
-        { email },
+        { email, invitationCode: invitationCode || undefined },
         {
           credentials: 'include',
         },

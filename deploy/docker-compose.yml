@@ -50,9 +50,12 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY in .env.prod or environment}
       MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in .env.prod or environment}
       LOGIN_FAILURE_CAPACITY: ${LOGIN_FAILURE_CAPACITY:-10000}
+      REGISTRATION_MODE: ${REGISTRATION_MODE:-invite}
+      INVITATION_CHALLENGES_FILE: /run/secrets/invitation_challenges
       PDF_MAX_QUEUE: ${PDF_MAX_QUEUE:-8}
     secrets:
       - postgres_password
+      - invitation_challenges
     volumes:
       - avatars:/data/avatars
     depends_on:
@@ -78,3 +81,5 @@ volumes:
 secrets:
   postgres_password:
     file: ${POSTGRES_PASSWORD_FILE:-../.secrets/postgres_password}
+  invitation_challenges:
+    file: ${INVITATION_CHALLENGES_HOST_FILE:-../.secrets/invitation-challenges.json}

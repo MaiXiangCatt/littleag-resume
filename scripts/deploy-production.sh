@@ -35,6 +35,30 @@ if [[ ! -f "${env_file}" ]]; then
   echo "Missing production environment file: ${env_file}" >&2
   exit 2
 fi
+invitation_challenges_file="${INVITATION_CHALLENGES_HOST_FILE:-}"
+if [[ -z "${invitation_challenges_file}" ]]; then
+  invitation_challenges_file="$(
+    awk -F= '$1 == "INVITATION_CHALLENGES_HOST_FILE" {
+      sub(/^[^=]*=/, "")
+      print
+      exit
+    }' "${env_file}"
+  )"
+  invitation_challenges_file="${invitation_challenges_file%$'\r'}"
+  invitation_challenges_file="${invitation_challenges_file#\"}"
+  invitation_challenges_file="${invitation_challenges_file%\"}"
+  invitation_challenges_file="${invitation_challenges_file#\'}"
+  invitation_challenges_file="${invitation_challenges_file%\'}"
+fi
+invitation_challenges_file="${invitation_challenges_file:-${repo_dir}/.secrets/invitation-challenges.json}"
+if [[ "${invitation_challenges_file}" != /* ]]; then
+  invitation_challenges_file="${repo_dir}/deploy/${invitation_challenges_file}"
+fi
+if [[ ! -f "${invitation_challenges_file}" ]]; then
+  echo "Missing invitation challenges file: ${invitation_challenges_file}" >&2
+  echo "Create .secrets/invitation-challenges.json before deploying." >&2
+  exit 2
+fi
 
 mkdir -p "${state_dir}"
 previous_tag=""

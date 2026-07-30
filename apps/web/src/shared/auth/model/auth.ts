@@ -18,6 +18,23 @@ export type EmailVerification = {
   resendAfterSeconds: number;
 };
 
+export type RegistrationMode = 'open' | 'invite' | 'closed';
+
+export type RegistrationPolicy = {
+  challengeAvailable: boolean;
+  mode: RegistrationMode;
+};
+
+export type InvitationChallenge = {
+  challengeId: string;
+  prompt: string;
+};
+
+export type InvitationCode = {
+  expiresInSeconds: number;
+  invitationCode: string;
+};
+
 export type ApiErrorPayload = {
   code: number;
   message: string;
@@ -37,6 +54,13 @@ export const registrationEmailSchema = z.object({
   email: z.email('请输入有效邮箱'),
 });
 
+export const invitationCodeSchema = z
+  .string()
+  .trim()
+  .min(1, '请输入邀请码')
+  .max(64, '邀请码格式不正确')
+  .refine((value) => value.replace(/[-\s]/g, '').length === 16, '邀请码格式不正确');
+
 export const registerSchema = z
   .object({
     username: z
@@ -47,6 +71,7 @@ export const registerSchema = z
     email: z.email('请输入有效邮箱'),
     password: z.string().min(8, '密码至少 8 位'),
     confirmPassword: z.string().min(8, '请确认密码'),
+    invitationCode: z.string().max(64, '邀请码格式不正确'),
     verificationCode: z.string().regex(/^\d{6}$/, '请输入 6 位数字验证码'),
   })
   .refine((value) => value.password === value.confirmPassword, {
@@ -74,6 +99,9 @@ export const authErrorMessages: Record<number, string> = {
   101011: '请先完成邮箱验证',
   101012: '验证码无效或已过期',
   101013: '验证邮件发送失败，请稍后再试',
+  101014: '邀请码无效或已过期',
+  101015: '注册暂未开放',
+  101016: '暗号不正确',
 };
 
 export function authErrorMessage(error: unknown) {

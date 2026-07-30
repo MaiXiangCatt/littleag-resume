@@ -5,10 +5,9 @@
  * Contract for authentication and resume management.
  * OpenAPI spec version: 0.2.0
  */
+import type { RegistrationMode } from './registrationMode';
 
-export interface SendRegistrationEmailVerificationRequest {
-  /** @maxLength 254 */
-  email: string;
-  /** @maxLength 64 */
-  invitationCode?: string;
+export interface RegistrationPolicyPayload {
+  mode: RegistrationMode;
+  challengeAvailable: boolean;
 }

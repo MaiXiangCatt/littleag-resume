@@ -47,6 +47,7 @@ func Migrate(ctx context.Context, db *gorm.DB) error {
 		&model.User{},
 		&model.EmailVerificationChallenge{},
 		&model.RegistrationEmailVerification{},
+		&model.RegistrationInvitation{},
 		&model.RefreshToken{},
 		&model.Resume{},
 	); err != nil {
@@ -438,6 +439,7 @@ func (s *GormStore) InvalidateRegistrationEmailVerification(
 func (s *GormStore) CreateVerifiedUser(
 	ctx context.Context,
 	challengeID uuid.UUID,
+	invitationID *uuid.UUID,
 	user *model.User,
 	consumedAt time.Time,
 ) error {
@@ -456,9 +458,45 @@ func (s *GormStore) CreateVerifiedUser(
 		if result.RowsAffected == 0 {
 			return ErrNotFound
 		}
+		if invitationID != nil {
+			result = tx.Model(&model.RegistrationInvitation{}).
+				Where(
+					"id = ? AND consumed_at IS NULL AND expires_at > ?",
+					*invitationID,
+					consumedAt,
+				).
+				Update("consumed_at", consumedAt)
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return ErrInvitationInvalid
+			}
+		}
 		return tx.Create(user).Error
 	})
 	return mapUserCreateError(err)
+}
+
+func (s *GormStore) CreateRegistrationInvitation(
+	ctx context.Context,
+	invitation *model.RegistrationInvitation,
+) error {
+	return s.db.WithContext(ctx).Create(invitation).Error
+}
+
+func (s *GormStore) FindActiveRegistrationInvitationByCodeHash(
+	ctx context.Context,
+	codeHash string,
+	now time.Time,
+) (*model.RegistrationInvitation, error) {
+	var invitation model.RegistrationInvitation
+	if err := s.db.WithContext(ctx).
+		Where("code_hash = ? AND consumed_at IS NULL AND expires_at > ?", codeHash, now).
+		First(&invitation).Error; err != nil {
+		return nil, mapNotFound(err)
+	}
+	return &invitation, nil
 }
 
 func (s *GormStore) CreateRefreshToken(ctx context.Context, token *model.RefreshToken) error {

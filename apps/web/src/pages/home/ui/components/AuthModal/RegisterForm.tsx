@@ -1,8 +1,12 @@
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 
-import type { RegisterFormValues } from '@/shared/auth/model/auth';
-import { registerSchema, registrationEmailSchema } from '@/shared/auth/model/auth';
+import type { RegisterFormValues, RegistrationMode } from '@/shared/auth/model/auth';
+import {
+  invitationCodeSchema,
+  registerSchema,
+  registrationEmailSchema,
+} from '@/shared/auth/model/auth';
 import { LEGAL_ROUTES } from '@/pages/legal/model/legal-routes';
 import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
@@ -15,8 +19,9 @@ import { Field } from './LoginForm';
 type RegisterFormProps = {
   isSubmitting: boolean;
   onEmailChange: (email: string) => void;
-  onSendCode: (email: string) => Promise<void>;
+  onSendCode: (email: string, invitationCode: string) => Promise<void>;
   onSubmit: (values: RegisterFormValues) => Promise<void>;
+  registrationMode: RegistrationMode;
   resendAvailableAt?: number;
   verificationEmail?: string;
 };
@@ -31,12 +36,14 @@ export function RegisterForm({
   onEmailChange,
   onSendCode,
   onSubmit,
+  registrationMode,
   resendAvailableAt,
   verificationEmail,
 }: RegisterFormProps) {
   const [values, setValues] = useState<RegisterFormValues>({
     confirmPassword: '',
     email: '',
+    invitationCode: '',
     password: '',
     username: '',
     verificationCode: '',
@@ -70,31 +77,35 @@ export function RegisterForm({
       return;
     }
     const result = registrationEmailSchema.safeParse({ email: values.email });
+    const nextInvitationError = invitationCodeError(registrationMode, values.invitationCode);
     const nextAgreementError = agreementsAccepted ? undefined : '请先阅读并勾选两项协议';
     setAgreementError(nextAgreementError);
-    if (!result.success) {
-      setErrors((current) => ({ ...current, email: result.error.issues[0]?.message }));
-    } else {
-      setErrors((current) => ({ ...current, email: undefined }));
-    }
-    if (!result.success || nextAgreementError) {
+    setErrors((current) => ({
+      ...current,
+      email: result.success ? undefined : result.error.issues[0]?.message,
+      invitationCode: nextInvitationError,
+    }));
+    if (!result.success || nextInvitationError || nextAgreementError) {
       return;
     }
-    await onSendCode(result.data.email);
+    await onSendCode(result.data.email, values.invitationCode);
     setNow(currentTimestamp());
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = registerSchema.safeParse(values);
+    const nextInvitationError = invitationCodeError(registrationMode, values.invitationCode);
     const nextAgreementError = agreementsAccepted ? undefined : '请先阅读并勾选两项协议';
     setAgreementError(nextAgreementError);
-    if (!result.success) {
-      setErrors(registrationErrors(result.error.issues));
-    } else {
-      setErrors({});
+    const nextErrors: Partial<Record<keyof RegisterFormValues, string>> = result.success
+      ? {}
+      : registrationErrors(result.error.issues);
+    if (nextInvitationError) {
+      nextErrors.invitationCode = nextInvitationError;
     }
-    if (!result.success || nextAgreementError) {
+    setErrors(nextErrors);
+    if (!result.success || nextInvitationError || nextAgreementError) {
       return;
     }
     await onSubmit(result.data);
@@ -117,6 +128,17 @@ export function RegisterForm({
         type="text"
         value={values.username}
       />
+      {registrationMode === 'invite' ? (
+        <Field
+          autoComplete="off"
+          error={errors.invitationCode}
+          label="邀请码"
+          onChange={(invitationCode) => setValues((current) => ({ ...current, invitationCode }))}
+          placeholder="XXXX-XXXX-XXXX-XXXX"
+          type="text"
+          value={values.invitationCode}
+        />
+      ) : null}
       <Field
         error={errors.email}
         label="邮箱"
@@ -128,7 +150,11 @@ export function RegisterForm({
           <Button
             aria-label={sendCodeAccessibleLabel(isSubmitting, verificationSent, remainingSeconds)}
             className="h-8 px-3 text-xs"
-            disabled={isSubmitting || (verificationSent && remainingSeconds > 0)}
+            disabled={
+              isSubmitting ||
+              (verificationSent && remainingSeconds > 0) ||
+              (registrationMode === 'invite' && !values.invitationCode.trim())
+            }
             onClick={handleSendCode}
             type="button"
             variant="ghost"
@@ -257,6 +283,14 @@ function registrationErrors(
     }
     return acc;
   }, {});
+}
+
+function invitationCodeError(mode: RegistrationMode, invitationCode: string): string | undefined {
+  if (mode !== 'invite') {
+    return undefined;
+  }
+  const result = invitationCodeSchema.safeParse(invitationCode);
+  return result.success ? undefined : result.error.issues[0]?.message;
 }
 
 function sendCodeLabel(

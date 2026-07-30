@@ -6,6 +6,69 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/auth/registration-policy:
+    get:
+      operationId: getAuthRegistrationPolicy
+      tags:
+        - Auth
+      summary: Get the current registration mode and challenge availability
+      responses:
+        "200":
+          description: Current registration policy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationPolicyResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/auth/invitation-challenge:
+    get:
+      operationId: getAuthInvitationChallenge
+      tags:
+        - Auth
+      summary: Get a random invitation challenge
+      responses:
+        "200":
+          description: Random invitation challenge.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationChallengeResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/auth/invitation-challenge/answer:
+    post:
+      operationId: answerAuthInvitationChallenge
+      tags:
+        - Auth
+      summary: Answer an invitation challenge and issue a short-lived invitation code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnswerInvitationChallengeRequest"
+      responses:
+        "200":
+          description: Short-lived invitation code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationCodeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/auth/register:
     post:
       operationId: registerAuthUser
@@ -30,6 +93,8 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
         "429":
@@ -59,6 +124,8 @@ paths:
                 $ref: "#/components/schemas/EmailVerificationResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
         "429":
@@ -847,6 +914,118 @@ components:
                 - ""
             data:
               $ref: "#/components/schemas/AuthPayload"
+    RegistrationMode:
+      type: string
+      enum:
+        - open
+        - invite
+        - closed
+    RegistrationPolicyPayload:
+      type: object
+      required:
+        - mode
+        - challengeAvailable
+      properties:
+        mode:
+          $ref: "#/components/schemas/RegistrationMode"
+        challengeAvailable:
+          type: boolean
+    RegistrationPolicyResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum:
+                - 0
+            message:
+              type: string
+              enum:
+                - ""
+            data:
+              $ref: "#/components/schemas/RegistrationPolicyPayload"
+    InvitationChallengePayload:
+      type: object
+      required:
+        - challengeId
+        - prompt
+      properties:
+        challengeId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 200
+    InvitationChallengeResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum:
+                - 0
+            message:
+              type: string
+              enum:
+                - ""
+            data:
+              $ref: "#/components/schemas/InvitationChallengePayload"
+    AnswerInvitationChallengeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - challengeId
+        - answer
+      properties:
+        challengeId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        answer:
+          type: string
+          minLength: 1
+          maxLength: 200
+    InvitationCodePayload:
+      type: object
+      required:
+        - invitationCode
+        - expiresInSeconds
+      properties:
+        invitationCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+        expiresInSeconds:
+          type: integer
+          minimum: 1
+    InvitationCodeResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            code:
+              type: integer
+              format: int32
+              enum:
+                - 0
+            message:
+              type: string
+              enum:
+                - ""
+            data:
+              $ref: "#/components/schemas/InvitationCodePayload"
     EmailVerificationPayload:
       type: object
       required:
@@ -1262,6 +1441,10 @@ components:
           type: string
           pattern: '^[0-9]{6}$'
           example: "083421"
+        invitationCode:
+          type: string
+          maxLength: 64
+          example: "ABCD-EFGH-JKLM-NPQR"
     SendRegistrationEmailVerificationRequest:
       type: object
       additionalProperties: false
@@ -1272,6 +1455,10 @@ components:
           type: string
           format: email
           maxLength: 254
+        invitationCode:
+          type: string
+          maxLength: 64
+          example: "ABCD-EFGH-JKLM-NPQR"
     ConfirmEmailVerificationRequest:
       type: object
       additionalProperties: false
