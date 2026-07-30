@@ -5,7 +5,6 @@ import type { ResumeDocument } from '../model/resume.types';
 export type ResumePdfAsset = {
   blob: Blob;
   key: string;
-  url: string;
 };
 
 type PdfPreviewStatus = 'idle' | 'generating' | 'loading' | 'ready' | 'error';
@@ -33,7 +32,9 @@ export function useResumePdfPreview({
   const [pending, setPending] = useState<ResumePdfAsset | null>(null);
   const [status, setStatus] = useState<PdfPreviewStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<'generation' | 'render' | null>(null);
   const [generationTick, setGenerationTick] = useState(0);
+  const [renderRevision, setRenderRevision] = useState(0);
   const currentRef = useRef<ResumePdfAsset | null>(null);
   const pendingRef = useRef<ResumePdfAsset | null>(null);
   const latestInputRef = useRef<PdfInput | null>(null);
@@ -44,12 +45,12 @@ export function useResumePdfPreview({
   const generatedOnceRef = useRef(false);
 
   const publish = useCallback((blob: Blob, key: string) => {
-    const next = { blob, key, url: URL.createObjectURL(blob) };
-    if (pendingRef.current) URL.revokeObjectURL(pendingRef.current.url);
+    const next = { blob, key };
     pendingRef.current = next;
     setPending(next);
     setStatus('loading');
     setError(null);
+    setErrorKind(null);
   }, []);
 
   const generate = useCallback(
@@ -75,6 +76,7 @@ export function useResumePdfPreview({
         .catch((generationError: unknown) => {
           setStatus(currentRef.current ? 'ready' : 'error');
           setError(generationError instanceof Error ? generationError.message : 'PDF 预览生成失败');
+          setErrorKind('generation');
           throw generationError;
         })
         .finally(() => {
@@ -112,29 +114,41 @@ export function useResumePdfPreview({
   useEffect(
     () => () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
-      if (currentRef.current) URL.revokeObjectURL(currentRef.current.url);
-      if (pendingRef.current) URL.revokeObjectURL(pendingRef.current.url);
     },
     [],
   );
 
-  const commitPending = useCallback(() => {
+  const commitPending = useCallback((key: string) => {
     const next = pendingRef.current;
-    if (!next) return;
-    const previous = currentRef.current;
+    if (!next || next.key !== key) return;
     currentRef.current = next;
     pendingRef.current = null;
     setCurrent(next);
     setPending(null);
     setStatus('ready');
-    if (previous) URL.revokeObjectURL(previous.url);
+    setError(null);
+    setErrorKind(null);
+  }, []);
+
+  const reportRenderError = useCallback((key: string, renderError: unknown) => {
+    if (pendingRef.current?.key !== key && currentRef.current?.key !== key) return;
+    setStatus('error');
+    setError(renderError instanceof Error ? renderError.message : 'PDF 预览绘制失败');
+    setErrorKind('render');
   }, []);
 
   const retry = useCallback(() => {
     if (!latestInputRef.current) return;
     if (timerRef.current) window.clearTimeout(timerRef.current);
+    if (errorKind === 'render' && (pendingRef.current || currentRef.current)) {
+      setError(null);
+      setErrorKind(null);
+      setStatus(pendingRef.current ? 'loading' : 'ready');
+      setRenderRevision((revision) => revision + 1);
+      return;
+    }
     void generate(latestInputRef.current).catch(() => undefined);
-  }, [generate]);
+  }, [errorKind, generate]);
 
   const getLatestBlob = useCallback(async () => {
     const input = latestInputRef.current;
@@ -155,6 +169,8 @@ export function useResumePdfPreview({
     error,
     getLatestBlob,
     pending,
+    renderRevision,
+    reportRenderError,
     retry,
     status,
   };

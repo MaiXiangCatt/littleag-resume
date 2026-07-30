@@ -31,10 +31,6 @@ describe('useResumePdfPreview', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     pdfMock.createResumePdfBlob.mockReset();
-    vi.spyOn(URL, 'createObjectURL').mockImplementation(
-      (blob) => `blob:${String((blob as Blob).size)}:${Math.random()}`,
-    );
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -56,7 +52,7 @@ describe('useResumePdfPreview', () => {
       await vi.runAllTimersAsync();
     });
     expect(result.current.pending?.key).toBe('1:0');
-    act(() => result.current.commitPending());
+    act(() => result.current.commitPending('1:0'));
     expect(result.current.current?.key).toBe('1:0');
 
     rerender({ document: createDocument(2) });
@@ -108,6 +104,34 @@ describe('useResumePdfPreview', () => {
     expect(result.current.pending?.key).toBe('3:0');
     expect(pdfMock.createResumePdfBlob).toHaveBeenCalledTimes(2);
     expect(result.current.pending?.key).not.toBe('1:0');
+  });
+
+  it('ignores stale canvas commits and retries render errors without regenerating the PDF', async () => {
+    pdfMock.createResumePdfBlob.mockResolvedValueOnce(
+      new Blob(['first'], { type: 'application/pdf' }),
+    );
+    const { result } = renderHook(() =>
+      useResumePdfPreview({
+        active: true,
+        avatar: null,
+        avatarRevision: 0,
+        document: createDocument(1),
+      }),
+    );
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    act(() => result.current.commitPending('stale-key'));
+    expect(result.current.current).toBeNull();
+
+    act(() => result.current.reportRenderError('1:0', new Error('canvas failed')));
+    expect(result.current.error).toBe('canvas failed');
+    const previousRevision = result.current.renderRevision;
+    act(() => result.current.retry());
+    expect(result.current.renderRevision).toBe(previousRevision + 1);
+    expect(pdfMock.createResumePdfBlob).toHaveBeenCalledTimes(1);
+    expect(result.current.pending?.key).toBe('1:0');
   });
 
   it('reuses a matching preview blob for export and regenerates a stale one', async () => {
