@@ -51,11 +51,11 @@ describe('Footer invitation challenge', () => {
     }
 
     expect(await screen.findByText('异次临倾，')).toBeInTheDocument();
-    await user.type(screen.getByLabelText('接下一句'), '步步唯银');
-    await user.click(screen.getByRole('button', { name: '对暗号' }));
+    await user.type(screen.getByPlaceholderText('请输入你的答案'), '步步唯银');
+    await user.click(screen.getByRole('button', { name: '提交答案' }));
     expect(await screen.findByText('暗号不正确')).toBeInTheDocument();
     expect(screen.getByText('异次临倾，')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '对暗号' }));
+    await user.click(screen.getByRole('button', { name: '提交答案' }));
 
     expect(await screen.findByDisplayValue('ABCD-EFGH-JKLM-NPQR')).toBeInTheDocument();
     expect(screen.getByText('30 分钟内有效，注册成功后立即失效。')).toBeInTheDocument();
@@ -108,7 +108,9 @@ describe('Footer invitation challenge', () => {
       fireEvent.click(trigger);
     }
 
-    expect(await screen.findByText(/注册暂未开放/)).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '注册暂未开放，已有账号和游客模式仍可正常使用。',
+    );
     expect(authServiceMock.getInvitationChallenge).not.toHaveBeenCalled();
   });
 });

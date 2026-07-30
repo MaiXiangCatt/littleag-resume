@@ -196,8 +196,8 @@ test('silver challenge issues a one-time invitation for registration', async ({
     await agTrigger.click();
   }
   await expect(page.getByText('异次临倾，')).toBeVisible();
-  await page.getByLabel('接下一句').fill('步步唯银');
-  await page.getByRole('button', { name: '对暗号' }).click();
+  await page.getByPlaceholder('请输入你的答案').fill('步步唯银');
+  await page.getByRole('button', { name: '提交答案' }).click();
   await expect(page.getByLabel('一次性邀请码')).toHaveValue(invitationCode);
   await page.getByRole('button', { name: '复制邀请码' }).click();
   await page.getByRole('button', { name: '去注册' }).click();
