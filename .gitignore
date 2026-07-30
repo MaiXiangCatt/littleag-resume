@@ -82,6 +82,7 @@ skills-lock.json
 #docs
 docs/*
 !docs/deployment.md
+!docs/releasing.md
 !docs/legal/
 
 invitation-challenges.example1.json
