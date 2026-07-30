@@ -39,6 +39,7 @@ import { Label } from '@/shared/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 
 import { useResumeEditor } from '../hooks/useResumeEditor';
+import { useLocalResumeStatus } from '../hooks/useLocalResumeStatus';
 import type { ResumeEditorMode } from '../model/resume.editor';
 import {
   ACCENT_COLORS,
@@ -61,9 +62,10 @@ import type {
   TemplateId,
 } from '../model/resume.types';
 import { useResumeEditorStore } from '../store/resume-editor.store';
+import { localResumeStore } from '../store/local-resume.store';
 import { AvatarCropDialog } from './AvatarCropDialog';
 import { ProfileEditor, SectionEditor } from './EditorForms';
-import { GuestPdfPreview } from './GuestPdfPreview';
+import { LocalPdfPreview } from './LocalPdfPreview';
 import { ResumeHtmlPreview } from './ResumeHtmlPreview';
 import { StructurePanel } from './StructurePanel';
 
@@ -80,6 +82,7 @@ export function ResumeEditorPage({
   const error = useResumeEditorStore((state) => state.error);
   const isLoading = useResumeEditorStore((state) => state.isLoading);
   const saveStatus = useResumeEditorStore((state) => state.saveStatus);
+  const localStorage = useLocalResumeStatus();
   const {
     avatarUrl,
     deleteAvatar: removeAvatar,
@@ -93,6 +96,7 @@ export function ResumeEditorPage({
     pdfPreview,
     reload,
     replaceImport,
+    retryStorage,
     saveAvatar: persistAvatar,
   } = useResumeEditor(resumeId, mode);
   const [activeId, setActiveId] = useState('profile');
@@ -107,13 +111,28 @@ export function ResumeEditorPage({
   );
   const [exporting, setExporting] = useState(false);
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
+  const [clearLocalDataOpen, setClearLocalDataOpen] = useState(false);
+  const [isClearingLocalData, setClearingLocalData] = useState(false);
   const avatarInput = useRef<HTMLInputElement>(null);
   const importInput = useRef<HTMLInputElement>(null);
 
   const deferredDocument = useDeferredValue(document);
+  const isReadOnly = mode === 'local' && durability === 'read-only';
   const visibleAvatar = document?.hasAvatar ? avatarUrl : null;
   const activeSection =
     document?.content.sections.find((section) => section.id === activeId) ?? null;
+
+  function retryReadOnlyStorage() {
+    setFormatOpen(false);
+    setAddOpen(false);
+    setPendingRemove(null);
+    setImportEnvelope(null);
+    if (cropSource) {
+      URL.revokeObjectURL(cropSource);
+      setCropSource(null);
+    }
+    void retryStorage();
+  }
 
   function mutate(mutator: (draft: ResumeDocument) => void, immediate = false) {
     edit((current) => {
@@ -128,12 +147,12 @@ export function ResumeEditorPage({
       ['dirty', 'saving', 'failed', 'conflict'].includes(
         useResumeEditorStore.getState().saveStatus,
       ) ||
-      durability === 'volatile'
+      isReadOnly
     ) {
       setExitConfirmationOpen(true);
       return;
     }
-    navigate(mode === 'guest' ? '/' : '/console');
+    navigate(mode === 'local' ? '/local' : '/console');
   }
 
   function updateSection(section: ResumeSection, immediate = false) {
@@ -180,7 +199,7 @@ export function ResumeEditorPage({
     try {
       await persistAvatar(blob);
       setCropSource(null);
-      toast.success(mode === 'guest' ? '头像已保存到本机' : '头像已更新');
+      toast.success(mode === 'local' ? '头像已保存到本机' : '头像已更新');
     } catch {
       toast.error('头像保存失败，请稍后重试');
     }
@@ -283,22 +302,76 @@ export function ResumeEditorPage({
       }, true);
   }
 
+  async function retryInitialStorage() {
+    try {
+      await localResumeStore.retry();
+      await load();
+    } catch {
+      // The shared local store keeps the blocking error visible.
+    }
+  }
+
+  async function clearBlockedLocalData() {
+    if (isClearingLocalData) return;
+    setClearingLocalData(true);
+    try {
+      await localResumeStore.clear();
+      navigate('/local', { replace: true });
+    } catch {
+      toast.error('清除本地数据失败，请关闭其他页面后重试');
+      setClearingLocalData(false);
+    }
+  }
+
   if (isLoading) return <EditorLoading />;
   if (!document)
     return (
-      <EditorFailure
-        message={error ?? '无法加载简历'}
-        onBack={() => navigate(mode === 'guest' ? '/' : '/console')}
-        onRetry={() => void load()}
-        returnLabel={mode === 'guest' ? '返回首页' : '返回控制台'}
-      />
+      <>
+        <EditorFailure
+          message={error ?? '无法加载简历'}
+          onBack={() => navigate(mode === 'local' ? '/local' : '/console')}
+          onClear={
+            mode === 'local' && localStorage.availability === 'blocked'
+              ? () => setClearLocalDataOpen(true)
+              : undefined
+          }
+          onRetry={() => void (mode === 'local' ? retryInitialStorage() : load())}
+          returnLabel={mode === 'local' ? '返回本地控制台' : '返回控制台'}
+        />
+        {clearLocalDataOpen ? (
+          <Dialog onOpenChange={setClearLocalDataOpen} open>
+            <DialogContent className="rounded-2xl p-6">
+              <DialogTitle>清除全部本地简历？</DialogTitle>
+              <DialogDescription>
+                这会永久删除当前浏览器中的全部本地简历和头像，且无法恢复。
+              </DialogDescription>
+              <DialogFooter>
+                <Button
+                  disabled={isClearingLocalData}
+                  onClick={() => setClearLocalDataOpen(false)}
+                  variant="outline"
+                >
+                  取消
+                </Button>
+                <Button
+                  disabled={isClearingLocalData}
+                  onClick={() => void clearBlockedLocalData()}
+                  variant="destructive"
+                >
+                  {isClearingLocalData ? '正在清除…' : '确认清除'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        ) : null}
+      </>
     );
 
   return (
     <div className="min-w-[1240px] bg-[#f2eeef] text-[#251d23]">
       <header className="flex h-[72px] items-center border-b border-[#ded6da] bg-[#fffdfd] px-5 shadow-[0_1px_0_rgba(52,38,47,0.04)]">
         <Button
-          aria-label={mode === 'guest' ? '返回首页' : '返回控制台'}
+          aria-label={mode === 'local' ? '返回本地控制台' : '返回控制台'}
           onClick={returnFromEditor}
           size="icon"
           variant="ghost"
@@ -311,15 +384,16 @@ export function ResumeEditorPage({
           </span>
           <span className="font-serif text-lg font-semibold">LittleAgResume</span>
         </div>
-        {mode === 'guest' ? (
+        {mode === 'local' ? (
           <span className="ml-3 rounded-full border border-[#e5bbb4] bg-[#fbeeea] px-3 py-1 text-xs font-semibold text-[#bf301e]">
-            游客模式
+            本地模式
           </span>
         ) : null}
         <div className="mx-5 h-7 w-px bg-[#e2dadd]" />
         <Input
           aria-label="简历标题"
           className="h-10 w-72 border-transparent bg-transparent px-2 text-base font-semibold shadow-none hover:border-[#ddd4d9] focus-visible:bg-white"
+          disabled={isReadOnly}
           value={document.title}
           onChange={(event) =>
             mutate((draft) => {
@@ -330,6 +404,7 @@ export function ResumeEditorPage({
         <SaveBadge durability={durability} mode={mode} status={saveStatus} />
         <div className="ml-auto flex items-center gap-2">
           <Button
+            disabled={isReadOnly}
             onClick={toggleComplete}
             variant={document.status === 'completed' ? 'default' : 'outline'}
           >
@@ -345,7 +420,7 @@ export function ResumeEditorPage({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => importInput.current?.click()}>
+              <DropdownMenuItem disabled={isReadOnly} onClick={() => importInput.current?.click()}>
                 <FileUp />
                 导入并覆盖
               </DropdownMenuItem>
@@ -367,11 +442,11 @@ export function ResumeEditorPage({
           />
           <Button
             disabled={saveStatus === 'saving'}
-            onClick={() => void flushSave()}
+            onClick={() => (isReadOnly ? retryReadOnlyStorage() : void flushSave())}
             variant="outline"
           >
             <Save size={16} />
-            立即保存
+            {isReadOnly ? '重试保存' : '立即保存'}
           </Button>
           <Button
             className="bg-[#bf301e] px-5 hover:bg-[#9f2718]"
@@ -410,44 +485,55 @@ export function ResumeEditorPage({
           )}
         </div>
       </header>
-      {durability === 'volatile' ? (
+      {isReadOnly ? (
         <div
           className="flex h-10 items-center justify-center gap-2 border-b border-amber-200 bg-amber-50 px-5 text-sm font-medium text-amber-900"
           role="alert"
         >
           <AlertTriangle size={15} />
-          浏览器无法写入本地存储；当前是临时会话，关闭页面后内容会丢失，请及时导出 JSON。
+          浏览器本地存储暂时不可写；编辑已冻结，当前画面中的修改可能尚未保存，请先导出 JSON 或重试。
           <Button
             className="h-7 bg-white px-2.5"
-            onClick={() => void flushSave()}
+            onClick={retryReadOnlyStorage}
             size="sm"
             type="button"
             variant="outline"
           >
-            重试保存
+            重试存储
           </Button>
         </div>
       ) : null}
       <main
         className={cn(
           'grid grid-cols-[236px_minmax(430px,0.9fr)_minmax(520px,1.1fr)] overflow-hidden',
-          durability === 'volatile' ? 'h-[calc(100vh-112px)]' : 'h-[calc(100vh-72px)]',
+          isReadOnly ? 'h-[calc(100vh-112px)]' : 'h-[calc(100vh-72px)]',
         )}
       >
-        <StructurePanel
-          activeId={activeId}
-          onAdd={() => setAddOpen(true)}
-          onFormat={() => setFormatOpen(true)}
-          onMove={(sections) =>
-            mutate((draft) => {
-              draft.content.sections = sections;
-            }, true)
-          }
-          onRemove={requestRemove}
-          onSelect={setActiveId}
-          sections={document.content.sections}
-        />
-        <section className="overflow-y-auto bg-[#fffdfd] px-8 py-9">
+        <div
+          aria-disabled={isReadOnly}
+          className={cn(isReadOnly && 'pointer-events-none opacity-70')}
+        >
+          <StructurePanel
+            activeId={activeId}
+            onAdd={() => setAddOpen(true)}
+            onFormat={() => setFormatOpen(true)}
+            onMove={(sections) =>
+              mutate((draft) => {
+                draft.content.sections = sections;
+              }, true)
+            }
+            onRemove={requestRemove}
+            onSelect={setActiveId}
+            sections={document.content.sections}
+          />
+        </div>
+        <section
+          aria-disabled={isReadOnly}
+          className={cn(
+            'overflow-y-auto bg-[#fffdfd] px-8 py-9',
+            isReadOnly && 'pointer-events-none opacity-70',
+          )}
+        >
           {activeId === 'profile' ? (
             <ProfileEditor
               avatar={visibleAvatar}
@@ -479,18 +565,18 @@ export function ResumeEditorPage({
         <section
           className={cn(
             'relative bg-[#d9d3d5] px-7 py-10',
-            mode === 'guest' ? 'overflow-hidden' : 'overflow-y-auto',
+            mode === 'local' ? 'overflow-hidden' : 'overflow-y-auto',
           )}
         >
-          {mode === 'guest' ? (
-            <GuestPdfPreview preview={pdfPreview} />
+          {mode === 'local' ? (
+            <LocalPdfPreview preview={pdfPreview} />
           ) : deferredDocument ? (
             <ResumeHtmlPreview avatar={visibleAvatar} resume={deferredDocument} />
           ) : null}
         </section>
       </main>
 
-      {formatOpen ? (
+      {formatOpen && !isReadOnly ? (
         <FormattingDialog
           document={document}
           onChange={(formatting) =>
@@ -509,7 +595,7 @@ export function ResumeEditorPage({
           }
         />
       ) : null}
-      {addOpen ? (
+      {addOpen && !isReadOnly ? (
         <AddSectionDialog
           customName={customName}
           onAddCustom={addCustom}
@@ -519,7 +605,7 @@ export function ResumeEditorPage({
           sections={document.content.sections}
         />
       ) : null}
-      {cropSource ? (
+      {cropSource && !isReadOnly ? (
         <AvatarCropDialog
           image={cropSource}
           onClose={() => {
@@ -529,7 +615,7 @@ export function ResumeEditorPage({
           onSave={saveAvatar}
         />
       ) : null}
-      {pendingRemove ? (
+      {pendingRemove && !isReadOnly ? (
         <ConfirmDialog
           description={`删除“${pendingRemove.title}”后不可恢复。`}
           onCancel={() => setPendingRemove(null)}
@@ -545,7 +631,7 @@ export function ResumeEditorPage({
           title="删除自定义板块？"
         />
       ) : null}
-      {importEnvelope ? (
+      {importEnvelope && !isReadOnly ? (
         <ConfirmDialog
           description={`将用“${importEnvelope.title}”覆盖当前简历，共 ${importEnvelope.content.sections.filter((item) => item.enabled).length} 个启用板块。`}
           onCancel={() => setImportEnvelope(null)}
@@ -554,7 +640,12 @@ export function ResumeEditorPage({
         />
       ) : null}
       {saveStatus === 'conflict' ? (
-        <ConflictDialog mode={mode} onOverwrite={() => void overwrite()} onReload={reload} />
+        <ConflictDialog
+          allowOverwrite={!isReadOnly}
+          mode={mode}
+          onOverwrite={() => void overwrite()}
+          onReload={reload}
+        />
       ) : null}
       {issues ? (
         <IssuesDialog
@@ -571,7 +662,7 @@ export function ResumeEditorPage({
         <ConfirmDialog
           description="当前修改尚未安全保存，离开后会丢失这些内容。"
           onCancel={() => setExitConfirmationOpen(false)}
-          onConfirm={() => navigate(mode === 'guest' ? '/' : '/console')}
+          onConfirm={() => navigate(mode === 'local' ? '/local' : '/console')}
           title="仍然离开编辑器？"
         />
       ) : null}
@@ -592,7 +683,7 @@ function SaveBadge({
     idle: '等待保存',
     dirty: '有未保存修改',
     saving: '保存中',
-    saved: mode === 'guest' ? '已保存到本机' : '已保存',
+    saved: mode === 'local' ? '已保存到本机' : '已保存',
     failed: '保存失败',
     conflict: '版本冲突',
   };
@@ -604,7 +695,7 @@ function SaveBadge({
       )}
     >
       {status === 'saving' ? <LoaderCircle className="animate-spin" size={12} /> : null}
-      {durability === 'volatile' ? '仅本次会话' : labels[status]}
+      {durability === 'read-only' ? '只读恢复' : labels[status]}
     </span>
   );
 }
@@ -1033,10 +1124,12 @@ function ConfirmDialog({
   );
 }
 function ConflictDialog({
+  allowOverwrite,
   mode,
   onOverwrite,
   onReload,
 }: {
+  allowOverwrite: boolean;
   mode: ResumeEditorMode;
   onOverwrite: () => void;
   onReload: () => void;
@@ -1046,15 +1139,17 @@ function ConflictDialog({
       <DialogContent className="rounded-2xl">
         <DialogTitle>检测到其他页面的更新</DialogTitle>
         <DialogDescription>
-          {mode === 'guest'
-            ? '为了避免静默覆盖，请选择加载浏览器中的最新内容，或明确使用当前页面内容覆盖。'
-            : '为了避免静默覆盖，请选择加载服务器内容，或明确使用当前页面内容覆盖。'}
+          {mode === 'local' && !allowOverwrite
+            ? '浏览器中的版本已变化。当前页面会保持只读，请加载浏览器中的最新内容后再继续编辑。'
+            : mode === 'local'
+              ? '为了避免静默覆盖，请选择加载浏览器中的最新内容，或明确使用当前页面内容覆盖。'
+              : '为了避免静默覆盖，请选择加载服务器内容，或明确使用当前页面内容覆盖。'}
         </DialogDescription>
         <DialogFooter>
           <Button onClick={onReload} variant="outline">
-            {mode === 'guest' ? '加载浏览器版本' : '加载服务器版本'}
+            {mode === 'local' ? '加载浏览器版本' : '加载服务器版本'}
           </Button>
-          <Button onClick={onOverwrite}>保留本地版本</Button>
+          {allowOverwrite ? <Button onClick={onOverwrite}>保留本地版本</Button> : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1111,11 +1206,13 @@ function EditorLoading() {
 function EditorFailure({
   message,
   onBack,
+  onClear,
   onRetry,
   returnLabel,
 }: {
   message: string;
   onBack: () => void;
+  onClear?: () => void;
   onRetry: () => void;
   returnLabel: string;
 }) {
@@ -1129,6 +1226,11 @@ function EditorFailure({
           <Button onClick={onBack} variant="outline">
             {returnLabel}
           </Button>
+          {onClear ? (
+            <Button onClick={onClear} variant="destructive">
+              清除本地数据
+            </Button>
+          ) : null}
           <Button onClick={onRetry}>重试</Button>
         </div>
       </div>

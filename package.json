@@ -1,13 +1,13 @@
 {
   "name": "littleag-resume",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.1.0",
+  "description": "A free, open-source resume editor with local and cloud workspaces.",
   "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "GPL-3.0-only",
   "packageManager": "pnpm@10.26.2"
 }

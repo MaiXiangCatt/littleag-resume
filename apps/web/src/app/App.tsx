@@ -15,9 +15,10 @@ import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { authService } from '@/shared/auth/api/auth.service';
 import { Toaster } from '@/shared/ui/sonner';
 import { AuthModal } from '@/pages/home/ui/components/AuthModal/AuthModal';
-import { ConsolePage } from '@/pages/console/ui/ConsolePage';
+import { ConsolePage, LocalConsolePage } from '@/pages/console/ui/ConsolePage';
 import { HomePage } from '@/pages/home/ui/HomePage';
 import type { LegalDocumentKey } from '@/pages/legal/model/legal-routes';
+import { localResumeStore } from '@/pages/resume-editor/store/local-resume.store';
 
 const ResumeEditorPage = lazy(() =>
   import('@/pages/resume-editor/ui/ResumeEditorPage').then((module) => ({
@@ -63,7 +64,9 @@ export function AppRoutes() {
         path="/legal/cross-border"
       />
       <Route element={<ConsoleRoute />} path="/console" />
-      <Route element={<GuestResumeEditorRoute />} path="/guest/edit" />
+      <Route element={<LocalConsoleRoute />} path="/local" />
+      <Route element={<LegacyGuestRoute />} path="/guest/edit" />
+      <Route element={<LocalResumeEditorRoute />} path="/local/resumes/:resumeId/edit" />
       <Route element={<ResumeEditorRoute />} path="/resumes/:resumeId/edit" />
       <Route element={<PrintResumeRoute />} path="/print/resumes/:resumeId" />
       <Route element={<Navigate replace to="/" />} path="*" />
@@ -85,18 +88,46 @@ function LegalDocumentRoute({ documentKey }: { documentKey: LegalDocumentKey }) 
   );
 }
 
-function GuestResumeEditorRoute() {
+function LocalResumeEditorRoute() {
+  const { resumeId } = useParams<{ resumeId: string }>();
+
+  if (!resumeId) {
+    return <Navigate replace to="/local" />;
+  }
+
   return (
     <Suspense
       fallback={
         <main className="grid min-h-screen place-items-center text-slate-600">
-          正在加载游客编辑器
+          正在加载本地编辑器
         </main>
       }
     >
-      <ResumeEditorPage mode="guest" resumeId="guest-primary" />
+      <ResumeEditorPage mode="local" resumeId={resumeId} />
     </Suspense>
   );
+}
+
+function LegacyGuestRoute() {
+  const [destination, setDestination] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void localResumeStore.has('guest-primary').then((exists) => {
+      if (active) setDestination(exists ? '/local/resumes/guest-primary/edit' : '/local');
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!destination) {
+    return (
+      <main className="grid min-h-screen place-items-center text-slate-600">正在检查本地简历</main>
+    );
+  }
+
+  return <Navigate replace to={destination} />;
 }
 
 function ResumeEditorRoute() {
@@ -178,7 +209,7 @@ function HomeRoute() {
     <>
       <HomePage
         currentUser={user}
-        onGuest={() => navigate('/guest/edit')}
+        onLocal={() => navigate('/local')}
         onLogin={() => openAuth('login')}
         onRegister={() => openAuth('register')}
         onViewExample={() => undefined}
@@ -187,6 +218,37 @@ function HomeRoute() {
       <AuthModal
         defaultMode={authMode}
         onAuthenticated={handleAuthenticated}
+        onOpenChange={setAuthModalOpen}
+        open={authModalOpen}
+        registrationMode={registrationPolicy.mode}
+      />
+    </>
+  );
+}
+
+function LocalConsoleRoute() {
+  const navigate = useNavigate();
+  const { policy: registrationPolicy } = useRegistrationPolicy();
+  const status = useAuthStore((state) => state.status);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  function handleLogin() {
+    if (status === 'authenticated') {
+      navigate('/console');
+      return;
+    }
+    setAuthModalOpen(true);
+  }
+
+  return (
+    <>
+      <LocalConsolePage onLogin={handleLogin} />
+      <AuthModal
+        defaultMode="login"
+        onAuthenticated={() => {
+          setAuthModalOpen(false);
+          navigate('/console');
+        }}
         onOpenChange={setAuthModalOpen}
         open={authModalOpen}
         registrationMode={registrationPolicy.mode}

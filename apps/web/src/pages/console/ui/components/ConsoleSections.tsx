@@ -19,8 +19,6 @@ import {
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 
-import type { ResumeStats } from '@/shared/api/generated/model/resumeStats';
-import type { ResumeSummary } from '@/shared/api/generated/model/resumeSummary';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import {
@@ -34,6 +32,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 import type {
   ConsolePageSize,
+  ConsoleResumeStats,
+  ConsoleResumeSummary,
   ConsoleSort,
   ConsoleStatusFilter,
   Feedback,
@@ -41,7 +41,7 @@ import type {
 
 type StatItem = {
   icon: ComponentType<{ className?: string; size?: number; strokeWidth?: number }>;
-  key: keyof ResumeStats;
+  key: keyof ConsoleResumeStats;
   label: string;
   unit: string;
 };
@@ -83,7 +83,7 @@ export function ResumeStatsPanel({
 }: {
   error: string | null;
   isLoading: boolean;
-  stats: ResumeStats;
+  stats: ConsoleResumeStats;
 }) {
   if (error) {
     return (
@@ -191,9 +191,13 @@ export function ResumeToolbar({
 }
 
 export function CreateResumeCard({
+  disabled = false,
+  disabledReason,
   isPending,
   onCreate,
 }: {
+  disabled?: boolean;
+  disabledReason?: string;
   isPending: boolean;
   onCreate: () => void;
 }) {
@@ -201,7 +205,7 @@ export function CreateResumeCard({
     <Button
       variant="ghost"
       className="group h-auto min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-[#d96657] bg-[radial-gradient(circle_at_50%_20%,rgba(217,102,87,0.08),transparent_52%)] px-8 text-center transition duration-300 hover:-translate-y-1 hover:border-[#bf301e] hover:bg-[radial-gradient(circle_at_50%_20%,rgba(217,102,87,0.08),transparent_52%)] hover:shadow-[0_18px_38px_rgba(159,39,24,0.11)] focus-visible:ring-4 focus-visible:ring-[#bf301e]/15 disabled:pointer-events-none disabled:opacity-60"
-      disabled={isPending}
+      disabled={disabled || isPending}
       onClick={onCreate}
     >
       <span className="grid size-14 place-items-center rounded-full bg-[#bf301e] text-white shadow-[0_10px_24px_rgba(191,48,30,0.28)] transition group-hover:scale-105">
@@ -212,16 +216,18 @@ export function CreateResumeCard({
         )}
       </span>
       <span className="mt-5 text-lg font-semibold text-[#bf301e]">
-        {isPending ? '正在创建…' : '创建新简历'}
+        {isPending ? '正在创建…' : disabled ? '暂不可新建' : '创建新简历'}
       </span>
       <span className="mt-2 max-w-72 text-sm leading-6 text-[#817684]">
-        从空白模板开始，快速创建你的专属简历
+        {disabledReason ?? '从空白模板开始，快速创建你的专属简历'}
       </span>
     </Button>
   );
 }
 
 type ResumeCardProps = {
+  disableCopy?: boolean;
+  disableMutations?: boolean;
   isPending: boolean;
   onCopy: () => void;
   onDelete: () => void;
@@ -229,10 +235,12 @@ type ResumeCardProps = {
   onOpen: () => void;
   onRename: () => void;
   ownerInitial: string;
-  resume: ResumeSummary;
+  resume: ConsoleResumeSummary;
 };
 
 export function ResumeCard({
+  disableCopy = false,
+  disableMutations = false,
   isPending,
   onCopy,
   onDelete,
@@ -296,7 +304,7 @@ export function ResumeCard({
             )}
             {isPending ? '生成中…' : '导出 PDF'}
           </Button>
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 aria-label={`${resume.title} 更多操作`}
@@ -313,6 +321,7 @@ export function ResumeCard({
             >
               <DropdownMenuItem
                 className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#bf301e]"
+                disabled={disableMutations}
                 onClick={onRename}
               >
                 <Pencil size={15} />
@@ -320,6 +329,7 @@ export function ResumeCard({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="gap-2 rounded-lg px-3 py-2 text-sm text-[#514955] focus:bg-[#f8f2f8] focus:text-[#bf301e]"
+                disabled={disableMutations || disableCopy}
                 onClick={onCopy}
               >
                 <Copy size={15} />
@@ -341,6 +351,7 @@ export function ResumeCard({
           <Button
             variant="ghost"
             className="h-auto gap-2 p-0 text-sm text-[#625966] hover:bg-transparent hover:text-red-600"
+            disabled={disableMutations}
             onClick={onDelete}
           >
             <Trash2 aria-hidden="true" size={16} />

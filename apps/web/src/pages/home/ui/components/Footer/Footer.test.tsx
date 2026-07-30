@@ -109,7 +109,7 @@ describe('Footer invitation challenge', () => {
     }
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      '注册暂未开放，已有账号和游客模式仍可正常使用。',
+      '注册暂未开放，已有账号和本地模式仍可正常使用。',
     );
     expect(authServiceMock.getInvitationChallenge).not.toHaveBeenCalled();
   });

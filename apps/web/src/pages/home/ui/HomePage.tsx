@@ -9,7 +9,7 @@ import { HeroSection } from './components/HeroSection/HeroSection';
 
 type HomePageProps = {
   currentUser: AuthUser | null;
-  onGuest: () => void;
+  onLocal: () => void;
   onLogin: () => void;
   onRegister: () => void;
   onViewExample: () => void;
@@ -18,7 +18,7 @@ type HomePageProps = {
 
 export function HomePage({
   currentUser,
-  onGuest,
+  onLocal,
   onLogin,
   onRegister,
   registrationPolicy,
@@ -33,15 +33,15 @@ export function HomePage({
           currentUser ? null : (
             <>
               <Button
-                aria-label="进入游客模式"
+                aria-label="进入本地模式"
                 className="px-2.5 sm:px-4"
-                onClick={onGuest}
+                onClick={onLocal}
                 type="button"
                 variant="outline"
               >
                 <UserRoundSearch aria-hidden="true" size={16} />
-                <span className="sm:hidden">游客</span>
-                <span className="hidden sm:inline">游客模式</span>
+                <span className="sm:hidden">本地</span>
+                <span className="hidden sm:inline">本地模式</span>
               </Button>
               <Button aria-label="登录" onClick={onLogin} type="button" variant="ghost">
                 <LogIn aria-hidden="true" size={16} />
@@ -63,7 +63,7 @@ export function HomePage({
         currentUser={currentUser}
       />
       <main>
-        <HeroSection onRegister={onRegister} onGuest={onGuest} />
+        <HeroSection onLocal={onLocal} onRegister={onRegister} />
       </main>
       <Footer onRegister={onRegister} registrationPolicy={registrationPolicy} />
     </div>

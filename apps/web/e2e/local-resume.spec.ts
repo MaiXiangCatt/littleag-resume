@@ -2,20 +2,27 @@ import { readFile } from 'node:fs/promises';
 
 import { devices, expect, test, type Locator, type Page } from '@playwright/test';
 
-test('guest resume persists locally, refreshes PDF preview and downloads the current PDF', async ({
+test('local resume persists, refreshes PDF preview and downloads the current PDF', async ({
   page,
 }, testInfo) => {
   const workerRequests: string[] = [];
+  const resumeApiRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/resumes')) resumeApiRequests.push(request.url());
+  });
   page.on('response', (response) => {
     if (response.url().includes('pdf.worker')) workerRequests.push(response.url());
   });
   await page.goto('/');
   expect(workerRequests).toHaveLength(0);
-  await page.getByRole('button', { name: '进入游客模式' }).click();
+  await page.getByRole('button', { name: '进入本地模式' }).click();
 
-  await expect(page).toHaveURL(/\/guest\/edit$/);
-  await expect(page.getByText('游客模式')).toBeVisible();
+  await expect(page).toHaveURL(/\/local$/);
   await expect(page.getByText('仅存此浏览器')).toBeVisible();
+  await page.getByRole('button', { name: '创建新简历' }).click();
+
+  await expect(page).toHaveURL(/\/local\/resumes\/[^/]+\/edit$/);
+  await expect(page.getByText('本地模式')).toBeVisible();
 
   const title = page.getByLabel('简历标题');
   await expect(title).toHaveValue('未命名简历');
@@ -30,11 +37,11 @@ test('guest resume persists locally, refreshes PDF preview and downloads the cur
   await expect.poll(() => workerRequests.length).toBeGreaterThan(0);
   await expect(page.locator('iframe, object, embed')).toHaveCount(0);
 
-  await title.fill('游客前端简历');
+  await title.fill('本地前端简历');
   await page.getByLabel('姓名').fill('测试名字');
   await page.getByLabel('目标岗位').fill('全站开发工程师');
   await page.getByLabel('手机号').fill('12345');
-  await page.getByLabel('邮箱').fill('guest@example.com');
+  await page.getByLabel('邮箱').fill('local@example.com');
   await expect
     .poll(async () => visibleCanvasPreview(page).getAttribute('data-preview-key'), {
       timeout: 30_000,
@@ -47,14 +54,14 @@ test('guest resume persists locally, refreshes PDF preview and downloads the cur
     .toBe(true);
 
   await page.reload();
-  await expect(page.getByLabel('简历标题')).toHaveValue('游客前端简历');
+  await expect(page.getByLabel('简历标题')).toHaveValue('本地前端简历');
   await expect(page.getByLabel('姓名')).toHaveValue('测试名字');
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出 PDF' }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('游客前端简历.pdf');
-  const currentPdfPath = testInfo.outputPath('guest-resume-current.pdf');
+  expect(download.suggestedFilename()).toBe('本地前端简历.pdf');
+  const currentPdfPath = testInfo.outputPath('local-resume-current.pdf');
   await download.saveAs(currentPdfPath);
   expect((await readFile(currentPdfPath)).subarray(0, 4).toString()).toBe('%PDF');
 
@@ -81,7 +88,7 @@ test('guest resume persists locally, refreshes PDF preview and downloads the cur
 
   const serifDownloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出 PDF' }).click();
-  await (await serifDownloadPromise).saveAs(testInfo.outputPath('guest-resume-serif.pdf'));
+  await (await serifDownloadPromise).saveAs(testInfo.outputPath('local-resume-serif.pdf'));
 
   await page.getByRole('button', { name: '个人简介', exact: true }).click();
   await page
@@ -89,7 +96,7 @@ test('guest resume persists locally, refreshes PDF preview and downloads the cur
     .fill(
       Array.from(
         { length: 90 },
-        (_, index) => `- 第 ${index + 1} 项：用于验证游客简历 Canvas 多页预览的长内容。`,
+        (_, index) => `- 第 ${index + 1} 项：用于验证本地简历 Canvas 多页预览的长内容。`,
       ).join('\n'),
     );
   await expect
@@ -98,9 +105,10 @@ test('guest resume persists locally, refreshes PDF preview and downloads the cur
   const lastCanvas = visibleCanvasPreview(page).locator('canvas').last();
   await lastCanvas.scrollIntoViewIfNeeded();
   await expect(lastCanvas).toHaveAttribute('data-rendered', 'true', { timeout: 30_000 });
+  expect(resumeApiRequests).toHaveLength(0);
 });
 
-test('guest resume falls back to a temporary session when IndexedDB is unavailable', async ({
+test('local console blocks instead of creating a temporary session when IndexedDB is unavailable', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -112,14 +120,86 @@ test('guest resume falls back to a temporary session when IndexedDB is unavailab
     });
   });
 
-  await page.goto('/guest/edit');
+  await page.goto('/local');
 
-  await expect(page.getByRole('alert')).toContainText('当前是临时会话');
-  await expect(page.getByText('仅本次会话')).toBeVisible();
-  await expect(page.getByRole('button', { name: '重试保存' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '无法打开本地简历' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '重试连接' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '清除本地数据' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '创建新简历' })).toHaveCount(0);
 });
 
-test.describe('mobile guest PDF canvas', () => {
+test('local console creates, renames, copies, searches and deletes resumes', async ({ page }) => {
+  const resumeApiRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/resumes')) resumeApiRequests.push(request.url());
+  });
+
+  await page.goto('/local');
+  await page.getByRole('button', { name: '创建新简历' }).click();
+  await page.getByLabel('简历标题').fill('本地流程简历');
+  await expect(page.getByText('已保存到本机')).toBeVisible();
+  await page.getByRole('button', { name: '返回本地控制台' }).click();
+
+  await expect(page.getByRole('heading', { name: '本地流程简历' })).toBeVisible();
+  await page.getByRole('button', { name: '本地流程简历 更多操作' }).click();
+  await page.getByRole('menuitem', { name: '重命名' }).click();
+  await page.getByLabel('简历名称').fill('前端主简历');
+  await page.getByRole('button', { name: '保存名称' }).click();
+  await expect(page.getByRole('heading', { name: '前端主简历' })).toBeVisible();
+
+  await page.getByRole('button', { name: '前端主简历 更多操作' }).click();
+  await page.getByRole('menuitem', { name: '复制简历' }).click();
+  await expect(page.getByRole('heading', { name: '前端主简历 - 副本' })).toBeVisible();
+
+  await page.getByLabel('搜索简历').fill('副本');
+  await expect(page.getByRole('heading', { name: '前端主简历 - 副本' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '前端主简历', exact: true })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '删除' }).click();
+  await page.getByRole('button', { name: '确认删除' }).click();
+  await expect(page.getByRole('heading', { name: '前端主简历 - 副本' })).toHaveCount(0);
+  expect(resumeApiRequests).toHaveLength(0);
+});
+
+test('editor freezes the current draft after a storage failure and recovers on retry', async ({
+  page,
+}) => {
+  await page.goto('/local');
+  await page.getByRole('button', { name: '创建新简历' }).click();
+  await expect(page.getByText('已保存到本机')).toBeVisible();
+
+  await page.evaluate(() => {
+    const testWindow = window as typeof window & { __testIndexedDB?: IDBFactory };
+    testWindow.__testIndexedDB = window.indexedDB;
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      get() {
+        throw new DOMException('blocked for test', 'InvalidStateError');
+      },
+    });
+  });
+  await page.getByLabel('简历标题').fill('尚未落盘的本地简历');
+
+  await expect(page.getByRole('alert')).toContainText('编辑已冻结');
+  await expect(page.getByLabel('简历标题')).toBeDisabled();
+  await expect(page.getByLabel('简历标题')).toHaveValue('尚未落盘的本地简历');
+  await expect(page.getByRole('button', { name: '导出 PDF' })).toBeEnabled();
+
+  await page.evaluate(() => {
+    const testWindow = window as typeof window & { __testIndexedDB?: IDBFactory };
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      value: testWindow.__testIndexedDB,
+      writable: true,
+    });
+  });
+  await page.getByRole('button', { name: '重试保存' }).click();
+
+  await expect(page.getByText('已保存到本机')).toBeVisible();
+  await expect(page.getByLabel('简历标题')).toBeEnabled();
+});
+
+test.describe('mobile local PDF canvas', () => {
   test.use({
     deviceScaleFactor: devices['Pixel 7'].deviceScaleFactor,
     hasTouch: devices['Pixel 7'].hasTouch,
@@ -129,7 +209,8 @@ test.describe('mobile guest PDF canvas', () => {
   });
 
   test('renders PDF pixels without an Android browser placeholder', async ({ page }) => {
-    await page.goto('/guest/edit');
+    await page.goto('/local');
+    await page.getByRole('button', { name: '创建新简历' }).click();
     await page.getByLabel('姓名').fill('移动端测试');
 
     const preview = visibleCanvasPreview(page);
@@ -142,7 +223,7 @@ test.describe('mobile guest PDF canvas', () => {
 });
 
 function visibleCanvasPreview(page: Page) {
-  return page.locator('[data-testid="guest-pdf-canvas-preview"]:visible');
+  return page.locator('[data-testid="local-pdf-canvas-preview"]:visible');
 }
 
 async function canvasHasInk(canvas: Locator) {

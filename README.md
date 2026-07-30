@@ -1,25 +1,67 @@
 # LittleAgResume
 
-## 什么是LittleAgResume？
-一句话介绍：LittleAgResume 是一个开源, 免费, 易用的在线简历编辑器，同时支持通过游客模式进行试用以及登录使用以便于保存
+[![Version](https://img.shields.io/github/package-json/v/MaiXiangCatt/littleag-resume?filename=package.json&label=version&color=bf301e)](https://github.com/MaiXiangCatt/littleag-resume/releases)
+[![CI](https://github.com/MaiXiangCatt/littleag-resume/actions/workflows/ci-cd.yml/badge.svg?branch=main)](https://github.com/MaiXiangCatt/littleag-resume/actions/workflows/ci-cd.yml)
+[![License](https://img.shields.io/github/license/MaiXiangCatt/littleag-resume?color=2563eb)](./LICENSE)
+
+一个开源、免费、易用的在线简历编辑器。
+
+[在线体验](https://littleag.com)
 
 ## 功能介绍
-1.  游客模式（当前推荐）：用户无需注册即可使用，支持在本地创建、编辑、预览和下载单份简历。
-- 数据完全保存在本地，隐私安全。
-- 具有除工作台管理多份简历外和登陆使用完全相同的功能。（本地工作台作为后续功能开发）
-- 需注意，由于存储方案是IndexedDB，因此在磁盘空间不足/使用软件清理内存/使用无痕模式的浏览器时，可能会导致数据丢失，建议及时备份自己的数据。
-2.  登录使用：用户可以使用自己的账号登录，保存和管理自己的简历。
-- 支持创建和管理多份简历。
-- 保存在服务端，数据不易丢失。
-- 当前注册登录功能为灰度阶段，必须通过邀请码进行注册。
+
+### 本地模式（推荐）
+
+- 无需注册，简历仅保存在当前浏览器中。
+- 支持管理最多 20 份简历，以及创建、编辑、复制、重命名、删除、搜索、筛选和排序。
+- 支持 JSON 导入导出、实时 PDF 预览和 PDF 下载。
+- 本地数据不会自动同步到云端；可以通过 JSON 手动转移。
+
+> 本地模式使用 IndexedDB 作为存储方案。清理浏览器数据、使用无痕模式或磁盘空间不足都可能造成数据丢失，请及时导出 JSON 备份自己的数据。
+
+### 登录使用（不太推荐）
+
+- 支持在云端保存和管理多份简历。
+- 支持跨设备访问，数据不依赖单个浏览器。
+- 注册功能目前仅小规模开放，需要邀请码。
+
+## 本地开发
+
+```bash
+make install
+make dev-web
+make dev-server
+```
+
+常用检查：
+
+```bash
+make test
+make lint
+make build
+```
+
+## 版本与发布
+
+LittleAgResume 使用 [Semantic Versioning](https://semver.org/)：
+
+- 根目录 `package.json` 的 `version` 是开发中的产品版本唯一来源。
+- Git tag 和 GitHub Release 使用相同的 `vX.Y.Z`，例如 `v0.1.0`。
+- `apps/web` 和 `packages/vega-cli` 的版本仅表示内部包版本，不要求和产品版本同步。
+- 生产容器继续使用完整 commit SHA，保证部署和回滚指向不可变构建。
+
+完整发版步骤见 [版本发布指南](./docs/releasing.md)。
 
 ## FAQ
-1. 
-- Q: 以后会收费吗？
-- A: 永远不会收费！
-2. 
-- Q: 我想注册，怎么获取邀请码？
-- A: 暂时可以联系作者本人获取。
-3. 
-- Q: 什么是Ag？
-- A: Ag是元素周期表第47号元素～
+
+### 以后会收费吗？
+
+永远不会收费！
+
+### 如何获取邀请码？
+
+暂时可以联系作者本人获取～
+
+## License
+
+本项目基于 [GNU General Public License v3.0](./LICENSE) 开源。

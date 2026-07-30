@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ResumePdfPreviewController } from '../hooks/useResumePdfPreview';
-import { GuestPdfPreview } from './GuestPdfPreview';
+import { LocalPdfPreview } from './LocalPdfPreview';
 
 vi.mock('../hooks/usePdfCanvasDocument', () => ({
   usePdfCanvasDocument: () => ({
@@ -31,9 +31,9 @@ function createPreview(
   };
 }
 
-describe('GuestPdfPreview', () => {
+describe('LocalPdfPreview', () => {
   it('renders an accessible canvas without browser PDF embedding elements', () => {
-    const view = render(<GuestPdfPreview preview={createPreview()} />);
+    const view = render(<LocalPdfPreview preview={createPreview()} />);
 
     expect(screen.getByRole('img', { name: 'PDF 第 1 页预览' })).toBeInTheDocument();
     expect(view.container.querySelector('iframe, object, embed')).toBeNull();
@@ -42,7 +42,7 @@ describe('GuestPdfPreview', () => {
   it('keeps the current canvas visible and offers retry after an update error', () => {
     const retry = vi.fn();
     render(
-      <GuestPdfPreview
+      <LocalPdfPreview
         preview={createPreview({
           error: 'PDF 预览绘制失败',
           retry,

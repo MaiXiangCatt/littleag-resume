@@ -6,7 +6,7 @@ import type { ResumePdfPreviewController } from '../hooks/useResumePdfPreview';
 import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
 
-export function GuestPdfPreview({ preview }: { preview: ResumePdfPreviewController }) {
+export function LocalPdfPreview({ preview }: { preview: ResumePdfPreviewController }) {
   const assets = [preview.current, preview.pending].filter(
     (asset, index, values) =>
       asset && values.findIndex((candidate) => candidate?.key === asset.key) === index,
@@ -90,7 +90,7 @@ function PdfCanvasAsset({
         current ? 'relative' : 'invisible absolute inset-0',
       )}
       data-preview-key={asset.key}
-      data-testid="guest-pdf-canvas-preview"
+      data-testid="local-pdf-canvas-preview"
     >
       <div className="mx-auto flex w-full max-w-[794px] flex-col gap-5" ref={containerRef}>
         {pages.map((page) => (
