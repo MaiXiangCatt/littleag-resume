@@ -35,6 +35,7 @@ type testStore interface {
 	repository.UserRepository
 	repository.EmailVerificationRepository
 	repository.RegistrationEmailVerificationRepository
+	repository.RegistrationInvitationRepository
 	repository.RefreshTokenRepository
 	repository.ResumeRepository
 }
@@ -77,6 +78,24 @@ func newTestRouterWithStoreRendererAndCookieSecurity(
 	renderer handler.PdfRenderer,
 	secureCookies bool,
 ) *gin.Engine {
+	return newTestRouterWithRegistrationMode(
+		t,
+		store,
+		renderer,
+		secureCookies,
+		model.RegistrationModeOpen,
+		nil,
+	)
+}
+
+func newTestRouterWithRegistrationMode(
+	t *testing.T,
+	store testStore,
+	renderer handler.PdfRenderer,
+	secureCookies bool,
+	registrationMode model.RegistrationMode,
+	challenges []service.InvitationChallenge,
+) *gin.Engine {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
@@ -84,6 +103,8 @@ func newTestRouterWithStoreRendererAndCookieSecurity(
 		Users:                     store,
 		EmailVerifications:        store,
 		RegistrationVerifications: store,
+		RegistrationInvitations:   store,
+		RegistrationMode:          registrationMode,
 		RefreshTokens:             store,
 		VerificationEmailSender:   testVerificationSender{},
 		EmailVerificationKey:      []byte("test-verification-secret-with-enough-length"),
@@ -96,11 +117,16 @@ func newTestRouterWithStoreRendererAndCookieSecurity(
 		AccountLockLimit:          5,
 		AccountLockTTL:            15 * time.Minute,
 	})
+	invitations := service.NewInvitationService(service.InvitationServiceConfig{
+		Mode:        registrationMode,
+		Challenges:  challenges,
+		Invitations: store,
+	})
 	resumes := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
 
 	router := gin.New()
 	generated.RegisterHandlersWithOptions(router, handler.NewAPIHandler(
-		handler.NewAuthHandler(auth, secureCookies),
+		handler.NewAuthHandler(auth, invitations, secureCookies),
 		handler.NewResumeHandler(handler.ResumeHandlerConfig{
 			Resumes:     resumes,
 			Renderer:    renderer,
@@ -309,5 +335,163 @@ func TestAuthHandlersErrorEnvelopeAndStatusCodes(t *testing.T) {
 	body = decodeEnvelope(t, refresh)
 	if body["code"] != float64(model.ErrRefreshTokenInvalid.Code) || body["data"] != nil {
 		t.Fatalf("unexpected refresh error envelope: %+v", body)
+	}
+}
+
+func TestAuthHandlersRegistrationPolicyAndInvitationChallengeContract(t *testing.T) {
+	challenges := []service.InvitationChallenge{{
+		ID: "yi-ci-lin-qing", Prompt: "异次临倾，", Answer: "步步唯银",
+	}}
+
+	for _, testCase := range []struct {
+		mode               model.RegistrationMode
+		challengeAvailable bool
+	}{
+		{mode: model.RegistrationModeOpen, challengeAvailable: true},
+		{mode: model.RegistrationModeInvite, challengeAvailable: true},
+		{mode: model.RegistrationModeClosed, challengeAvailable: false},
+	} {
+		t.Run(string(testCase.mode), func(t *testing.T) {
+			router := newTestRouterWithRegistrationMode(
+				t,
+				repository.NewMemoryStore(),
+				&stubRenderer{data: []byte("%PDF-stub")},
+				false,
+				testCase.mode,
+				challenges,
+			)
+			response := performJSON(
+				router,
+				http.MethodGet,
+				"/api/auth/registration-policy",
+				"",
+			)
+			if response.Code != http.StatusOK {
+				t.Fatalf("policy status=%d body=%s", response.Code, response.Body.String())
+			}
+			data := decodeEnvelope(t, response)["data"].(map[string]any)
+			if data["mode"] != string(testCase.mode) ||
+				data["challengeAvailable"] != testCase.challengeAvailable {
+				t.Fatalf("unexpected policy: %+v", data)
+			}
+		})
+	}
+
+	router := newTestRouterWithRegistrationMode(
+		t,
+		repository.NewMemoryStore(),
+		&stubRenderer{data: []byte("%PDF-stub")},
+		false,
+		model.RegistrationModeInvite,
+		challenges,
+	)
+	challengeResponse := performJSON(
+		router,
+		http.MethodGet,
+		"/api/auth/invitation-challenge",
+		"",
+	)
+	if challengeResponse.Code != http.StatusOK {
+		t.Fatalf("challenge status=%d body=%s", challengeResponse.Code, challengeResponse.Body.String())
+	}
+	challengeData := decodeEnvelope(t, challengeResponse)["data"].(map[string]any)
+	if challengeData["challengeId"] != "yi-ci-lin-qing" ||
+		challengeData["prompt"] != "异次临倾，" ||
+		challengeData["answer"] != nil {
+		t.Fatalf("unexpected public challenge: %+v", challengeData)
+	}
+
+	wrong := performJSON(
+		router,
+		http.MethodPost,
+		"/api/auth/invitation-challenge/answer",
+		`{"challengeId":"yi-ci-lin-qing","answer":"步步为银"}`,
+	)
+	if wrong.Code != http.StatusBadRequest ||
+		decodeEnvelope(t, wrong)["code"] != float64(model.ErrInvitationAnswerWrong.Code) {
+		t.Fatalf("unexpected wrong-answer response: status=%d body=%s", wrong.Code, wrong.Body.String())
+	}
+
+	correct := performJSON(
+		router,
+		http.MethodPost,
+		"/api/auth/invitation-challenge/answer",
+		`{"challengeId":"yi-ci-lin-qing","answer":"步步唯银"}`,
+	)
+	if correct.Code != http.StatusOK {
+		t.Fatalf("correct answer status=%d body=%s", correct.Code, correct.Body.String())
+	}
+	invitationData := decodeEnvelope(t, correct)["data"].(map[string]any)
+	invitationCode, ok := invitationData["invitationCode"].(string)
+	if !ok || invitationCode == "" || invitationData["expiresInSeconds"] != float64(1800) {
+		t.Fatalf("unexpected invitation response: %+v", invitationData)
+	}
+
+	missingInvitation := performJSON(
+		router,
+		http.MethodPost,
+		"/api/auth/registration-email-verification",
+		`{"email":"invite@example.com"}`,
+	)
+	if missingInvitation.Code != http.StatusBadRequest ||
+		decodeEnvelope(t, missingInvitation)["code"] != float64(model.ErrInvitationInvalid.Code) {
+		t.Fatalf(
+			"unexpected missing invitation response: status=%d body=%s",
+			missingInvitation.Code,
+			missingInvitation.Body.String(),
+		)
+	}
+	validInvitation := performJSON(
+		router,
+		http.MethodPost,
+		"/api/auth/registration-email-verification",
+		`{"email":"invite@example.com","invitationCode":"`+invitationCode+`"}`,
+	)
+	if validInvitation.Code != http.StatusOK {
+		t.Fatalf(
+			"valid invitation email status=%d body=%s",
+			validInvitation.Code,
+			validInvitation.Body.String(),
+		)
+	}
+}
+
+func TestAuthHandlersClosedRegistrationContract(t *testing.T) {
+	router := newTestRouterWithRegistrationMode(
+		t,
+		repository.NewMemoryStore(),
+		&stubRenderer{data: []byte("%PDF-stub")},
+		false,
+		model.RegistrationModeClosed,
+		nil,
+	)
+	for _, request := range []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{method: http.MethodGet, path: "/api/auth/invitation-challenge"},
+		{
+			method: http.MethodPost,
+			path:   "/api/auth/registration-email-verification",
+			body:   `{"email":"closed@example.com"}`,
+		},
+		{
+			method: http.MethodPost,
+			path:   "/api/auth/register",
+			body:   `{"username":"closed","email":"closed@example.com","password":"password1","confirmPassword":"password1","verificationCode":"123456"}`,
+		},
+	} {
+		response := performJSON(router, request.method, request.path, request.body)
+		if response.Code != http.StatusForbidden ||
+			decodeEnvelope(t, response)["code"] != float64(model.ErrRegistrationClosed.Code) {
+			t.Fatalf(
+				"%s %s status=%d body=%s",
+				request.method,
+				request.path,
+				response.Code,
+				response.Body.String(),
+			)
+		}
 	}
 }

@@ -43,6 +43,9 @@ var (
 	ErrEmailNotVerified      = &AppError{Code: 101011, Message: "邮箱尚未验证", HTTPStatus: http.StatusForbidden}
 	ErrVerificationInvalid   = &AppError{Code: 101012, Message: "验证码错误或已过期", HTTPStatus: http.StatusBadRequest}
 	ErrEmailDeliveryFailed   = &AppError{Code: 101013, Message: "验证邮件发送失败，请稍后重试", HTTPStatus: http.StatusServiceUnavailable}
+	ErrInvitationInvalid     = &AppError{Code: 101014, Message: "邀请码无效或已过期", HTTPStatus: http.StatusBadRequest}
+	ErrRegistrationClosed    = &AppError{Code: 101015, Message: "注册暂未开放", HTTPStatus: http.StatusForbidden}
+	ErrInvitationAnswerWrong = &AppError{Code: 101016, Message: "暗号不正确", HTTPStatus: http.StatusBadRequest}
 	ErrResumeNotFound        = &AppError{Code: 103001, Message: "简历不存在", HTTPStatus: http.StatusNotFound}
 	ErrResumeInvalidSchema   = &AppError{Code: 103004, Message: "简历数据结构不合法", HTTPStatus: http.StatusBadRequest}
 	ErrResumeConflict        = &AppError{Code: 103005, Message: "简历已在其他页面更新", HTTPStatus: http.StatusConflict}

@@ -1,8 +1,11 @@
 package config
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"os"
@@ -22,6 +25,8 @@ type Config struct {
 	Environment          string
 	Addr                 string
 	DatabaseURL          string
+	RegistrationMode     string
+	InvitationChallenges []InvitationChallenge
 	AccessTokenKey       []byte
 	AccessTokenTTL       time.Duration
 	RefreshTokenTTL      time.Duration
@@ -47,6 +52,16 @@ type Config struct {
 	PdfMaxConcurrency int
 	PdfMaxQueue       int
 	PrintTokenTTL     time.Duration
+}
+
+type InvitationChallenge struct {
+	ID     string `json:"id"`
+	Prompt string `json:"prompt"`
+	Answer string `json:"answer"`
+}
+
+type invitationChallengeFile struct {
+	Challenges []InvitationChallenge `json:"challenges"`
 }
 
 func Load() (Config, error) {
@@ -97,10 +112,23 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	registrationMode := strings.ToLower(env("REGISTRATION_MODE", "open"))
+	if registrationMode != "open" && registrationMode != "invite" && registrationMode != "closed" {
+		return Config{}, fmt.Errorf("REGISTRATION_MODE must be open, invite, or closed")
+	}
+	invitationChallenges, err := loadInvitationChallenges(
+		strings.TrimSpace(os.Getenv("INVITATION_CHALLENGES_FILE")),
+		registrationMode,
+	)
+	if err != nil {
+		return Config{}, err
+	}
 
 	return Config{
 		Addr:                 env("SERVER_ADDR", ":8080"),
 		DatabaseURL:          databaseURL,
+		RegistrationMode:     registrationMode,
+		InvitationChallenges: invitationChallenges,
 		AccessTokenKey:       []byte(accessTokenKey),
 		AccessTokenTTL:       durationEnv("ACCESS_TOKEN_TTL", 15*time.Minute),
 		RefreshTokenTTL:      durationEnv("REFRESH_TOKEN_TTL", 7*24*time.Hour),
@@ -127,6 +155,61 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 		PdfMaxQueue:       intEnv("PDF_MAX_QUEUE", 8),
 		PrintTokenTTL:     durationEnv("PRINT_TOKEN_TTL", 90*time.Second),
 	}, nil
+}
+
+func loadInvitationChallenges(path, registrationMode string) ([]InvitationChallenge, error) {
+	if registrationMode == "closed" {
+		return nil, nil
+	}
+	if path == "" {
+		if registrationMode == "invite" {
+			return nil, fmt.Errorf("INVITATION_CHALLENGES_FILE is required when REGISTRATION_MODE=invite")
+		}
+		if registrationMode == "open" {
+			return []InvitationChallenge{
+				{ID: "shan-se-you-wu-zhong", Prompt: "山色有无中，", Answer: "不如就春风"},
+				{ID: "yi-ci-lin-qing", Prompt: "异次临倾，", Answer: "步步唯银"},
+			}, nil
+		}
+		return nil, nil
+	}
+
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read invitation challenges file %q: %w", path, err)
+	}
+	var parsed invitationChallengeFile
+	decoder := json.NewDecoder(bytes.NewReader(contents))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&parsed); err != nil {
+		return nil, fmt.Errorf("decode invitation challenges file %q: %w", path, err)
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("decode invitation challenges file %q: trailing content", path)
+	}
+	if len(parsed.Challenges) == 0 {
+		return nil, fmt.Errorf("invitation challenges file %q must contain at least one challenge", path)
+	}
+
+	seenIDs := make(map[string]struct{}, len(parsed.Challenges))
+	challenges := make([]InvitationChallenge, 0, len(parsed.Challenges))
+	for index, challenge := range parsed.Challenges {
+		challenge.ID = strings.TrimSpace(challenge.ID)
+		challenge.Prompt = strings.TrimSpace(challenge.Prompt)
+		challenge.Answer = strings.TrimSpace(challenge.Answer)
+		if challenge.ID == "" || challenge.Prompt == "" || challenge.Answer == "" {
+			return nil, fmt.Errorf(
+				"invitation challenge at index %d must have non-empty id, prompt, and answer",
+				index,
+			)
+		}
+		if _, exists := seenIDs[challenge.ID]; exists {
+			return nil, fmt.Errorf("invitation challenge id %q is duplicated", challenge.ID)
+		}
+		seenIDs[challenge.ID] = struct{}{}
+		challenges = append(challenges, challenge)
+	}
+	return challenges, nil
 }
 
 func resolveDatabaseURL() (string, error) {

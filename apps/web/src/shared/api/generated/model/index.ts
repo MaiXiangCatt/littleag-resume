@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
+export * from './answerInvitationChallengeRequest';
 export * from './authPayload';
 export * from './authResponse';
 export * from './authResponseCode';
@@ -32,11 +33,24 @@ export * from './importResumeRequest';
 export * from './importResumeRequestTemplateId';
 export * from './importResumeRequestVersion';
 export * from './internalServerErrorResponse';
+export * from './invitationChallengePayload';
+export * from './invitationChallengeResponse';
+export * from './invitationChallengeResponseCode';
+export * from './invitationChallengeResponseMessage';
+export * from './invitationCodePayload';
+export * from './invitationCodeResponse';
+export * from './invitationCodeResponseCode';
+export * from './invitationCodeResponseMessage';
 export * from './listResumesPageSize';
 export * from './listResumesParams';
 export * from './loginRequest';
 export * from './notFoundResponse';
 export * from './registerRequest';
+export * from './registrationMode';
+export * from './registrationPolicyPayload';
+export * from './registrationPolicyResponse';
+export * from './registrationPolicyResponseCode';
+export * from './registrationPolicyResponseMessage';
 export * from './replaceResumeImportBody';
 export * from './resendEmailVerificationRequest';
 export * from './resumeContent';

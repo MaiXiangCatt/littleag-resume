@@ -8,6 +8,7 @@ import (
 	"github.com/vega-resume/server/internal/handler"
 	"github.com/vega-resume/server/internal/mailer"
 	"github.com/vega-resume/server/internal/middleware"
+	"github.com/vega-resume/server/internal/model"
 	"github.com/vega-resume/server/internal/pdf"
 	"github.com/vega-resume/server/internal/repository"
 	"github.com/vega-resume/server/internal/server"
@@ -33,6 +34,17 @@ func main() {
 	}
 
 	store := repository.NewGormStore(db)
+	invitationChallenges := make([]service.InvitationChallenge, 0, len(cfg.InvitationChallenges))
+	for _, challenge := range cfg.InvitationChallenges {
+		invitationChallenges = append(invitationChallenges, service.InvitationChallenge{
+			ID: challenge.ID, Prompt: challenge.Prompt, Answer: challenge.Answer,
+		})
+	}
+	invitationService := service.NewInvitationService(service.InvitationServiceConfig{
+		Mode:        model.RegistrationMode(cfg.RegistrationMode),
+		Challenges:  invitationChallenges,
+		Invitations: store,
+	})
 	verificationEmailSender, err := mailer.NewVerificationSender(mailer.Config{
 		Provider:     cfg.EmailProvider,
 		ResendAPIKey: cfg.ResendAPIKey,
@@ -46,6 +58,8 @@ func main() {
 		Users:                     store,
 		EmailVerifications:        store,
 		RegistrationVerifications: store,
+		RegistrationInvitations:   store,
+		RegistrationMode:          model.RegistrationMode(cfg.RegistrationMode),
 		RefreshTokens:             store,
 		VerificationEmailSender:   verificationEmailSender,
 		EmailVerificationKey:      cfg.EmailVerificationKey,
@@ -69,7 +83,7 @@ func main() {
 	})
 	defer renderer.Close()
 	apiHandler := handler.NewAPIHandler(
-		handler.NewAuthHandler(authService, cfg.Environment == "prod"),
+		handler.NewAuthHandler(authService, invitationService, cfg.Environment == "prod"),
 		handler.NewResumeHandler(handler.ResumeHandlerConfig{
 			Resumes:     resumeService,
 			Renderer:    renderer,

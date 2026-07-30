@@ -10,6 +10,7 @@ import {
 } from 'react-router-dom';
 
 import { useAuthBootstrap } from '@/shared/auth/hooks/useAuthBootstrap';
+import { useRegistrationPolicy } from '@/shared/auth/hooks/useRegistrationPolicy';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { authService } from '@/shared/auth/api/auth.service';
 import { Toaster } from '@/shared/ui/sonner';
@@ -154,6 +155,7 @@ function PrintResumeRoute() {
 
 function HomeRoute() {
   const navigate = useNavigate();
+  const { policy: registrationPolicy } = useRegistrationPolicy();
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const [authMode, setAuthMode] = useState<AuthMode>('login');
@@ -180,12 +182,14 @@ function HomeRoute() {
         onLogin={() => openAuth('login')}
         onRegister={() => openAuth('register')}
         onViewExample={() => undefined}
+        registrationPolicy={registrationPolicy}
       />
       <AuthModal
         defaultMode={authMode}
         onAuthenticated={handleAuthenticated}
         onOpenChange={setAuthModalOpen}
         open={authModalOpen}
+        registrationMode={registrationPolicy.mode}
       />
     </>
   );

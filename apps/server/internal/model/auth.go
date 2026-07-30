@@ -6,6 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type RegistrationMode string
+
+const (
+	RegistrationModeOpen   RegistrationMode = "open"
+	RegistrationModeInvite RegistrationMode = "invite"
+	RegistrationModeClosed RegistrationMode = "closed"
+)
+
 type User struct {
 	ID              uuid.UUID  `gorm:"type:uuid;primaryKey"`
 	Username        string     `gorm:"type:text;not null"`
@@ -42,6 +50,14 @@ type RegistrationEmailVerification struct {
 	ConsumedAt      *time.Time `gorm:"index"`
 	InvalidatedAt   *time.Time `gorm:"index"`
 	CreatedAt       time.Time  `gorm:"not null;autoCreateTime"`
+}
+
+type RegistrationInvitation struct {
+	ID         uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	CodeHash   string     `gorm:"type:char(64);not null;uniqueIndex"`
+	ExpiresAt  time.Time  `gorm:"not null;index"`
+	ConsumedAt *time.Time `gorm:"index"`
+	CreatedAt  time.Time  `gorm:"not null;autoCreateTime"`
 }
 
 type RefreshToken struct {

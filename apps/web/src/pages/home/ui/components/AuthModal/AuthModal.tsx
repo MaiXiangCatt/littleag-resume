@@ -6,6 +6,7 @@ import type {
   EmailVerificationFormValues,
   LoginFormValues,
   RegisterFormValues,
+  RegistrationMode,
 } from '@/shared/auth/model/auth';
 import { authErrorMessage } from '@/shared/auth/model/auth';
 import { authService } from '@/shared/auth/api/auth.service';
@@ -33,9 +34,16 @@ type AuthModalProps = {
   onAuthenticated: (session: AuthSession) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  registrationMode: RegistrationMode;
 };
 
-export function AuthModal({ defaultMode, onAuthenticated, onOpenChange, open }: AuthModalProps) {
+export function AuthModal({
+  defaultMode,
+  onAuthenticated,
+  onOpenChange,
+  open,
+  registrationMode,
+}: AuthModalProps) {
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <AuthModalContent
@@ -43,17 +51,22 @@ export function AuthModal({ defaultMode, onAuthenticated, onOpenChange, open }: 
         key={defaultMode}
         onAuthenticated={onAuthenticated}
         onOpenChange={onOpenChange}
+        registrationMode={registrationMode}
       />
     </Dialog>
   );
 }
-
 type AuthModalContentProps = Pick<
   AuthModalProps,
-  'defaultMode' | 'onAuthenticated' | 'onOpenChange'
+  'defaultMode' | 'onAuthenticated' | 'onOpenChange' | 'registrationMode'
 >;
 
-function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthModalContentProps) {
+function AuthModalContent({
+  defaultMode,
+  onAuthenticated,
+  onOpenChange,
+  registrationMode,
+}: AuthModalContentProps) {
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
@@ -95,14 +108,17 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
     }
   }
 
-  async function sendRegistrationVerification(email: string) {
+  async function sendRegistrationVerification(email: string, invitationCode: string) {
     if (isSubmitting) {
       return;
     }
     setSubmitting(true);
     setFormError(null);
     try {
-      const verification = await authService.sendRegistrationEmailVerification(email);
+      const verification = await authService.sendRegistrationEmailVerification(
+        email,
+        invitationCode,
+      );
       setPendingVerification({
         ...verification,
         flow: 'register',
@@ -182,9 +198,11 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
   const standaloneVerification = pendingVerification?.flow === 'login';
 
   return (
-    <DialogContent>
+    <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto">
       <DialogTitle>{authDialogTitle(mode, standaloneVerification)}</DialogTitle>
-      <DialogDescription>{authDialogDescription(mode, standaloneVerification)}</DialogDescription>
+      <DialogDescription>
+        {authDialogDescription(mode, standaloneVerification, registrationMode)}
+      </DialogDescription>
 
       {formError ? (
         <Alert className="mt-4">
@@ -223,27 +241,34 @@ function AuthModalContent({ defaultMode, onAuthenticated, onOpenChange }: AuthMo
             <LoginForm isSubmitting={isSubmitting} onSubmit={submitLogin} />
           </TabsContent>
           <TabsContent value="register">
-            <RegisterForm
-              isSubmitting={isSubmitting}
-              onEmailChange={(email) => {
-                if (
-                  pendingVerification?.flow === 'register' &&
-                  normalizeEmail(email) !== normalizeEmail(pendingVerification.email)
-                ) {
-                  setPendingVerification(null);
+            {registrationMode === 'closed' ? (
+              <Alert className="mt-5">
+                <AlertDescription>注册暂未开放，已有账号仍可正常登录。</AlertDescription>
+              </Alert>
+            ) : (
+              <RegisterForm
+                isSubmitting={isSubmitting}
+                onEmailChange={(email) => {
+                  if (
+                    pendingVerification?.flow === 'register' &&
+                    normalizeEmail(email) !== normalizeEmail(pendingVerification.email)
+                  ) {
+                    setPendingVerification(null);
+                  }
+                }}
+                onSendCode={sendRegistrationVerification}
+                onSubmit={submitRegister}
+                registrationMode={registrationMode}
+                resendAvailableAt={
+                  pendingVerification?.flow === 'register'
+                    ? pendingVerification.resendAvailableAt
+                    : undefined
                 }
-              }}
-              onSendCode={sendRegistrationVerification}
-              onSubmit={submitRegister}
-              resendAvailableAt={
-                pendingVerification?.flow === 'register'
-                  ? pendingVerification.resendAvailableAt
-                  : undefined
-              }
-              verificationEmail={
-                pendingVerification?.flow === 'register' ? pendingVerification.email : undefined
-              }
-            />
+                verificationEmail={
+                  pendingVerification?.flow === 'register' ? pendingVerification.email : undefined
+                }
+              />
+            )}
           </TabsContent>
         </Tabs>
       )}
@@ -266,11 +291,21 @@ function authDialogTitle(mode: AuthMode, standaloneVerification: boolean): strin
   return mode === 'register' ? '创建账号' : '账号登录';
 }
 
-function authDialogDescription(mode: AuthMode, standaloneVerification: boolean): string {
+function authDialogDescription(
+  mode: AuthMode,
+  standaloneVerification: boolean,
+  registrationMode: RegistrationMode,
+): string {
   if (standaloneVerification) {
     return '输入邮件中的 6 位验证码，验证成功后将自动登录。';
   }
   if (mode === 'register') {
+    if (registrationMode === 'closed') {
+      return '目前仅开放已有账号登录和游客模式。';
+    }
+    if (registrationMode === 'invite') {
+      return '填写邀请码和注册信息，完成邮箱验证后将自动登录。';
+    }
     return '填写注册信息并完成邮箱验证，验证成功后将自动登录。';
   }
   return '登录后进入 Console。';

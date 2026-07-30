@@ -19,6 +19,7 @@ describe('HomePage', () => {
         onLogin={onLogin}
         onRegister={onRegister}
         onViewExample={onViewExample}
+        registrationPolicy={{ challengeAvailable: true, mode: 'open' }}
       />,
     );
 
@@ -51,6 +52,7 @@ describe('HomePage', () => {
         onLogin={vi.fn()}
         onRegister={vi.fn()}
         onViewExample={vi.fn()}
+        registrationPolicy={{ challengeAvailable: true, mode: 'open' }}
       />,
     );
 

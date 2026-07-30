@@ -59,6 +59,7 @@ type FieldProps = {
   label: string;
   maxLength?: number;
   onChange: (value: string) => void;
+  placeholder?: string;
   suffix?: ReactNode;
   type: string;
   value: string;
@@ -72,6 +73,7 @@ export function Field({
   label,
   maxLength,
   onChange,
+  placeholder,
   suffix,
   type,
   value,
@@ -92,6 +94,7 @@ export function Field({
           inputMode={inputMode}
           maxLength={maxLength}
           onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
           type={type}
           value={value}
         />

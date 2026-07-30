@@ -4,11 +4,13 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAuthStore } from '@/shared/auth/store/auth.store';
+import { useRegistrationStore } from '@/shared/auth/store/registration.store';
 
 import { AppRoutes } from './App';
 
 const authServiceMock = vi.hoisted(() => ({
   confirmEmailVerification: vi.fn(),
+  getRegistrationPolicy: vi.fn(),
   login: vi.fn(),
   logout: vi.fn(),
   refresh: vi.fn(),
@@ -32,7 +34,9 @@ function renderApp(path = '/') {
 describe('app auth flow integration', () => {
   beforeEach(() => {
     useAuthStore.getState().reset();
+    useRegistrationStore.getState().reset();
     authServiceMock.confirmEmailVerification.mockReset();
+    authServiceMock.getRegistrationPolicy.mockReset();
     authServiceMock.login.mockReset();
     authServiceMock.logout.mockReset();
     authServiceMock.refresh.mockReset();
@@ -40,6 +44,10 @@ describe('app auth flow integration', () => {
     authServiceMock.resendEmailVerification.mockReset();
     authServiceMock.sendRegistrationEmailVerification.mockReset();
     authServiceMock.refresh.mockRejectedValue(new Error('no session'));
+    authServiceMock.getRegistrationPolicy.mockResolvedValue({
+      challengeAvailable: true,
+      mode: 'open',
+    });
   });
 
   it('renders unauthenticated home after failed bootstrap', async () => {
@@ -48,6 +56,16 @@ describe('app auth flow integration', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: /LittleAgResume/ }),
     ).toBeInTheDocument();
+  });
+
+  it('fails registration policy loading closed without blocking login or guest entry', async () => {
+    const user = userEvent.setup();
+    authServiceMock.getRegistrationPolicy.mockRejectedValueOnce(new Error('policy unavailable'));
+    renderApp('/');
+
+    await user.click(await screen.findByRole('button', { name: '免费开始' }));
+    expect(await screen.findByText('注册暂未开放，已有账号仍可正常登录。')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '登录' })).toBeInTheDocument();
   });
 
   it('registers from home and lands on console', async () => {

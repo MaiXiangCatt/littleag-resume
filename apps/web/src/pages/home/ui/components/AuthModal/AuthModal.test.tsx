@@ -31,13 +31,25 @@ describe('AuthModal', () => {
 
   it('opens with the requested login or register tab', () => {
     const { rerender } = render(
-      <AuthModal defaultMode="register" onAuthenticated={vi.fn()} onOpenChange={vi.fn()} open />,
+      <AuthModal
+        defaultMode="register"
+        onAuthenticated={vi.fn()}
+        onOpenChange={vi.fn()}
+        open
+        registrationMode="open"
+      />,
     );
 
     expect(screen.getByRole('tab', { name: '注册' })).toHaveAttribute('aria-selected', 'true');
 
     rerender(
-      <AuthModal defaultMode="login" onAuthenticated={vi.fn()} onOpenChange={vi.fn()} open />,
+      <AuthModal
+        defaultMode="login"
+        onAuthenticated={vi.fn()}
+        onOpenChange={vi.fn()}
+        open
+        registrationMode="open"
+      />,
     );
     expect(screen.getByRole('tab', { name: '登录' })).toHaveAttribute('aria-selected', 'true');
   });
@@ -45,7 +57,13 @@ describe('AuthModal', () => {
   it('validates registration fields before submitting', async () => {
     const user = userEvent.setup();
     render(
-      <AuthModal defaultMode="register" onAuthenticated={vi.fn()} onOpenChange={vi.fn()} open />,
+      <AuthModal
+        defaultMode="register"
+        onAuthenticated={vi.fn()}
+        onOpenChange={vi.fn()}
+        open
+        registrationMode="open"
+      />,
     );
 
     await user.click(screen.getByRole('button', { name: '发送验证码' }));
@@ -57,7 +75,13 @@ describe('AuthModal', () => {
   it('requires both agreements before sending a registration code', async () => {
     const user = userEvent.setup();
     render(
-      <AuthModal defaultMode="register" onAuthenticated={vi.fn()} onOpenChange={vi.fn()} open />,
+      <AuthModal
+        defaultMode="register"
+        onAuthenticated={vi.fn()}
+        onOpenChange={vi.fn()}
+        open
+        registrationMode="open"
+      />,
     );
 
     expect(screen.getByRole('link', { name: '《用户服务协议及内容规则》' })).toHaveAttribute(
@@ -90,6 +114,7 @@ describe('AuthModal', () => {
     await waitFor(() =>
       expect(authServiceMock.sendRegistrationEmailVerification).toHaveBeenCalledWith(
         'user@example.com',
+        '',
       ),
     );
   });
@@ -104,7 +129,13 @@ describe('AuthModal', () => {
     );
 
     render(
-      <AuthModal defaultMode="register" onAuthenticated={vi.fn()} onOpenChange={vi.fn()} open />,
+      <AuthModal
+        defaultMode="register"
+        onAuthenticated={vi.fn()}
+        onOpenChange={vi.fn()}
+        open
+        registrationMode="open"
+      />,
     );
 
     await user.type(screen.getByLabelText('邮箱'), 'user@example.com');
@@ -119,6 +150,58 @@ describe('AuthModal', () => {
       rejectSend({ code: 101001, message: 'Email exists' });
     });
     expect(await screen.findByText('邮箱已注册')).toBeInTheDocument();
+  });
+
+  it('requires and preserves the invitation code in invite mode', async () => {
+    const user = userEvent.setup();
+    authServiceMock.sendRegistrationEmailVerification.mockResolvedValue({
+      email: 'first@example.com',
+      expiresInSeconds: 600,
+      resendAfterSeconds: 60,
+    });
+    render(
+      <AuthModal
+        defaultMode="register"
+        onAuthenticated={vi.fn()}
+        onOpenChange={vi.fn()}
+        open
+        registrationMode="invite"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '发送验证码' })).toBeDisabled();
+    await user.type(screen.getByLabelText('邀请码'), 'ABCD-EFGH-JKLM-NPQR');
+    await user.type(screen.getByLabelText('邮箱'), 'first@example.com');
+    await acceptRegistrationAgreements(user);
+    await user.click(screen.getByRole('button', { name: '发送验证码' }));
+
+    await waitFor(() =>
+      expect(authServiceMock.sendRegistrationEmailVerification).toHaveBeenCalledWith(
+        'first@example.com',
+        'ABCD-EFGH-JKLM-NPQR',
+      ),
+    );
+    await user.clear(screen.getByLabelText('邮箱'));
+    await user.type(screen.getByLabelText('邮箱'), 'second@example.com');
+    expect(screen.getByLabelText('邀请码')).toHaveValue('ABCD-EFGH-JKLM-NPQR');
+  });
+
+  it('keeps login available while closed mode hides the registration form', async () => {
+    const user = userEvent.setup();
+    render(
+      <AuthModal
+        defaultMode="register"
+        onAuthenticated={vi.fn()}
+        onOpenChange={vi.fn()}
+        open
+        registrationMode="closed"
+      />,
+    );
+
+    expect(screen.getByText('注册暂未开放，已有账号仍可正常登录。')).toBeInTheDocument();
+    expect(screen.queryByLabelText('邮箱')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '登录' }));
+    expect(screen.getByLabelText('邮箱')).toBeInTheDocument();
   });
 
   it('stores session and notifies after successful login', async () => {
@@ -140,6 +223,7 @@ describe('AuthModal', () => {
         onAuthenticated={onAuthenticated}
         onOpenChange={vi.fn()}
         open
+        registrationMode="open"
       />,
     );
 
@@ -175,6 +259,7 @@ describe('AuthModal', () => {
         onAuthenticated={onAuthenticated}
         onOpenChange={vi.fn()}
         open
+        registrationMode="open"
       />,
     );
 
@@ -199,6 +284,7 @@ describe('AuthModal', () => {
       expect(authServiceMock.register).toHaveBeenCalledWith({
         confirmPassword: 'password1',
         email: 'user@example.com',
+        invitationCode: '',
         password: 'password1',
         username: 'zhangsan',
         verificationCode: '123456',
@@ -217,7 +303,15 @@ describe('AuthModal', () => {
       resendAfterSeconds: 60,
     });
 
-    render(<AuthModal defaultMode="login" onAuthenticated={vi.fn()} onOpenChange={vi.fn()} open />);
+    render(
+      <AuthModal
+        defaultMode="login"
+        onAuthenticated={vi.fn()}
+        onOpenChange={vi.fn()}
+        open
+        registrationMode="open"
+      />,
+    );
 
     await user.type(screen.getByLabelText('邮箱'), 'user@example.com');
     await user.type(screen.getByLabelText('密码'), 'password1');

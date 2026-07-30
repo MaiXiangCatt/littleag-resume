@@ -1,6 +1,6 @@
 import { LogIn, Rocket, UserRoundSearch } from 'lucide-react';
 
-import type { AuthUser } from '@/shared/auth/model/auth';
+import type { AuthUser, RegistrationPolicy } from '@/shared/auth/model/auth';
 import { AppHeader } from '@/shared/layout/AppHeader';
 import { Button } from '@/shared/ui/button';
 
@@ -13,9 +13,16 @@ type HomePageProps = {
   onLogin: () => void;
   onRegister: () => void;
   onViewExample: () => void;
+  registrationPolicy: RegistrationPolicy;
 };
 
-export function HomePage({ currentUser, onGuest, onLogin, onRegister }: HomePageProps) {
+export function HomePage({
+  currentUser,
+  onGuest,
+  onLogin,
+  onRegister,
+  registrationPolicy,
+}: HomePageProps) {
   return (
     <div
       className="min-h-screen overflow-x-hidden bg-[#fdf8f6] text-[#2f211f]"
@@ -56,9 +63,9 @@ export function HomePage({ currentUser, onGuest, onLogin, onRegister }: HomePage
         currentUser={currentUser}
       />
       <main>
-        <HeroSection onRegister={onRegister} />
+        <HeroSection onRegister={onRegister} onGuest={onGuest} />
       </main>
-      <Footer />
+      <Footer onRegister={onRegister} registrationPolicy={registrationPolicy} />
     </div>
   );
 }

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 import type {
+  AnswerInvitationChallengeRequest,
   AuthResponse,
   AuthUserResponse,
   BadRequestResponse,
@@ -18,10 +19,13 @@ import type {
   ForbiddenResponse,
   ImportResumeRequest,
   InternalServerErrorResponse,
+  InvitationChallengeResponse,
+  InvitationCodeResponse,
   ListResumesParams,
   LoginRequest,
   NotFoundResponse,
   RegisterRequest,
+  RegistrationPolicyResponse,
   ReplaceResumeImportBody,
   ResendEmailVerificationRequest,
   ResumeDetailResponse,
@@ -35,6 +39,186 @@ import type {
   UpdateResumeRequest
 } from './model';
 
+export type getAuthRegistrationPolicyResponse200 = {
+  data: RegistrationPolicyResponse
+  status: 200
+}
+
+export type getAuthRegistrationPolicyResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
+}
+
+export type getAuthRegistrationPolicyResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type getAuthRegistrationPolicyResponseSuccess = (getAuthRegistrationPolicyResponse200) & {
+  headers: Headers;
+};
+export type getAuthRegistrationPolicyResponseError = (getAuthRegistrationPolicyResponse429 | getAuthRegistrationPolicyResponse500) & {
+  headers: Headers;
+};
+
+export type getAuthRegistrationPolicyResponse = (getAuthRegistrationPolicyResponseSuccess | getAuthRegistrationPolicyResponseError)
+
+export const getGetAuthRegistrationPolicyUrl = () => {
+
+
+
+
+  return `/api/auth/registration-policy`
+}
+
+/**
+ * @summary Get the current registration mode and challenge availability
+ */
+export const getAuthRegistrationPolicy = async ( options?: RequestInit): Promise<getAuthRegistrationPolicyResponse> => {
+
+  const res = await fetch(getGetAuthRegistrationPolicyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAuthRegistrationPolicyResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAuthRegistrationPolicyResponse
+}
+
+
+
+export type getAuthInvitationChallengeResponse200 = {
+  data: InvitationChallengeResponse
+  status: 200
+}
+
+export type getAuthInvitationChallengeResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getAuthInvitationChallengeResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
+}
+
+export type getAuthInvitationChallengeResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type getAuthInvitationChallengeResponseSuccess = (getAuthInvitationChallengeResponse200) & {
+  headers: Headers;
+};
+export type getAuthInvitationChallengeResponseError = (getAuthInvitationChallengeResponse403 | getAuthInvitationChallengeResponse429 | getAuthInvitationChallengeResponse500) & {
+  headers: Headers;
+};
+
+export type getAuthInvitationChallengeResponse = (getAuthInvitationChallengeResponseSuccess | getAuthInvitationChallengeResponseError)
+
+export const getGetAuthInvitationChallengeUrl = () => {
+
+
+
+
+  return `/api/auth/invitation-challenge`
+}
+
+/**
+ * @summary Get a random invitation challenge
+ */
+export const getAuthInvitationChallenge = async ( options?: RequestInit): Promise<getAuthInvitationChallengeResponse> => {
+
+  const res = await fetch(getGetAuthInvitationChallengeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAuthInvitationChallengeResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAuthInvitationChallengeResponse
+}
+
+
+
+export type answerAuthInvitationChallengeResponse200 = {
+  data: InvitationCodeResponse
+  status: 200
+}
+
+export type answerAuthInvitationChallengeResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type answerAuthInvitationChallengeResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type answerAuthInvitationChallengeResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
+}
+
+export type answerAuthInvitationChallengeResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type answerAuthInvitationChallengeResponseSuccess = (answerAuthInvitationChallengeResponse200) & {
+  headers: Headers;
+};
+export type answerAuthInvitationChallengeResponseError = (answerAuthInvitationChallengeResponse400 | answerAuthInvitationChallengeResponse403 | answerAuthInvitationChallengeResponse429 | answerAuthInvitationChallengeResponse500) & {
+  headers: Headers;
+};
+
+export type answerAuthInvitationChallengeResponse = (answerAuthInvitationChallengeResponseSuccess | answerAuthInvitationChallengeResponseError)
+
+export const getAnswerAuthInvitationChallengeUrl = () => {
+
+
+
+
+  return `/api/auth/invitation-challenge/answer`
+}
+
+/**
+ * @summary Answer an invitation challenge and issue a short-lived invitation code
+ */
+export const answerAuthInvitationChallenge = async (answerInvitationChallengeRequest: AnswerInvitationChallengeRequest, options?: RequestInit): Promise<answerAuthInvitationChallengeResponse> => {
+
+  const res = await fetch(getAnswerAuthInvitationChallengeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(answerInvitationChallengeRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: answerAuthInvitationChallengeResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as answerAuthInvitationChallengeResponse
+}
+
+
+
 export type registerAuthUserResponse200 = {
   data: AuthResponse
   status: 200
@@ -43,6 +227,11 @@ export type registerAuthUserResponse200 = {
 export type registerAuthUserResponse400 = {
   data: BadRequestResponse
   status: 400
+}
+
+export type registerAuthUserResponse403 = {
+  data: ForbiddenResponse
+  status: 403
 }
 
 export type registerAuthUserResponse409 = {
@@ -68,7 +257,7 @@ export type registerAuthUserResponse503 = {
 export type registerAuthUserResponseSuccess = (registerAuthUserResponse200) & {
   headers: Headers;
 };
-export type registerAuthUserResponseError = (registerAuthUserResponse400 | registerAuthUserResponse409 | registerAuthUserResponse429 | registerAuthUserResponse500 | registerAuthUserResponse503) & {
+export type registerAuthUserResponseError = (registerAuthUserResponse400 | registerAuthUserResponse403 | registerAuthUserResponse409 | registerAuthUserResponse429 | registerAuthUserResponse500 | registerAuthUserResponse503) & {
   headers: Headers;
 };
 
@@ -115,6 +304,11 @@ export type sendAuthRegistrationEmailVerificationResponse400 = {
   status: 400
 }
 
+export type sendAuthRegistrationEmailVerificationResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
 export type sendAuthRegistrationEmailVerificationResponse409 = {
   data: ConflictResponse
   status: 409
@@ -138,7 +332,7 @@ export type sendAuthRegistrationEmailVerificationResponse503 = {
 export type sendAuthRegistrationEmailVerificationResponseSuccess = (sendAuthRegistrationEmailVerificationResponse200) & {
   headers: Headers;
 };
-export type sendAuthRegistrationEmailVerificationResponseError = (sendAuthRegistrationEmailVerificationResponse400 | sendAuthRegistrationEmailVerificationResponse409 | sendAuthRegistrationEmailVerificationResponse429 | sendAuthRegistrationEmailVerificationResponse500 | sendAuthRegistrationEmailVerificationResponse503) & {
+export type sendAuthRegistrationEmailVerificationResponseError = (sendAuthRegistrationEmailVerificationResponse400 | sendAuthRegistrationEmailVerificationResponse403 | sendAuthRegistrationEmailVerificationResponse409 | sendAuthRegistrationEmailVerificationResponse429 | sendAuthRegistrationEmailVerificationResponse500 | sendAuthRegistrationEmailVerificationResponse503) & {
   headers: Headers;
 };
 

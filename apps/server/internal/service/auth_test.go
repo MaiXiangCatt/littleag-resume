@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -49,6 +50,13 @@ func (s *fakeVerificationEmailSender) code(recipient string) string {
 func newTestAuthService(
 	t *testing.T,
 ) (*service.AuthService, *repository.MemoryStore, *fakeVerificationEmailSender) {
+	return newTestAuthServiceWithMode(t, model.RegistrationModeOpen)
+}
+
+func newTestAuthServiceWithMode(
+	t *testing.T,
+	registrationMode model.RegistrationMode,
+) (*service.AuthService, *repository.MemoryStore, *fakeVerificationEmailSender) {
 	t.Helper()
 
 	store := repository.NewMemoryStore()
@@ -57,6 +65,8 @@ func newTestAuthService(
 		Users:                     store,
 		EmailVerifications:        store,
 		RegistrationVerifications: store,
+		RegistrationInvitations:   store,
+		RegistrationMode:          registrationMode,
 		RefreshTokens:             store,
 		VerificationEmailSender:   sender,
 		EmailVerificationKey:      []byte("test-email-verification-key-with-enough-length"),
@@ -80,7 +90,7 @@ func sendCodeAndRegister(
 ) (*model.AuthPayload, string) {
 	t.Helper()
 	ctx := context.Background()
-	if _, err := auth.SendRegistrationEmailVerification(ctx, email); err != nil {
+	if _, err := auth.SendRegistrationEmailVerification(ctx, email, ""); err != nil {
 		t.Fatalf("send verification failed: %v", err)
 	}
 	payload, refreshToken, err := auth.Register(ctx, service.RegisterInput{
@@ -100,14 +110,14 @@ func TestAuthServiceRegistrationVerifiesEmailBeforeCreatingUser(t *testing.T) {
 	ctx := context.Background()
 	auth, store, sender := newTestAuthService(t)
 
-	if _, err := auth.SendRegistrationEmailVerification(ctx, "not-an-email"); !errors.Is(
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "not-an-email", ""); !errors.Is(
 		err,
 		model.ErrEmailFormatInvalid,
 	) {
 		t.Fatalf("expected email format error, got %v", err)
 	}
 
-	pending, err := auth.SendRegistrationEmailVerification(ctx, "User@Example.com")
+	pending, err := auth.SendRegistrationEmailVerification(ctx, "User@Example.com", "")
 	if err != nil {
 		t.Fatalf("send verification failed: %v", err)
 	}
@@ -151,7 +161,7 @@ func TestAuthServiceRegistrationVerifiesEmailBeforeCreatingUser(t *testing.T) {
 		t.Fatal("password must be stored as a non-empty hash")
 	}
 
-	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); !errors.Is(
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com", ""); !errors.Is(
 		err,
 		model.ErrEmailExists,
 	) {
@@ -159,10 +169,103 @@ func TestAuthServiceRegistrationVerifiesEmailBeforeCreatingUser(t *testing.T) {
 	}
 }
 
+func TestAuthServiceInviteModeAllowsEmailRequestsWithoutBindingAndConsumesAtomically(t *testing.T) {
+	ctx := context.Background()
+	auth, store, sender := newTestAuthServiceWithMode(t, model.RegistrationModeInvite)
+	invitations := service.NewInvitationService(service.InvitationServiceConfig{
+		Mode: model.RegistrationModeInvite,
+		Challenges: []service.InvitationChallenge{{
+			ID: "silver", Prompt: "异次临倾，", Answer: "步步唯银",
+		}},
+		Invitations: store,
+	})
+	issued, err := invitations.AnswerChallenge(ctx, "203.0.113.8", "silver", "步步唯银")
+	if err != nil {
+		t.Fatalf("issue invitation: %v", err)
+	}
+
+	emails := []string{"first@example.com", "second@example.com"}
+	for _, email := range emails {
+		if _, err := auth.SendRegistrationEmailVerification(ctx, email, issued.InvitationCode); err != nil {
+			t.Fatalf("send verification to %s: %v", email, err)
+		}
+	}
+
+	start := make(chan struct{})
+	results := make(chan error, len(emails))
+	for index, email := range emails {
+		go func(index int, email string) {
+			<-start
+			_, _, registerErr := auth.Register(ctx, service.RegisterInput{
+				Username:         fmt.Sprintf("invite-user-%d", index),
+				Email:            email,
+				Password:         "password1",
+				ConfirmPassword:  "password1",
+				VerificationCode: sender.code(email),
+				InvitationCode:   issued.InvitationCode,
+			})
+			results <- registerErr
+		}(index, email)
+	}
+	close(start)
+
+	var successCount, invalidCount int
+	for range emails {
+		switch registerErr := <-results; {
+		case registerErr == nil:
+			successCount++
+		case errors.Is(registerErr, model.ErrInvitationInvalid):
+			invalidCount++
+		default:
+			t.Fatalf("unexpected concurrent registration error: %v", registerErr)
+		}
+	}
+	if successCount != 1 || invalidCount != 1 {
+		t.Fatalf("expected one success and one consumed invitation, got success=%d invalid=%d", successCount, invalidCount)
+	}
+}
+
+func TestAuthServiceEnforcesRegistrationModes(t *testing.T) {
+	ctx := context.Background()
+
+	closedAuth, _, _ := newTestAuthServiceWithMode(t, model.RegistrationModeClosed)
+	if _, err := closedAuth.SendRegistrationEmailVerification(
+		ctx,
+		"user@example.com",
+		"",
+	); !errors.Is(err, model.ErrRegistrationClosed) {
+		t.Fatalf("closed mode should reject email verification, got %v", err)
+	}
+	if _, _, err := closedAuth.Register(ctx, service.RegisterInput{}); !errors.Is(
+		err,
+		model.ErrRegistrationClosed,
+	) {
+		t.Fatalf("closed mode should reject registration before validation, got %v", err)
+	}
+
+	inviteAuth, _, _ := newTestAuthServiceWithMode(t, model.RegistrationModeInvite)
+	if _, err := inviteAuth.SendRegistrationEmailVerification(
+		ctx,
+		"user@example.com",
+		"",
+	); !errors.Is(err, model.ErrInvitationInvalid) {
+		t.Fatalf("invite mode should require an invitation, got %v", err)
+	}
+
+	openAuth, _, _ := newTestAuthServiceWithMode(t, model.RegistrationModeOpen)
+	if _, err := openAuth.SendRegistrationEmailVerification(
+		ctx,
+		"user@example.com",
+		"ignored-invalid-code",
+	); err != nil {
+		t.Fatalf("open mode should preserve registration behavior, got %v", err)
+	}
+}
+
 func TestAuthServiceVerificationAttemptLimit(t *testing.T) {
 	ctx := context.Background()
 	auth, _, sender := newTestAuthService(t)
-	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); err != nil {
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com", ""); err != nil {
 		t.Fatalf("send verification failed: %v", err)
 	}
 	validCode := sender.code("user@example.com")
@@ -205,11 +308,11 @@ func TestAuthServiceResendHonorsCooldownAndInvalidatesOldCode(t *testing.T) {
 		AccessTokenKey:            []byte("test-access-secret-with-enough-length"),
 		Now:                       func() time.Time { return now },
 	})
-	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); err != nil {
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com", ""); err != nil {
 		t.Fatalf("send verification failed: %v", err)
 	}
 	oldCode := sender.code("user@example.com")
-	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); err != nil {
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com", ""); err != nil {
 		t.Fatalf("cooldown resend should return current challenge: %v", err)
 	}
 	if sender.calls != 1 {
@@ -217,7 +320,7 @@ func TestAuthServiceResendHonorsCooldownAndInvalidatesOldCode(t *testing.T) {
 	}
 
 	now = now.Add(61 * time.Second)
-	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com"); err != nil {
+	if _, err := auth.SendRegistrationEmailVerification(ctx, "user@example.com", ""); err != nil {
 		t.Fatalf("resend failed: %v", err)
 	}
 	if sender.calls != 2 {

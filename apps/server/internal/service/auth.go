@@ -40,6 +40,7 @@ type RegisterInput struct {
 	Password         string
 	ConfirmPassword  string
 	VerificationCode string
+	InvitationCode   string
 }
 
 type LoginInput struct {
@@ -71,6 +72,8 @@ type AuthServiceConfig struct {
 	Users                     repository.UserRepository
 	EmailVerifications        repository.EmailVerificationRepository
 	RegistrationVerifications repository.RegistrationEmailVerificationRepository
+	RegistrationInvitations   repository.RegistrationInvitationRepository
+	RegistrationMode          model.RegistrationMode
 	RefreshTokens             repository.RefreshTokenRepository
 	VerificationEmailSender   VerificationEmailSender
 	EmailVerificationKey      []byte
@@ -90,6 +93,8 @@ type AuthService struct {
 	users                     repository.UserRepository
 	emailVerifications        repository.EmailVerificationRepository
 	registrationVerifications repository.RegistrationEmailVerificationRepository
+	registrationInvitations   repository.RegistrationInvitationRepository
+	registrationMode          model.RegistrationMode
 	refresh                   repository.RefreshTokenRepository
 	verificationEmailSender   VerificationEmailSender
 	emailVerificationKey      []byte
@@ -151,6 +156,8 @@ func NewAuthService(config AuthServiceConfig) *AuthService {
 		users:                     config.Users,
 		emailVerifications:        config.EmailVerifications,
 		registrationVerifications: config.RegistrationVerifications,
+		registrationInvitations:   config.RegistrationInvitations,
+		registrationMode:          config.RegistrationMode,
 		refresh:                   config.RefreshTokens,
 		verificationEmailSender:   config.VerificationEmailSender,
 		emailVerificationKey:      append([]byte(nil), config.EmailVerificationKey...),
@@ -173,6 +180,9 @@ func (s *AuthService) Register(
 	ctx context.Context,
 	input RegisterInput,
 ) (*model.AuthPayload, string, error) {
+	if s.registrationMode == model.RegistrationModeClosed {
+		return nil, "", model.ErrRegistrationClosed
+	}
 	if err := validateRegister(input); err != nil {
 		return nil, "", err
 	}
@@ -193,6 +203,10 @@ func (s *AuthService) Register(
 	if err != nil {
 		return nil, "", err
 	}
+	invitationID, err := s.activeInvitationID(ctx, input.InvitationCode)
+	if err != nil {
+		return nil, "", err
+	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, "", model.ErrInternalServer
@@ -209,7 +223,16 @@ func (s *AuthService) Register(
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
-	if err := s.registrationVerifications.CreateVerifiedUser(ctx, challenge.ID, user, now); err != nil {
+	if err := s.registrationVerifications.CreateVerifiedUser(
+		ctx,
+		challenge.ID,
+		invitationID,
+		user,
+		now,
+	); err != nil {
+		if errors.Is(err, repository.ErrInvitationInvalid) {
+			return nil, "", model.ErrInvitationInvalid
+		}
 		if errors.Is(err, repository.ErrDuplicateEmail) {
 			return nil, "", model.ErrEmailExists
 		}
@@ -228,7 +251,11 @@ func (s *AuthService) Register(
 func (s *AuthService) SendRegistrationEmailVerification(
 	ctx context.Context,
 	email string,
+	invitationCode string,
 ) (*EmailVerificationPayload, error) {
+	if s.registrationMode == model.RegistrationModeClosed {
+		return nil, model.ErrRegistrationClosed
+	}
 	email = strings.TrimSpace(email)
 	if !validEmail(email) {
 		return nil, model.ErrEmailFormatInvalid
@@ -238,6 +265,9 @@ func (s *AuthService) SendRegistrationEmailVerification(
 		return nil, model.ErrEmailExists
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return nil, model.ErrDBError
+	}
+	if _, err := s.activeInvitationID(ctx, invitationCode); err != nil {
+		return nil, err
 	}
 	if s.registrationVerifications == nil ||
 		s.verificationEmailSender == nil ||
@@ -288,6 +318,35 @@ func (s *AuthService) SendRegistrationEmailVerification(
 		return nil, model.ErrDBError
 	}
 	return verificationPayload(email, s.emailVerificationTTL, s.emailResendCooldown), nil
+}
+
+func (s *AuthService) activeInvitationID(
+	ctx context.Context,
+	invitationCode string,
+) (*uuid.UUID, error) {
+	if s.registrationMode != model.RegistrationModeInvite {
+		return nil, nil
+	}
+	if s.registrationInvitations == nil {
+		return nil, model.ErrInvitationInvalid
+	}
+	codeHash, ok := registrationInvitationCodeHash(invitationCode)
+	if !ok {
+		return nil, model.ErrInvitationInvalid
+	}
+	invitation, err := s.registrationInvitations.FindActiveRegistrationInvitationByCodeHash(
+		ctx,
+		codeHash,
+		s.now(),
+	)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, model.ErrInvitationInvalid
+		}
+		return nil, model.ErrDBError
+	}
+	id := invitation.ID
+	return &id, nil
 }
 
 func (s *AuthService) Login(ctx context.Context, input LoginInput) (*model.AuthPayload, string, error) {

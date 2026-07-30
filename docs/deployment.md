@@ -35,6 +35,7 @@ cp apps/server/.env.prod.example .env.prod
 mkdir -p .secrets
 umask 077
 openssl rand -base64 48 > .secrets/postgres_password
+cp apps/server/config/invitation-challenges.example.json .secrets/invitation-challenges.json
 ```
 
 `.env.prod` 和 `.secrets/` 已被 Git 忽略。编辑 `.env.prod`，至少完成这些配置：
@@ -44,12 +45,19 @@ openssl rand -base64 48 > .secrets/postgres_password
 - `RESEND_API_KEY`：填写 Resend 的生产密钥。
 - `MAIL_FROM`：填写已经验证的发件域名。
 - `TRUSTED_PROXIES`：当前 Docker 网络可保留默认私网网段；后续调整网络时需要同步收窄。
+- `REGISTRATION_MODE`：生产默认使用 `invite`；也可以显式切换为 `open` 或 `closed`。
+- `INVITATION_CHALLENGES_HOST_FILE`：默认是
+  `../.secrets/invitation-challenges.json`，相对于 `deploy/docker-compose.yml`。
+
+编辑 `.secrets/invitation-challenges.json`，填入生产使用的银临暗号题库。每道题必须有唯一且
+非空的 `id`、`prompt` 和 `answer`；服务只在启动时读取该文件，修改后需要重新创建或重启
+`server` 容器。这个文件不会由 CI 上传或覆盖。
 
 不要把任何真实密钥写入 Dockerfile、Compose YAML、GitHub 仓库或聊天记录。`.env.prod` 建议
 权限设为 `600`：
 
 ```bash
-chmod 600 .env.prod .secrets/postgres_password
+chmod 600 .env.prod .secrets/postgres_password .secrets/invitation-challenges.json
 ```
 
 ## 3. 第一次启动
@@ -72,6 +80,15 @@ IMAGE_TAG=local docker compose --env-file .env.prod -f deploy/docker-compose.yml
 
 数据库结构由服务端启动时自动迁移。Web 只绑定到宿主机的 `127.0.0.1:8080`，不会绕过
 HTTPS 直接暴露公网。
+
+注册模式的行为如下：
+
+- `open`：无需邀请码即可注册，Footer 暗号彩蛋仍可体验。
+- `invite`：发送注册邮箱验证码和最终注册时都必须提交有效邀请码。
+- `closed`：暂停新注册和暗号签发，不影响登录、已有账号、老账号补验和游客模式。
+
+从 `invite` 切换为其他模式只需修改 `.env.prod` 后重新执行 `make deploy`。邀请码表是纯新增
+表，没有存量数据回填；回滚旧镜像时可以保留并忽略该表。
 
 执行 `make smoke` 可检查首页是否能够从宿主机访问。首次启动失败时，优先看上面的 `server`
 日志，而不是反复重启。
@@ -255,15 +272,15 @@ known_hosts 行放入 `PRODUCTION_KNOWN_HOSTS`。不要在未核对指纹时直�
 docker login ghcr.io -u YOUR_GITHUB_USERNAME
 ```
 
-在 `PRODUCTION_DEPLOY_PATH` 中保留现有 `.env.prod` 和 `.secrets/postgres_password`。如果是
-全新目录：
+在 `PRODUCTION_DEPLOY_PATH` 中保留现有 `.env.prod`、`.secrets/postgres_password` 和
+`.secrets/invitation-challenges.json`。如果是全新目录：
 
 ```bash
 cd /home/deploy/vega-resume
 mkdir -p .secrets
 chmod 700 .secrets
-# 从安全渠道写入 .env.prod 和 .secrets/postgres_password
-chmod 600 .env.prod .secrets/postgres_password
+# 从安全渠道写入 .env.prod、数据库密码和真实暗号题库
+chmod 600 .env.prod .secrets/postgres_password .secrets/invitation-challenges.json
 ```
 
 部署用户还需要可执行 `docker compose` 和 `curl`。GitHub Actions 会自动同步
@@ -295,6 +312,7 @@ IMAGE_TAG=<完整的40位成功commit SHA> make deploy
 - [ ] DNS 指向服务器，安全组只开放 22/80/443。
 - [ ] 安装 Docker Engine、Compose 插件与 Caddy。
 - [ ] 创建 `.env.prod` 和数据库 secret，所有密钥使用生产值。
+- [ ] 创建生产暗号题库，并确认 `REGISTRATION_MODE=invite` 时服务能正常启动。
 - [ ] 轮换任何曾经出现在仓库、截图或聊天中的 Resend/API 密钥。
 - [ ] 启动容器并检查日志、注册、保存、头像和 PDF 全链路。
 - [ ] 配置 HTTPS。

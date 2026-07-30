@@ -15,6 +15,7 @@ var (
 	ErrConflict          = errors.New("repository: revision conflict")
 	ErrDuplicateEmail    = errors.New("repository: duplicate email")
 	ErrDuplicateUsername = errors.New("repository: duplicate username")
+	ErrInvitationInvalid = errors.New("repository: invitation invalid")
 )
 
 type UserRepository interface {
@@ -60,9 +61,19 @@ type RegistrationEmailVerificationRepository interface {
 	CreateVerifiedUser(
 		ctx context.Context,
 		challengeID uuid.UUID,
+		invitationID *uuid.UUID,
 		user *model.User,
 		consumedAt time.Time,
 	) error
+}
+
+type RegistrationInvitationRepository interface {
+	CreateRegistrationInvitation(ctx context.Context, invitation *model.RegistrationInvitation) error
+	FindActiveRegistrationInvitationByCodeHash(
+		ctx context.Context,
+		codeHash string,
+		now time.Time,
+	) (*model.RegistrationInvitation, error)
 }
 
 type RefreshTokenRepository interface {
