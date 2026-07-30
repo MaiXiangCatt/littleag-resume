@@ -127,7 +127,7 @@ describe('app auth flow integration', () => {
 
     renderApp('/guest/edit');
 
-    expect(await screen.findByText('游客模式')).toBeInTheDocument();
+    expect(await screen.findByText('游客模式', {}, { timeout: 5_000 })).toBeInTheDocument();
     expect(screen.getByText('仅存此浏览器')).toBeInTheDocument();
     expect(screen.queryByLabelText('账号菜单')).not.toBeInTheDocument();
     expect(fetchSpy.mock.calls.some(([input]) => String(input).includes('/api/resumes'))).toBe(

@@ -1,30 +1,28 @@
 import { FileWarning, LoaderCircle, RefreshCw } from 'lucide-react';
 
-import { usePdfFrameFallback } from '../hooks/usePdfFrameFallback';
+import { usePdfCanvasDocument } from '../hooks/usePdfCanvasDocument';
+import type { ResumePdfAsset } from '../hooks/useResumePdfPreview';
 import type { ResumePdfPreviewController } from '../hooks/useResumePdfPreview';
 import { Button } from '@/shared/ui/button';
+import { cn } from '@/shared/lib/utils';
 
 export function GuestPdfPreview({ preview }: { preview: ResumePdfPreviewController }) {
-  usePdfFrameFallback(preview);
   const assets = [preview.current, preview.pending].filter(
     (asset, index, values) =>
-      asset && values.findIndex((candidate) => candidate?.url === asset.url) === index,
+      asset && values.findIndex((candidate) => candidate?.key === asset.key) === index,
   );
 
   return (
-    <div className="relative mx-auto h-full min-h-[760px] w-full max-w-[794px] overflow-hidden bg-white">
+    <div className="relative h-full min-h-[760px] w-full overflow-hidden">
       {assets.map((asset) =>
         asset ? (
-          <iframe
-            className={
-              asset.url === preview.current?.url
-                ? 'h-full w-full border-0'
-                : 'invisible absolute inset-0 h-full w-full border-0'
-            }
-            key={asset.url}
-            onLoad={asset.url === preview.pending?.url ? preview.commitPending : undefined}
-            src={`${asset.url}#toolbar=0&navpanes=0&view=FitH`}
-            title={`游客 PDF 预览 ${asset.key}`}
+          <PdfCanvasAsset
+            asset={asset}
+            current={asset.key === preview.current?.key}
+            key={asset.key}
+            onError={preview.reportRenderError}
+            onFirstPageReady={preview.commitPending}
+            renderRevision={preview.renderRevision}
           />
         ) : null,
       )}
@@ -60,6 +58,65 @@ export function GuestPdfPreview({ preview }: { preview: ResumePdfPreviewControll
           </Button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function PdfCanvasAsset({
+  asset,
+  current,
+  onError,
+  onFirstPageReady,
+  renderRevision,
+}: {
+  asset: ResumePdfAsset;
+  current: boolean;
+  onError: (key: string, error: unknown) => void;
+  onFirstPageReady: (key: string) => void;
+  renderRevision: number;
+}) {
+  const { containerRef, getCanvasRef, getPageRef, pages, renderedPages } = usePdfCanvasDocument({
+    asset,
+    firstPageOnly: !current,
+    onError,
+    onFirstPageReady,
+    renderRevision,
+  });
+
+  return (
+    <div
+      className={cn(
+        'h-full w-full overflow-y-auto',
+        current ? 'relative' : 'invisible absolute inset-0',
+      )}
+      data-preview-key={asset.key}
+      data-testid="guest-pdf-canvas-preview"
+    >
+      <div className="mx-auto flex w-full max-w-[794px] flex-col gap-5" ref={containerRef}>
+        {pages.map((page) => (
+          <div
+            className="relative w-full shrink-0 overflow-hidden bg-white shadow-sm"
+            data-page-number={page.pageNumber}
+            key={page.pageNumber}
+            ref={getPageRef(page.pageNumber)}
+            style={{ aspectRatio: `${page.width} / ${page.height}` }}
+          >
+            <canvas
+              aria-label={`PDF 第 ${page.pageNumber} 页预览`}
+              className="block h-auto w-full"
+              data-rendered={renderedPages.has(page.pageNumber) ? 'true' : 'false'}
+              ref={getCanvasRef(page.pageNumber)}
+              role="img"
+            />
+            {!renderedPages.has(page.pageNumber) ? (
+              <div className="absolute inset-0 grid place-items-center bg-white text-xs text-[#8a7e84]">
+                <LoaderCircle className="animate-spin" size={18} />
+                <span className="sr-only">正在绘制第 {page.pageNumber} 页</span>
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
