@@ -73,9 +73,7 @@ export function InvitationChallengeDialog({
 
         {challengeState.status === 'error' ? (
           <Alert>
-            <AlertDescription>
-              {challengeState.error ?? '出错了，请稍后再试。'}
-            </AlertDescription>
+            <AlertDescription>{challengeState.error ?? '出错了，请稍后再试。'}</AlertDescription>
           </Alert>
         ) : null}
 
