@@ -14,7 +14,7 @@ const resumeServiceMock = vi.hoisted(() => ({
   import: vi.fn(),
   list: vi.fn(),
   stats: vi.fn(),
-  update: vi.fn(),
+  updateTitle: vi.fn(),
 }));
 
 vi.mock('../service/resume.service', () => ({
@@ -25,7 +25,9 @@ vi.mock('../service/resume.service', () => ({
 const resume = {
   createdAt: '2026-07-20T08:00:00Z',
   exportCount: 0,
+  hasAvatar: false,
   id: '2b305475-8ed1-428d-bd35-a53957592ba6',
+  revision: 1,
   status: 'completed' as const,
   title: '产品经理简历',
   updatedAt: '2026-07-21T08:00:00Z',
@@ -50,7 +52,7 @@ describe('ConsolePage', () => {
     resumeServiceMock.stats.mockResolvedValue({ completed: 1, draft: 0, exported: 0, total: 1 });
     resumeServiceMock.copy.mockResolvedValue({ ...resume, id: 'copy-id', status: 'draft' });
     resumeServiceMock.delete.mockResolvedValue(null);
-    resumeServiceMock.update.mockResolvedValue(resume);
+    resumeServiceMock.updateTitle.mockResolvedValue(resume);
     resumeServiceMock.create.mockResolvedValue({ ...resume, id: 'new-resume-id', status: 'draft' });
   });
 

@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto';
+
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -5,6 +7,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { useRegistrationStore } from '@/shared/auth/store/registration.store';
+import { createDefaultContent } from '@/pages/resume-editor/model/resume.model';
+import { openLocalDatabase } from '@/pages/resume-editor/service/local-resume.service';
+import { localResumeStore } from '@/pages/resume-editor/store/local-resume.store';
 
 import { AppRoutes } from './App';
 
@@ -32,7 +37,8 @@ function renderApp(path = '/') {
 }
 
 describe('app auth flow integration', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await localResumeStore.clear();
     useAuthStore.getState().reset();
     useRegistrationStore.getState().reset();
     authServiceMock.confirmEmailVerification.mockReset();
@@ -58,7 +64,7 @@ describe('app auth flow integration', () => {
     ).toBeInTheDocument();
   });
 
-  it('fails registration policy loading closed without blocking login or guest entry', async () => {
+  it('fails registration policy loading closed without blocking login or local entry', async () => {
     const user = userEvent.setup();
     authServiceMock.getRegistrationPolicy.mockRejectedValueOnce(new Error('policy unavailable'));
     renderApp('/');
@@ -144,19 +150,74 @@ describe('app auth flow integration', () => {
     expect(authServiceMock.logout).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the local guest editor without an authenticated session or resume API calls', async () => {
+  it('opens the empty local console without an authenticated session or resume API calls', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
-    renderApp('/guest/edit');
+    renderApp('/local');
 
-    expect(await screen.findByText('游客模式', {}, { timeout: 5_000 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '我的简历' }, { timeout: 5_000 }),
+    ).toBeInTheDocument();
     expect(screen.getByText('仅存此浏览器')).toBeInTheDocument();
+    expect(await screen.findByText('创建新简历')).toBeInTheDocument();
     expect(screen.queryByLabelText('账号菜单')).not.toBeInTheDocument();
     expect(fetchSpy.mock.calls.some(([input]) => String(input).includes('/api/resumes'))).toBe(
       false,
     );
 
     fetchSpy.mockRestore();
+  });
+
+  it('keeps the local console available to an authenticated user', async () => {
+    useAuthStore.getState().setSession({
+      accessToken: 'access-token',
+      user: {
+        id: 'user-id',
+        username: 'zhangsan',
+        email: 'user@example.com',
+        emailVerified: true,
+      },
+    });
+
+    renderApp('/local');
+
+    expect(await screen.findByRole('heading', { name: '我的简历' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '云端控制台' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('账号菜单')).not.toBeInTheDocument();
+  });
+
+  it('redirects the legacy guest entry to the empty local console when no old resume exists', async () => {
+    renderApp('/guest/edit');
+
+    expect(await screen.findByRole('heading', { name: '我的简历' })).toBeInTheDocument();
+    expect(await screen.findByText('创建新简历')).toBeInTheDocument();
+  });
+
+  it('redirects the legacy guest entry to its existing local resume', async () => {
+    const database = await openLocalDatabase();
+    await database.put('guest-resume', {
+      key: 'primary',
+      storageVersion: 1,
+      document: {
+        id: 'guest-primary',
+        title: '旧版简历',
+        status: 'draft',
+        revision: 1,
+        hasAvatar: false,
+        templateId: 'modern-editorial',
+        exportCount: 0,
+        contentVersion: 2,
+        content: createDefaultContent(),
+        createdAt: '2026-07-28T00:00:00.000Z',
+        updatedAt: '2026-07-28T00:00:00.000Z',
+      },
+    });
+    database.close();
+
+    renderApp('/guest/edit');
+
+    expect(await screen.findByLabelText('简历标题')).toHaveValue('旧版简历');
+    expect(screen.getByText('本地模式')).toBeInTheDocument();
   });
 
   it('redirects authenticated home visits and protects console failures', async () => {

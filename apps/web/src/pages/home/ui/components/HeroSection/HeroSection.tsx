@@ -5,10 +5,10 @@ import { Button } from '@/shared/ui/button';
 
 type HeroSectionProps = {
   onRegister: () => void;
-  onGuest: () => void;
+  onLocal: () => void;
 };
 
-export function HeroSection({ onRegister, onGuest }: HeroSectionProps) {
+export function HeroSection({ onRegister, onLocal }: HeroSectionProps) {
   return (
     <section className="mx-auto grid min-h-[calc(100vh-64px)] max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr]">
       <div>
@@ -25,9 +25,9 @@ export function HeroSection({ onRegister, onGuest }: HeroSectionProps) {
             <Rocket aria-hidden="true" size={17} />
             免费开始
           </Button>
-          <Button onClick={onGuest} size="lg" type="button" variant="outline">
+          <Button onClick={onLocal} size="lg" type="button" variant="outline">
             <UserRoundSearch aria-hidden="true" size={17} />
-            游客模式
+            本地模式
           </Button>
         </div>
       </div>

@@ -301,7 +301,7 @@ function authDialogDescription(
   }
   if (mode === 'register') {
     if (registrationMode === 'closed') {
-      return '目前仅开放已有账号登录和游客模式。';
+      return '目前仅开放已有账号登录和本地模式。';
     }
     if (registrationMode === 'invite') {
       return '填写邀请码和注册信息，完成邮箱验证后将自动登录。';

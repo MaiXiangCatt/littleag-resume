@@ -67,7 +67,7 @@ export function InvitationChallengeDialog({
 
         {challengeState.status === 'closed' ? (
           <Alert>
-            <AlertDescription>注册暂未开放，已有账号和游客模式仍可正常使用。</AlertDescription>
+            <AlertDescription>注册暂未开放，已有账号和本地模式仍可正常使用。</AlertDescription>
           </Alert>
         ) : null}
 

@@ -4,22 +4,60 @@ import type {
   ResumeEditorSnapshot,
 } from '../model/resume.editor';
 import type { ResumeDocument } from '../model/resume.types';
-import { guestResumeService } from './guest-resume.service';
 import { resumeEditorService } from './resume-editor.service';
+import { localResumeStore } from '../store/local-resume.store';
 
 export function createResumePersistence(
   mode: ResumeEditorMode,
   resumeId: string,
 ): ResumeEditorPersistence {
-  if (mode === 'guest') {
+  if (mode === 'local') {
+    const snapshot = async (
+      operation: Promise<{
+        avatar: Blob | null;
+        document: ResumeDocument;
+      }>,
+    ): Promise<ResumeEditorSnapshot> => {
+      const result = await operation;
+      return {
+        ...result,
+        durability:
+          localResumeStore.getSnapshot().availability === 'read-only' ? 'read-only' : 'persistent',
+      };
+    };
     return {
-      deleteAvatar: (document) => guestResumeService.deleteAvatar(document),
-      load: () => guestResumeService.load(),
-      overwrite: (document) => guestResumeService.overwrite(document),
-      putAvatar: (document, avatar) => guestResumeService.putAvatar(document, avatar),
-      replaceImport: (envelope, document) =>
-        guestResumeService.replaceImport(envelope, document.revision, document),
-      save: (document, expectedRevision) => guestResumeService.save(document, expectedRevision),
+      deleteAvatar: async (document) =>
+        snapshot(
+          localResumeStore
+            .deleteAvatar(document)
+            .then((saved) => localResumeStore.cachedSnapshot(saved.id)),
+        ),
+      load: () => snapshot(localResumeStore.get(resumeId)),
+      overwrite: async (document) =>
+        snapshot(
+          localResumeStore
+            .overwrite(document)
+            .then((saved) => localResumeStore.cachedSnapshot(saved.id)),
+        ),
+      putAvatar: async (document, avatar) =>
+        snapshot(
+          localResumeStore
+            .putAvatar(document, avatar)
+            .then((saved) => localResumeStore.cachedSnapshot(saved.id)),
+        ),
+      recordExport: () => localResumeStore.recordExport(resumeId),
+      replaceImport: async (envelope, document) =>
+        snapshot(
+          localResumeStore
+            .replaceImport(resumeId, document.revision, envelope)
+            .then((saved) => localResumeStore.cachedSnapshot(saved.id)),
+        ),
+      save: async (document, expectedRevision) =>
+        snapshot(
+          localResumeStore
+            .save(document, expectedRevision)
+            .then((saved) => localResumeStore.cachedSnapshot(saved.id)),
+        ),
     };
   }
 

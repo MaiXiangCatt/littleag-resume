@@ -1,23 +1,24 @@
 import type { ImportResumeRequest } from '@/shared/api/generated/model/importResumeRequest';
 import type { ResumeDetail } from '@/shared/api/generated/model/resumeDetail';
 import type { ResumeListPayload } from '@/shared/api/generated/model/resumeListPayload';
-import type { ResumeSort } from '@/shared/api/generated/model/resumeSort';
 import type { ResumeStats } from '@/shared/api/generated/model/resumeStats';
 import type { ResumeStatus } from '@/shared/api/generated/model/resumeStatus';
 import type { UpdateResumeRequest } from '@/shared/api/generated/model/updateResumeRequest';
 import { ApiError, httpRequest } from '@/shared/http/http.client';
 
+import type { ConsoleDataSource, ConsoleSort } from '../model/console.types';
+
 export type ResumeListQuery = {
   page: number;
   pageSize: 6 | 12 | 24;
   query: string;
-  sort: ResumeSort;
+  sort: ConsoleSort;
   status?: ResumeStatus;
 };
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-export const resumeService = {
+export const resumeService: ConsoleDataSource = {
   list(query: ResumeListQuery, signal?: AbortSignal) {
     const search = new URLSearchParams({
       page: String(query.page),
@@ -46,7 +47,8 @@ export const resumeService = {
     });
   },
 
-  update(resumeId: string, input: UpdateResumeRequest) {
+  updateTitle(resumeId: string, expectedRevision: number, title: string) {
+    const input: UpdateResumeRequest = { expectedRevision, title };
     return httpRequest<ResumeDetail>(`/api/resumes/${resumeId}`, {
       body: JSON.stringify(input),
       headers: JSON_HEADERS,

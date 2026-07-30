@@ -8,14 +8,14 @@ describe('HomePage', () => {
   it('renders the current landing content and callbacks', async () => {
     const user = userEvent.setup();
     const onLogin = vi.fn();
-    const onGuest = vi.fn();
+    const onLocal = vi.fn();
     const onRegister = vi.fn();
     const onViewExample = vi.fn();
 
     render(
       <HomePage
         currentUser={null}
-        onGuest={onGuest}
+        onLocal={onLocal}
         onLogin={onLogin}
         onRegister={onRegister}
         onViewExample={onViewExample}
@@ -31,8 +31,8 @@ describe('HomePage', () => {
     await user.click(screen.getByRole('button', { name: '登录' }));
     expect(onLogin).toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: '进入游客模式' }));
-    expect(onGuest).toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: '进入本地模式' }));
+    expect(onLocal).toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: '免费开始' }));
     expect(onRegister).toHaveBeenCalled();
@@ -48,7 +48,7 @@ describe('HomePage', () => {
     render(
       <HomePage
         currentUser={null}
-        onGuest={vi.fn()}
+        onLocal={vi.fn()}
         onLogin={vi.fn()}
         onRegister={vi.fn()}
         onViewExample={vi.fn()}
@@ -58,7 +58,7 @@ describe('HomePage', () => {
 
     expect(screen.getByTestId('home-page')).toHaveClass('overflow-x-hidden');
     expect(screen.getByRole('button', { name: '登录' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '进入游客模式' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '进入本地模式' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '免费开始' })).toBeInTheDocument();
   });
 });
