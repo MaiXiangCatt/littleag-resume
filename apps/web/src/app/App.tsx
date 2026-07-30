@@ -16,6 +16,7 @@ import { Toaster } from '@/shared/ui/sonner';
 import { AuthModal } from '@/pages/home/ui/components/AuthModal/AuthModal';
 import { ConsolePage } from '@/pages/console/ui/ConsolePage';
 import { HomePage } from '@/pages/home/ui/HomePage';
+import type { LegalDocumentKey } from '@/pages/legal/model/legal-routes';
 
 const ResumeEditorPage = lazy(() =>
   import('@/pages/resume-editor/ui/ResumeEditorPage').then((module) => ({
@@ -26,6 +27,12 @@ const ResumeEditorPage = lazy(() =>
 const PrintResumePage = lazy(() =>
   import('@/pages/print/ui/PrintResumePage').then((module) => ({
     default: module.PrintResumePage,
+  })),
+);
+
+const LegalDocumentPage = lazy(() =>
+  import('@/pages/legal/ui/LegalDocumentPage').then((module) => ({
+    default: module.LegalDocumentPage,
   })),
 );
 
@@ -48,12 +55,32 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<HomeRoute />} path="/" />
+      <Route element={<LegalDocumentRoute documentKey="terms" />} path="/legal/terms" />
+      <Route element={<LegalDocumentRoute documentKey="privacy" />} path="/legal/privacy" />
+      <Route
+        element={<LegalDocumentRoute documentKey="crossBorder" />}
+        path="/legal/cross-border"
+      />
       <Route element={<ConsoleRoute />} path="/console" />
       <Route element={<GuestResumeEditorRoute />} path="/guest/edit" />
       <Route element={<ResumeEditorRoute />} path="/resumes/:resumeId/edit" />
       <Route element={<PrintResumeRoute />} path="/print/resumes/:resumeId" />
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
+  );
+}
+
+function LegalDocumentRoute({ documentKey }: { documentKey: LegalDocumentKey }) {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center text-slate-600">
+          正在加载法律文本
+        </main>
+      }
+    >
+      <LegalDocumentPage documentKey={documentKey} />
+    </Suspense>
   );
 }
 

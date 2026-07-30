@@ -82,3 +82,4 @@ skills-lock.json
 #docs
 docs/*
 !docs/deployment.md
+!docs/legal/

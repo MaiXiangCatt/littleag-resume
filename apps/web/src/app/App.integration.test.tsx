@@ -66,6 +66,10 @@ describe('app auth flow integration', () => {
 
     await user.click(await screen.findByRole('button', { name: '免费开始' }));
     await user.type(screen.getByLabelText('邮箱'), 'user@example.com');
+    await user.click(
+      screen.getByRole('checkbox', { name: '同意用户服务协议及内容规则和隐私政策' }),
+    );
+    await user.click(screen.getByRole('checkbox', { name: '单独同意个人信息跨境处理说明' }));
     await user.click(screen.getByRole('button', { name: '发送验证码' }));
     await user.type(screen.getByLabelText('用户名'), 'zhangsan');
     await user.type(screen.getByLabelText('密码'), 'password1');

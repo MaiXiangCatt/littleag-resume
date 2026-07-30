@@ -3,8 +3,12 @@ import { useEffect, useState } from 'react';
 
 import type { RegisterFormValues } from '@/shared/auth/model/auth';
 import { registerSchema, registrationEmailSchema } from '@/shared/auth/model/auth';
+import { LEGAL_ROUTES } from '@/pages/legal/model/legal-routes';
 import { Button } from '@/shared/ui/button';
+import { Checkbox } from '@/shared/ui/checkbox';
 import { Form } from '@/shared/ui/form';
+import { Label } from '@/shared/ui/label';
+import { Link } from '@/shared/ui/link';
 
 import { Field } from './LoginForm';
 
@@ -15,6 +19,11 @@ type RegisterFormProps = {
   onSubmit: (values: RegisterFormValues) => Promise<void>;
   resendAvailableAt?: number;
   verificationEmail?: string;
+};
+
+type RegistrationAgreements = {
+  crossBorder: boolean;
+  serviceAndPrivacy: boolean;
 };
 
 export function RegisterForm({
@@ -32,9 +41,15 @@ export function RegisterForm({
     username: '',
     verificationCode: '',
   });
+  const [agreements, setAgreements] = useState<RegistrationAgreements>({
+    crossBorder: false,
+    serviceAndPrivacy: false,
+  });
+  const [agreementError, setAgreementError] = useState<string>();
   const [errors, setErrors] = useState<Partial<Record<keyof RegisterFormValues, string>>>({});
   const [now, setNow] = useState(() => Date.now());
   const verificationSent = resendAvailableAt !== undefined;
+  const agreementsAccepted = agreements.crossBorder && agreements.serviceAndPrivacy;
   const remainingSeconds = resendAvailableAt
     ? Math.max(0, Math.ceil((resendAvailableAt - now) / 1_000))
     : 0;
@@ -55,11 +70,16 @@ export function RegisterForm({
       return;
     }
     const result = registrationEmailSchema.safeParse({ email: values.email });
+    const nextAgreementError = agreementsAccepted ? undefined : '请先阅读并勾选两项协议';
+    setAgreementError(nextAgreementError);
     if (!result.success) {
       setErrors((current) => ({ ...current, email: result.error.issues[0]?.message }));
+    } else {
+      setErrors((current) => ({ ...current, email: undefined }));
+    }
+    if (!result.success || nextAgreementError) {
       return;
     }
-    setErrors((current) => ({ ...current, email: undefined }));
     await onSendCode(result.data.email);
     setNow(currentTimestamp());
   }
@@ -67,12 +87,25 @@ export function RegisterForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = registerSchema.safeParse(values);
+    const nextAgreementError = agreementsAccepted ? undefined : '请先阅读并勾选两项协议';
+    setAgreementError(nextAgreementError);
     if (!result.success) {
       setErrors(registrationErrors(result.error.issues));
+    } else {
+      setErrors({});
+    }
+    if (!result.success || nextAgreementError) {
       return;
     }
-    setErrors({});
     await onSubmit(result.data);
+  }
+
+  function updateAgreement(key: keyof RegistrationAgreements, checked: boolean) {
+    const nextAgreements = { ...agreements, [key]: checked };
+    setAgreements(nextAgreements);
+    if (nextAgreements.crossBorder && nextAgreements.serviceAndPrivacy) {
+      setAgreementError(undefined);
+    }
   }
 
   return (
@@ -109,6 +142,51 @@ export function RegisterForm({
       {!verificationSent ? (
         <p className="-mt-2 text-xs text-muted-foreground">填写邮箱即可获取验证码。</p>
       ) : null}
+      <div className="space-y-3 rounded-xl border border-border/80 bg-muted/35 p-3.5">
+        <p className="text-xs font-medium text-foreground">创建账号前，请确认以下事项：</p>
+        <div className="flex items-start gap-2.5">
+          <Checkbox
+            aria-label="同意用户服务协议及内容规则和隐私政策"
+            checked={agreements.serviceAndPrivacy}
+            id="registration-service-and-privacy"
+            onCheckedChange={(checked) => updateAgreement('serviceAndPrivacy', checked === true)}
+          />
+          <div className="-mt-0.5 text-xs leading-5 text-muted-foreground">
+            <Label
+              className="cursor-pointer text-xs font-normal leading-5 text-muted-foreground"
+              htmlFor="registration-service-and-privacy"
+            >
+              我已阅读并同意
+            </Label>{' '}
+            <LegalLink href={LEGAL_ROUTES.terms}>《用户服务协议及内容规则》</LegalLink>
+            ，并已阅读
+            <LegalLink href={LEGAL_ROUTES.privacy}>《隐私政策》</LegalLink>
+          </div>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <Checkbox
+            aria-label="单独同意个人信息跨境处理说明"
+            checked={agreements.crossBorder}
+            id="registration-cross-border"
+            onCheckedChange={(checked) => updateAgreement('crossBorder', checked === true)}
+          />
+          <div className="-mt-0.5 text-xs leading-5 text-muted-foreground">
+            <Label
+              className="cursor-pointer text-xs font-normal leading-5 text-muted-foreground"
+              htmlFor="registration-cross-border"
+            >
+              我已阅读
+            </Label>{' '}
+            <LegalLink href={LEGAL_ROUTES.crossBorder}>《个人信息跨境处理说明》</LegalLink>
+            ，知悉账号信息、简历内容、头像及必要访问记录将在境外处理，并单独同意该等跨境处理
+          </div>
+        </div>
+        {agreementError ? (
+          <p className="text-xs font-medium text-destructive" role="alert">
+            {agreementError}
+          </p>
+        ) : null}
+      </div>
       <Field
         error={errors.password}
         label="密码"
@@ -145,10 +223,27 @@ export function RegisterForm({
           />
         </div>
       ) : null}
-      <Button className="w-full" disabled={isSubmitting || !verificationSent} type="submit">
+      <Button
+        className="w-full"
+        disabled={isSubmitting || !verificationSent || !agreementsAccepted}
+        type="submit"
+      >
         {submitLabel(isSubmitting, verificationSent)}
       </Button>
     </Form>
+  );
+}
+
+function LegalLink({ children, href }: { children: string; href: string }) {
+  return (
+    <Link
+      className="font-medium text-foreground underline decoration-border hover:decoration-primary"
+      href={href}
+      rel="noreferrer"
+      target="_blank"
+    >
+      {children}
+    </Link>
   );
 }
 
