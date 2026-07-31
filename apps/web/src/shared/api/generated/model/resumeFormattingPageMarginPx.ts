@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ResumeFormattingV2PageMarginPx = {
+export type ResumeFormattingPageMarginPx = {
   /**
      * @minimum 0
      * @maximum 160

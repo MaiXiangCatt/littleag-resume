@@ -5,167 +5,225 @@ const text = z.string().max(10_000);
 const month = z.string().regex(/^$|^\d{4}-(0[1-9]|1[0-2])$/);
 const integerBetween = (minimum: number, maximum: number) =>
   z.number().int().min(minimum).max(maximum);
-const baseSection = { id, title: z.string().trim().min(1).max(40), enabled: z.boolean() };
-const baseItem = { id };
+const spacingBeforePx = integerBetween(0, 64).optional();
+const baseSectionV2 = { id, title: z.string().trim().min(1).max(40), enabled: z.boolean() };
+const baseSectionV3 = { ...baseSectionV2, spacingBeforePx };
+const baseItemV2 = { id };
+const baseItemV3 = { id, spacingBeforePx };
 
-const workItem = z
+function createItemSchemas(baseItem: typeof baseItemV2 | typeof baseItemV3) {
+  return {
+    work: z
+      .object({
+        ...baseItem,
+        company: text,
+        role: text,
+        location: text,
+        startDate: month,
+        endDate: month,
+        isCurrent: z.boolean(),
+        description: text,
+      })
+      .strict(),
+    education: z
+      .object({
+        ...baseItem,
+        school: text,
+        major: text,
+        degree: text,
+        startDate: month,
+        endDate: month,
+        description: text,
+      })
+      .strict(),
+    project: z
+      .object({
+        ...baseItem,
+        name: text,
+        role: text,
+        startDate: month,
+        endDate: month,
+        isCurrent: z.boolean(),
+        description: text,
+      })
+      .strict(),
+    awards: z
+      .object({ ...baseItem, title: text, issuer: text, date: month, description: text })
+      .strict(),
+    custom: z
+      .object({
+        ...baseItem,
+        title: text,
+        subtitle: text,
+        location: text,
+        startDate: month,
+        endDate: month,
+        isCurrent: z.boolean(),
+        description: text,
+      })
+      .strict(),
+  };
+}
+
+function createSectionSchema(
+  baseSection: typeof baseSectionV2 | typeof baseSectionV3,
+  baseItem: typeof baseItemV2 | typeof baseItemV3,
+) {
+  const items = createItemSchemas(baseItem);
+  return z.discriminatedUnion('type', [
+    z
+      .object({
+        ...baseSection,
+        id: z.literal('summary'),
+        type: z.literal('summary'),
+        text,
+      })
+      .strict(),
+    z
+      .object({
+        ...baseSection,
+        id: z.literal('work'),
+        type: z.literal('work'),
+        items: z.array(items.work).max(100),
+      })
+      .strict(),
+    z
+      .object({
+        ...baseSection,
+        id: z.literal('education'),
+        type: z.literal('education'),
+        items: z.array(items.education).max(100),
+      })
+      .strict(),
+    z
+      .object({
+        ...baseSection,
+        id: z.literal('project'),
+        type: z.literal('project'),
+        items: z.array(items.project).max(100),
+      })
+      .strict(),
+    z
+      .object({
+        ...baseSection,
+        id: z.literal('skills'),
+        type: z.literal('skills'),
+        description: text,
+      })
+      .strict(),
+    z
+      .object({
+        ...baseSection,
+        id: z.literal('awards'),
+        type: z.literal('awards'),
+        items: z.array(items.awards).max(100),
+      })
+      .strict(),
+    z
+      .object({
+        ...baseSection,
+        type: z.literal('custom'),
+        items: z.array(items.custom).max(100),
+      })
+      .strict(),
+  ]);
+}
+
+const profileSchema = z
   .object({
-    ...baseItem,
-    company: text,
-    role: text,
+    fullName: text,
+    targetRole: text,
+    phone: text,
+    email: text,
     location: text,
-    startDate: month,
-    endDate: month,
-    isCurrent: z.boolean(),
-    description: text,
-  })
-  .strict();
-const educationItem = z
-  .object({
-    ...baseItem,
-    school: text,
-    major: text,
-    degree: text,
-    startDate: month,
-    endDate: month,
-    description: text,
-  })
-  .strict();
-const projectItem = z
-  .object({
-    ...baseItem,
-    name: text,
-    role: text,
-    startDate: month,
-    endDate: month,
-    isCurrent: z.boolean(),
-    description: text,
-  })
-  .strict();
-const awardItem = z
-  .object({ ...baseItem, title: text, issuer: text, date: month, description: text })
-  .strict();
-const customItem = z
-  .object({
-    ...baseItem,
-    title: text,
-    subtitle: text,
-    location: text,
-    startDate: month,
-    endDate: month,
-    isCurrent: z.boolean(),
-    description: text,
+    links: z.array(z.object({ id, label: text, url: text }).strict()).max(20),
   })
   .strict();
 
-const sectionSchema = z.discriminatedUnion('type', [
-  z.object({ ...baseSection, id: z.literal('summary'), type: z.literal('summary'), text }).strict(),
+const pageMarginSchema = z
+  .object({
+    top: integerBetween(0, 160),
+    right: integerBetween(0, 160),
+    bottom: integerBetween(0, 160),
+    left: integerBetween(0, 160),
+  })
+  .strict();
+
+const accentColorSchema = z.union([
+  z.enum(['plum', 'navy', 'teal', 'rust', 'charcoal', 'black']),
   z
-    .object({
-      ...baseSection,
-      id: z.literal('work'),
-      type: z.literal('work'),
-      items: z.array(workItem).max(100),
-    })
-    .strict(),
-  z
-    .object({
-      ...baseSection,
-      id: z.literal('education'),
-      type: z.literal('education'),
-      items: z.array(educationItem).max(100),
-    })
-    .strict(),
-  z
-    .object({
-      ...baseSection,
-      id: z.literal('project'),
-      type: z.literal('project'),
-      items: z.array(projectItem).max(100),
-    })
-    .strict(),
-  z
-    .object({
-      ...baseSection,
-      id: z.literal('skills'),
-      type: z.literal('skills'),
-      description: text,
-    })
-    .strict(),
-  z
-    .object({
-      ...baseSection,
-      id: z.literal('awards'),
-      type: z.literal('awards'),
-      items: z.array(awardItem).max(100),
-    })
-    .strict(),
-  z
-    .object({ ...baseSection, type: z.literal('custom'), items: z.array(customItem).max(100) })
-    .strict(),
+    .string()
+    .regex(/^#[0-9a-f]{6}$/i)
+    .transform((value) => value as `#${string}`),
 ]);
 
-export const resumeContentSchema = z
-  .object({
-    profile: z
-      .object({
-        fullName: text,
-        targetRole: text,
-        phone: text,
-        email: text,
-        location: text,
-        links: z.array(z.object({ id, label: text, url: text }).strict()).max(20),
-      })
-      .strict(),
-    sections: z.array(sectionSchema).max(64),
-    formatting: z
-      .object({
-        nameFontSizePx: integerBetween(12, 48),
-        sectionTitleFontSizePx: integerBetween(10, 32),
-        entryTitleFontSizePx: integerBetween(8, 28),
-        bodyFontSizePx: integerBetween(8, 24),
-        lineHeightRatio: z.number().min(1).max(2.5),
-        pageMarginPx: z
-          .object({
-            top: integerBetween(0, 160),
-            right: integerBetween(0, 160),
-            bottom: integerBetween(0, 160),
-            left: integerBetween(0, 160),
-          })
-          .strict(),
-        sectionGapPx: integerBetween(0, 64),
-        fontFamily: z.enum(['source-han-sans', 'source-han-serif']),
-        accentColor: z.union([
-          z.enum(['plum', 'navy', 'teal', 'rust', 'charcoal', 'black']),
-          z
-            .string()
-            .regex(/^#[0-9a-f]{6}$/i)
-            .transform((value) => value as `#${string}`),
-        ]),
-      })
-      .strict(),
-  })
-  .strict()
-  .superRefine((content, context) => {
-    const ids = new Set<string>();
-    const builtinTypes = new Set<string>();
-    for (const section of content.sections) {
-      if (ids.has(section.id)) context.addIssue({ code: 'custom', message: '板块 ID 重复' });
-      ids.add(section.id);
-      if (section.type !== 'custom') {
-        if (builtinTypes.has(section.type))
-          context.addIssue({ code: 'custom', message: '内置板块重复' });
-        builtinTypes.add(section.type);
-      }
-    }
-  });
+const baseFormatting = {
+  nameFontSizePx: integerBetween(12, 48),
+  sectionTitleFontSizePx: integerBetween(10, 32),
+  entryTitleFontSizePx: integerBetween(8, 28),
+  bodyFontSizePx: integerBetween(8, 24),
+  lineHeightRatio: z.number().min(1).max(2.5),
+  pageMarginPx: pageMarginSchema,
+  sectionGapPx: integerBetween(0, 64),
+  fontFamily: z.enum(['source-han-sans', 'source-han-serif']),
+  accentColor: accentColorSchema,
+};
 
-export const importEnvelopeSchema = z
-  .object({
-    version: z.literal(2),
-    title: z.string().trim().min(1).max(80),
-    templateId: z.enum(['modern-editorial', 'classic-professional']),
-    avatar: z.string().startsWith('data:image/jpeg;base64,').max(750_000).nullish(),
-    content: resumeContentSchema,
-  })
-  .strict();
+function createContentSchema(
+  sections: ReturnType<typeof createSectionSchema>,
+  formatting: z.ZodType,
+) {
+  return z
+    .object({
+      profile: profileSchema,
+      sections: z.array(sections).max(64),
+      formatting,
+    })
+    .strict()
+    .superRefine((content, context) => {
+      const ids = new Set<string>();
+      const builtinTypes = new Set<string>();
+      for (const section of content.sections) {
+        if (ids.has(section.id)) context.addIssue({ code: 'custom', message: '板块 ID 重复' });
+        ids.add(section.id);
+        if (section.type !== 'custom') {
+          if (builtinTypes.has(section.type))
+            context.addIssue({ code: 'custom', message: '内置板块重复' });
+          builtinTypes.add(section.type);
+        }
+      }
+    });
+}
+
+export const resumeContentV2Schema = createContentSchema(
+  createSectionSchema(baseSectionV2, baseItemV2),
+  z.object(baseFormatting).strict(),
+);
+
+export const resumeContentSchema = createContentSchema(
+  createSectionSchema(baseSectionV3, baseItemV3),
+  z.object({ ...baseFormatting, entryGapPx: integerBetween(0, 64) }).strict(),
+);
+
+const avatar = z.string().startsWith('data:image/jpeg;base64,').max(750_000).nullish();
+
+export const importEnvelopeSchema = z.union([
+  z
+    .object({
+      version: z.literal(2),
+      title: z.string().trim().min(1).max(80),
+      templateId: z.enum(['modern-editorial', 'classic-professional']).nullish(),
+      avatar,
+      content: resumeContentV2Schema,
+    })
+    .strict(),
+  z
+    .object({
+      version: z.literal(3),
+      title: z.string().trim().min(1).max(80),
+      profileAlignment: z.enum(['left', 'center', 'right']),
+      avatar,
+      content: resumeContentSchema,
+    })
+    .strict(),
+]);

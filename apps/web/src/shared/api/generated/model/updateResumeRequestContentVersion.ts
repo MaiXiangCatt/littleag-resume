@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ImportResumeRequestVersion = typeof ImportResumeRequestVersion[keyof typeof ImportResumeRequestVersion];
+export type UpdateResumeRequestContentVersion = typeof UpdateResumeRequestContentVersion[keyof typeof UpdateResumeRequestContentVersion];
 
 
-export const ImportResumeRequestVersion = {
+export const UpdateResumeRequestContentVersion = {
   NUMBER_2: 2,
   NUMBER_3: 3,
 } as const;

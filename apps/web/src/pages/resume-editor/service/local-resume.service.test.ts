@@ -30,9 +30,9 @@ function createDocument(
     status: 'draft',
     revision,
     hasAvatar: false,
-    templateId: 'modern-editorial',
+    profileAlignment: 'left',
     exportCount: 0,
-    contentVersion: 2,
+    contentVersion: 3,
     content: createDefaultContent(),
     createdAt: '2026-07-30T08:00:00.000Z',
     updatedAt: '2026-07-30T08:00:00.000Z',
@@ -40,11 +40,21 @@ function createDocument(
 }
 
 async function seedLegacyResume(avatar: Blob | null = null) {
+  const content = structuredClone(createDefaultContent()) as {
+    formatting: Record<string, unknown>;
+  };
+  delete content.formatting.entryGapPx;
   const database = await openLocalDatabase();
   await database.put('guest-resume', {
     key: 'primary',
     storageVersion: 1,
-    document: createDocument(),
+    document: {
+      ...createDocument(),
+      templateId: 'classic-professional',
+      profileAlignment: undefined,
+      contentVersion: 2,
+      content,
+    },
   });
   if (avatar) await database.put('guest-assets', avatar, 'avatar');
   database.close();
@@ -87,9 +97,22 @@ describe('local resume service', () => {
     database.close();
 
     expect(loaded.document.hasAvatar).toBe(true);
+    expect(loaded.document).toMatchObject({
+      contentVersion: 3,
+      profileAlignment: 'center',
+      content: { formatting: { entryGapPx: 14 } },
+    });
     expect(await blobText(loaded.avatar)).toBe('legacy-avatar');
     expect(saved).toMatchObject({ id: 'guest-primary', revision: 2, title: '继续编辑旧简历' });
-    expect(stored).toMatchObject({ key: 'primary', storageVersion: 1 });
+    expect(stored).toMatchObject({
+      key: 'primary',
+      storageVersion: 1,
+      document: {
+        contentVersion: 3,
+        profileAlignment: 'center',
+        content: { formatting: { entryGapPx: 14 } },
+      },
+    });
     expect(await blobText(avatar ?? null)).toBe('legacy-avatar');
   });
 
@@ -122,12 +145,12 @@ describe('local resume service', () => {
     expect((await service.get(copied.id)).document.title).toBe('产品简历 - 副本');
   });
 
-  it('imports v2 JSON as a new draft and includes it in filtering and stats', async () => {
+  it('imports v3 JSON as a new draft and includes it in filtering and stats', async () => {
     const service = createLocalResumeService({ createId: () => 'imported-id' });
     const envelope: ResumeImportEnvelope = {
-      version: 2,
+      version: 3,
       title: '  前端工程师简历  ',
-      templateId: 'classic-professional',
+      profileAlignment: 'center',
       content: createDefaultContent(),
       avatar: `data:image/jpeg;base64,${btoa('avatar')}`,
     };
@@ -173,9 +196,9 @@ describe('local resume service', () => {
     await expect(service.copy(first.id)).rejects.toBeInstanceOf(LocalResumeLimitError);
     await expect(
       service.import({
-        version: 2,
+        version: 3,
         title: '额外导入',
-        templateId: 'modern-editorial',
+        profileAlignment: 'left',
         content: createDefaultContent(),
         avatar: null,
       }),

@@ -2,13 +2,8 @@ import type { ResumeDetail } from '@/shared/api/generated/model/resumeDetail';
 import type { ResumeContent } from '@/shared/api/generated/model/resumeContent';
 import { httpBlobRequest, httpRequest } from '@/shared/http/http.client';
 
-import type {
-  ResumeDocument,
-  ResumeImportEnvelope,
-  ResumeStatus,
-  TemplateId,
-} from '../model/resume.types';
-import { parseResumeContent } from '../model/resume.model';
+import type { ResumeDocument, ResumeImportEnvelope, ResumeStatus } from '../model/resume.types';
+import { normalizeProfileAlignment, parseResumeContent } from '../model/resume.model';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -20,13 +15,26 @@ export class UnsupportedResumeContentError extends Error {
 }
 
 export function toDocument(detail: ResumeDetail): ResumeDocument {
-  if (detail.contentVersion !== 2) throw new UnsupportedResumeContentError();
+  if (detail.contentVersion !== 2 && detail.contentVersion !== 3)
+    throw new UnsupportedResumeContentError();
+  const compatible = detail as ResumeDetail & {
+    profileAlignment?: string | null;
+    templateId?: string | null;
+  };
   return {
-    ...detail,
-    templateId: (detail.templateId ?? 'modern-editorial') as TemplateId,
+    id: detail.id,
+    title: detail.title,
     status: detail.status as ResumeStatus,
-    contentVersion: 2,
-    content: parseResumeContent(detail.content),
+    revision: detail.revision,
+    hasAvatar: detail.hasAvatar,
+    profileAlignment: normalizeProfileAlignment(
+      compatible.profileAlignment ?? compatible.templateId,
+    ),
+    exportCount: detail.exportCount,
+    contentVersion: 3,
+    content: parseResumeContent(detail.content, detail.contentVersion),
+    createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
   };
 }
 
@@ -41,7 +49,8 @@ export const resumeEditorService = {
         expectedRevision,
         title: document.title,
         status: document.status,
-        templateId: document.templateId,
+        profileAlignment: document.profileAlignment,
+        contentVersion: 3,
         content: document.content as unknown as ResumeContent,
       }),
       headers: JSON_HEADERS,

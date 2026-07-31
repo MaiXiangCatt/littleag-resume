@@ -54,12 +54,12 @@ import {
 import type {
   AccentColor,
   PresetAccentColor,
+  ProfileAlignment,
   ResumeDocument,
   ResumeFontFamily,
   ResumeFormatting,
   ResumeImportEnvelope,
   ResumeSection,
-  TemplateId,
 } from '../model/resume.types';
 import { useResumeEditorStore } from '../store/resume-editor.store';
 import { localResumeStore } from '../store/local-resume.store';
@@ -239,9 +239,9 @@ export function ResumeEditorPage({
   async function exportJson() {
     if (!document) return;
     const envelope: ResumeImportEnvelope = {
-      version: 2,
+      version: 3,
       title: document.title,
-      templateId: document.templateId,
+      profileAlignment: document.profileAlignment,
       content: document.content,
       avatar: await getAvatarDataUrl(),
     };
@@ -547,7 +547,12 @@ export function ResumeEditorPage({
               profile={document.content.profile}
             />
           ) : activeSection ? (
-            <SectionEditor onChange={(section) => updateSection(section)} section={activeSection} />
+            <SectionEditor
+              defaultEntryGapPx={document.content.formatting.entryGapPx}
+              defaultSectionGapPx={document.content.formatting.sectionGapPx}
+              onChange={(section) => updateSection(section)}
+              section={activeSection}
+            />
           ) : null}
           <input
             accept="image/jpeg,image/png,image/webp"
@@ -588,9 +593,9 @@ export function ResumeEditorPage({
             setFormatOpen(false);
             void flushSave();
           }}
-          onTemplate={(templateId) =>
+          onProfileAlignment={(profileAlignment) =>
             mutate((draft) => {
-              draft.templateId = templateId;
+              draft.profileAlignment = profileAlignment;
             }, true)
           }
         />
@@ -719,12 +724,12 @@ export function FormattingDialog({
   document,
   onChange,
   onClose,
-  onTemplate,
+  onProfileAlignment,
 }: {
   document: ResumeDocument;
   onChange: (formatting: ResumeFormatting) => void;
   onClose: () => void;
-  onTemplate: (value: TemplateId) => void;
+  onProfileAlignment: (value: ProfileAlignment) => void;
 }) {
   const formatting = document.content.formatting;
   const [fieldRevision, setFieldRevision] = useState(0);
@@ -740,15 +745,18 @@ export function FormattingDialog({
     >
       <DialogContent className="max-h-[88vh] w-[min(92vw,680px)] overflow-y-auto rounded-3xl p-7">
         <DialogTitle className="font-serif text-2xl">排版设置</DialogTitle>
-        <DialogDescription>所有数值都会实时应用到预览与导出的 PDF。</DialogDescription>
+        <DialogDescription>
+          所有数值都会实时应用到预览与导出的 PDF；恢复默认不会清除模块和记录的单独设置。
+        </DialogDescription>
         <div className="mt-6 grid grid-cols-2 gap-4 rounded-2xl border border-[#e8e0e5] bg-[#fbf9fa] p-4">
           <SelectField
-            label="模板"
-            value={document.templateId}
-            onChange={(value) => onTemplate(value as TemplateId)}
+            label="基本信息布局"
+            value={document.profileAlignment}
+            onChange={(value) => onProfileAlignment(value as ProfileAlignment)}
             options={[
-              ['modern-editorial', '现代编辑'],
-              ['classic-professional', '经典专业'],
+              ['left', '左侧对齐'],
+              ['center', '居中对齐'],
+              ['right', '右侧对齐'],
             ]}
           />
           <SelectField
@@ -800,7 +808,7 @@ export function FormattingDialog({
         </div>
         <div key={fieldRevision}>
           <FormattingSection
-            description="四类文字角色全局生效，模板切换不会覆盖这些数值。"
+            description="四类文字角色全局生效，基本信息对齐方式不会覆盖这些数值。"
             title="字号"
           >
             <div className="grid grid-cols-2 gap-4">
@@ -839,10 +847,10 @@ export function FormattingDialog({
             </div>
           </FormattingSection>
           <FormattingSection
-            description="行高使用倍数；模块间距控制相邻内容板块的留白。"
+            description="行高使用倍数；默认间距可由具体模块或记录单独覆盖。"
             title="阅读节奏"
           >
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <NumericField
                 label="行高"
                 maximum={2.5}
@@ -853,12 +861,20 @@ export function FormattingDialog({
                 value={formatting.lineHeightRatio}
               />
               <NumericField
-                label="模块间距"
+                label="默认模块间距"
                 maximum={64}
                 minimum={0}
                 onChange={(value) => update({ sectionGapPx: value })}
                 suffix="px"
                 value={formatting.sectionGapPx}
+              />
+              <NumericField
+                label="默认记录间距"
+                maximum={64}
+                minimum={0}
+                onChange={(value) => update({ entryGapPx: value })}
+                suffix="px"
+                value={formatting.entryGapPx}
               />
             </div>
           </FormattingSection>
@@ -918,6 +934,7 @@ export function FormattingDialog({
           <Button
             onClick={() => {
               onChange(createDefaultFormatting());
+              onProfileAlignment('left');
               setFieldRevision((revision) => revision + 1);
             }}
             variant="outline"

@@ -10,6 +10,7 @@ import type {
 import { LOCAL_RESUME_LIMIT } from '../model/local-resume';
 import {
   createDefaultContent,
+  normalizeProfileAlignment,
   parseImportEnvelope,
   parseResumeContent,
 } from '../model/resume.model';
@@ -25,19 +26,11 @@ const LEGACY_RESUME_ID = 'guest-primary';
 const LEGACY_AVATAR_KEY = 'avatar';
 const TITLE_LIMIT = 80;
 
-type LegacyResumeRecord = {
-  document: ResumeDocument;
-  key: typeof LEGACY_RESUME_KEY;
-  storageVersion: 1;
-};
-
-type LocalResumeRecord = {
-  document: ResumeDocument;
+type StoredResumeRecord = {
+  document: unknown;
   key: string;
-  storageVersion: 2;
+  storageVersion: 1 | 2;
 };
-
-type StoredResumeRecord = LegacyResumeRecord | LocalResumeRecord;
 
 interface LocalResumeDatabase extends DBSchema {
   [RESUME_STORE]: {
@@ -182,7 +175,7 @@ export function createLocalResumeService(
     const document = createDocument(createId(), validateTitle(parsed.title), now(), {
       content: parsed.content,
       hasAvatar: Boolean(avatar),
-      templateId: parsed.templateId,
+      profileAlignment: parsed.profileAlignment,
     });
     return withDatabase(async (database) => {
       const transaction = database.transaction([RESUME_STORE, ASSET_STORE], 'readwrite');
@@ -271,9 +264,9 @@ export function createLocalResumeService(
         {
           ...current,
           title: validateTitle(parsed.title),
-          templateId: parsed.templateId,
+          profileAlignment: parsed.profileAlignment,
           content: parsed.content,
-          contentVersion: 2,
+          contentVersion: 3,
           hasAvatar: Boolean(avatar),
         },
         expectedRevision,
@@ -449,7 +442,7 @@ function createDocument(
   id: string,
   title: string,
   currentTime: Date,
-  overrides: Partial<Pick<ResumeDocument, 'content' | 'hasAvatar' | 'templateId'>> = {},
+  overrides: Partial<Pick<ResumeDocument, 'content' | 'hasAvatar' | 'profileAlignment'>> = {},
 ): ResumeDocument {
   const timestamp = currentTime.toISOString();
   return {
@@ -458,9 +451,9 @@ function createDocument(
     status: 'draft',
     revision: 1,
     hasAvatar: false,
-    templateId: 'modern-editorial',
+    profileAlignment: 'left',
     exportCount: 0,
-    contentVersion: 2,
+    contentVersion: 3,
     content: createDefaultContent(),
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -468,30 +461,48 @@ function createDocument(
   };
 }
 
-function validateDocument(document: ResumeDocument): ResumeDocument {
+function validateDocument(value: unknown): ResumeDocument {
+  const document = value as Record<string, unknown>;
+  const contentVersion = document?.contentVersion;
   if (
     !document ||
     typeof document.id !== 'string' ||
     !document.id ||
+    typeof document.title !== 'string' ||
     (document.status !== 'draft' && document.status !== 'completed') ||
+    typeof document.revision !== 'number' ||
     !Number.isInteger(document.revision) ||
     document.revision < 1 ||
     typeof document.hasAvatar !== 'boolean' ||
-    (document.templateId !== 'modern-editorial' &&
-      document.templateId !== 'classic-professional') ||
+    typeof document.exportCount !== 'number' ||
     !Number.isInteger(document.exportCount) ||
     document.exportCount < 0 ||
-    document.contentVersion !== 2 ||
+    (contentVersion !== 2 && contentVersion !== 3) ||
     !isTimestamp(document.createdAt) ||
     !isTimestamp(document.updatedAt)
   ) {
     throw new LocalResumeDataError();
   }
+  let profileAlignment;
+  try {
+    profileAlignment = normalizeProfileAlignment(
+      document.profileAlignment ?? document.templateId ?? null,
+    );
+  } catch {
+    throw new LocalResumeDataError();
+  }
   return {
-    ...cloneDocument(document),
+    id: document.id,
     title: validateTitle(document.title),
-    contentVersion: 2,
-    content: parseResumeContent(document.content),
+    status: document.status,
+    revision: document.revision,
+    hasAvatar: document.hasAvatar,
+    profileAlignment,
+    exportCount: document.exportCount,
+    contentVersion: 3,
+    content: parseResumeContent(document.content, contentVersion),
+    createdAt: document.createdAt,
+    updatedAt: document.updatedAt,
   };
 }
 
@@ -509,12 +520,13 @@ function validateTitle(title: string): string {
 
 function parseStoredRecord(record: StoredResumeRecord, expectedId?: string): ResumeDocument {
   try {
+    const storedDocument = record.document as Record<string, unknown>;
     if (record.storageVersion === 1) {
-      if (record.key !== LEGACY_RESUME_KEY || record.document.id !== LEGACY_RESUME_ID) {
+      if (record.key !== LEGACY_RESUME_KEY || storedDocument.id !== LEGACY_RESUME_ID) {
         throw new LocalResumeDataError();
       }
     } else if (record.storageVersion === 2) {
-      if (record.key === LEGACY_RESUME_KEY || record.key !== record.document.id) {
+      if (record.key === LEGACY_RESUME_KEY || record.key !== storedDocument.id) {
         throw new LocalResumeDataError();
       }
     } else {
@@ -593,7 +605,7 @@ function toSummary(document: ResumeDocument) {
     id: document.id,
     revision: document.revision,
     status: document.status,
-    templateId: document.templateId,
+    profileAlignment: document.profileAlignment,
     title: document.title,
     updatedAt: document.updatedAt,
   };

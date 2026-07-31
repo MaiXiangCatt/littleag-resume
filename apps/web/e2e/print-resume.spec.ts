@@ -32,9 +32,10 @@ test('prints a short resume on a white page without leaking the token into the r
           status: 'draft',
           revision: 1,
           hasAvatar: false,
+          profileAlignment: 'left',
           templateId: 'modern-editorial',
           exportCount: 0,
-          contentVersion: 2,
+          contentVersion: 3,
           content: {
             profile: {
               fullName: '林清清',
@@ -61,6 +62,7 @@ test('prints a short resume on a white page without leaking the token into the r
               lineHeightRatio: 1.5,
               pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
               sectionGapPx: 8,
+              entryGapPx: 14,
               fontFamily: 'source-han-sans',
               accentColor: 'plum',
             },

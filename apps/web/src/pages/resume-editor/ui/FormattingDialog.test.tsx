@@ -14,9 +14,9 @@ function createResume(): ResumeDocument {
     status: 'draft',
     revision: 1,
     hasAvatar: false,
-    templateId: 'modern-editorial',
+    profileAlignment: 'center',
     exportCount: 0,
-    contentVersion: 2,
+    contentVersion: 3,
     content: createDefaultContent(),
     createdAt: '2026-07-23T00:00:00Z',
     updatedAt: '2026-07-23T00:00:00Z',
@@ -35,7 +35,9 @@ function FormattingFixture() {
         }))
       }
       onClose={vi.fn()}
-      onTemplate={(templateId) => setResume((current) => ({ ...current, templateId }))}
+      onProfileAlignment={(profileAlignment) =>
+        setResume((current) => ({ ...current, profileAlignment }))
+      }
     />
   );
 }
@@ -46,6 +48,9 @@ describe('FormattingDialog', () => {
     render(<FormattingFixture />);
     const nameSize = screen.getByRole('spinbutton', { name: '姓名' });
     const leftMargin = screen.getByRole('spinbutton', { name: '左' });
+    const entryGap = screen.getByRole('spinbutton', { name: '默认记录间距' });
+
+    expect(screen.getByRole('combobox', { name: '基本信息布局' })).toHaveTextContent('居中对齐');
 
     await user.clear(nameSize);
     await user.type(nameSize, '24');
@@ -56,6 +61,7 @@ describe('FormattingDialog', () => {
 
     expect(nameSize).toHaveValue(24);
     expect(leftMargin).toHaveValue(42);
+    expect(entryGap).toHaveValue(14);
 
     await user.clear(nameSize);
     await user.tab();
@@ -64,6 +70,7 @@ describe('FormattingDialog', () => {
     await user.click(screen.getByRole('button', { name: '恢复默认' }));
     expect(screen.getByRole('spinbutton', { name: '姓名' })).toHaveValue(20);
     expect(screen.getByRole('spinbutton', { name: '左' })).toHaveValue(33);
+    expect(screen.getByRole('combobox', { name: '基本信息布局' })).toHaveTextContent('左侧对齐');
   });
 
   it('exposes the resume font selector and supports preset and custom colors', async () => {

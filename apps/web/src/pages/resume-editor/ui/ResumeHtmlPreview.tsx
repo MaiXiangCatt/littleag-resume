@@ -28,10 +28,12 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   const isPrint = mode === 'print';
   const formatting = resume.content.formatting;
   const profile = resume.content.profile;
-  const isClassic = resume.templateId === 'classic-professional';
+  const profileAlignment = resume.profileAlignment;
   const accent = resolveAccentColor(formatting.accentColor);
-  const presentation = createResumePresentation(formatting, isClassic);
-  const hasCenteredAvatar = isClassic && Boolean(avatar);
+  const presentation = createResumePresentation(formatting, profileAlignment);
+  const hasCenteredAvatar = profileAlignment === 'center' && Boolean(avatar);
+  const hasSideAvatar = Boolean(avatar) && !hasCenteredAvatar;
+  const avatarOnLeft = profileAlignment === 'right' && hasSideAvatar;
   const style = {
     '--resume-accent': accent,
     ...(isPrint ? {} : { containerType: 'inline-size' }),
@@ -51,7 +53,7 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
           ? 'max-w-none rounded-none shadow-none'
           : 'max-w-[794px] rounded-[2px] shadow-[0_26px_70px_rgba(31,24,29,0.24)]',
       )}
-      data-template={resume.templateId}
+      data-profile-alignment={profileAlignment}
       style={style}
     >
       <article
@@ -78,9 +80,8 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
             className={cn(
               'flex',
               hasCenteredAvatar && 'relative flex-col',
-              avatar && !hasCenteredAvatar && 'flex-row items-start justify-between',
+              hasSideAvatar && 'flex-row items-start justify-between',
               !avatar && 'flex-col',
-              isClassic ? 'text-center' : 'text-left',
             )}
             style={{
               minHeight: hasCenteredAvatar
@@ -89,6 +90,18 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
               paddingBottom: presentation.headerPaddingBottomPx,
             }}
           >
+            {avatar && avatarOnLeft ? (
+              <img
+                alt=""
+                className="shrink-0 object-contain"
+                src={avatar}
+                style={{
+                  height: presentation.photoHeightPx,
+                  marginRight: presentation.photoGapPx,
+                  width: presentation.photoWidthPx,
+                }}
+              />
+            ) : null}
             <div
               className={cn('min-w-0', hasCenteredAvatar ? 'w-full' : 'flex-1')}
               style={{
@@ -101,7 +114,7 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
                 <h1
                   className="font-bold"
                   style={{
-                    color: isClassic ? '#202027' : accent,
+                    color: presentation.bodyColor,
                     fontSize: formatting.nameFontSizePx,
                     letterSpacing: presentation.nameLetterSpacingPx,
                     lineHeight: presentation.nameLineHeight,
@@ -123,7 +136,12 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
               ) : null}
               {contacts.length || printableLinks.length ? (
                 <div
-                  className={cn('flex flex-wrap', isClassic ? 'justify-center' : 'justify-start')}
+                  className={cn(
+                    'flex flex-wrap',
+                    profileAlignment === 'center' && 'justify-center',
+                    profileAlignment === 'left' && 'justify-start',
+                    profileAlignment === 'right' && 'justify-end',
+                  )}
                   style={{
                     color: presentation.bodyColor,
                     columnGap: presentation.contactsColumnGapPx,
@@ -149,7 +167,7 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
                 </div>
               ) : null}
             </div>
-            {avatar ? (
+            {avatar && !avatarOnLeft ? (
               <img
                 alt=""
                 className={cn(
@@ -169,10 +187,10 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
 
         {resume.content.sections.filter(sectionHasPrintableContent).map((section) => (
           <HtmlSection
-            isClassic={isClassic}
             key={section.id}
             section={section}
             formatting={formatting}
+            presentation={presentation}
           />
         ))}
       </article>
@@ -181,24 +199,23 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
 });
 
 function HtmlSection({
-  isClassic,
   section,
   formatting,
+  presentation,
 }: {
-  isClassic: boolean;
   section: ResumeSection;
   formatting: ResumeFormatting;
+  presentation: ReturnType<typeof createResumePresentation>;
 }) {
-  const presentation = createResumePresentation(formatting, isClassic);
   return (
-    <section className="break-inside-avoid" style={{ marginTop: formatting.sectionGapPx }}>
+    <section
+      className="break-inside-avoid"
+      style={{ marginTop: section.spacingBeforePx ?? formatting.sectionGapPx }}
+    >
       <h2
-        className={cn(
-          'border-b font-bold tracking-[0.04em]',
-          isClassic ? 'text-[#27242a]' : 'text-[var(--resume-accent)]',
-        )}
+        className="border-b font-bold tracking-[0.04em] text-[var(--resume-accent)]"
         style={{
-          borderColor: isClassic ? '#b9b4bc' : 'var(--resume-accent)',
+          borderColor: 'var(--resume-accent)',
           fontSize: formatting.sectionTitleFontSizePx,
           paddingBottom: presentation.sectionTitlePaddingBottomPx,
         }}
@@ -212,14 +229,21 @@ function HtmlSection({
         <ResumeMarkdownHtml className="mt-[0.8em]" value={section.description} />
       ) : null}
       {section.type !== 'summary' && section.type !== 'skills' ? (
-        <div className="space-y-[1em] pt-[0.8em]">
-          {section.items.filter(itemHasPrintableContent).map((item) => {
+        <div className="pt-[0.8em]">
+          {section.items.filter(itemHasPrintableContent).map((item, index) => {
             const display = getEntryDisplay(
               section.type,
               item as unknown as Record<string, unknown>,
             );
             return (
-              <article className="break-inside-avoid" key={item.id}>
+              <article
+                className="break-inside-avoid"
+                key={item.id}
+                style={{
+                  marginTop:
+                    index > 0 ? (item.spacingBeforePx ?? formatting.entryGapPx) : undefined,
+                }}
+              >
                 {display.title || display.date ? (
                   <div className="flex items-baseline justify-between gap-[1.5em]">
                     {display.title ? (

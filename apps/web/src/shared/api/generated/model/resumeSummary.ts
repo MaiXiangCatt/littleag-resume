@@ -5,6 +5,7 @@
  * Contract for authentication and resume management.
  * OpenAPI spec version: 0.2.0
  */
+import type { ProfileAlignment } from './profileAlignment';
 import type { ResumeStatus } from './resumeStatus';
 
 export interface ResumeSummary {
@@ -15,11 +16,16 @@ export interface ResumeSummary {
      */
   title: string;
   status: ResumeStatus;
+  profileAlignment: ProfileAlignment;
   /** @minimum 1 */
   revision: number;
   hasAvatar: boolean;
-  /** @nullable */
-  templateId?: string | null;
+  /**
+     * Legacy projection. Left maps to modern-editorial, center to classic-professional, and right to null.
+     * @deprecated
+     * @nullable
+     */
+  templateId: string | null;
   /** @minimum 0 */
   exportCount: number;
   createdAt: string;

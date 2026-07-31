@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { SkillsSection } from '../model/resume.types';
+import { createDefaultContent, createSectionItem } from '../model/resume.model';
+import type { SkillsSection, WorkItem, WorkSection } from '../model/resume.types';
 import { SectionEditor } from './EditorForms';
 
 describe('SectionEditor', () => {
@@ -15,7 +16,14 @@ describe('SectionEditor', () => {
       description: '',
     };
 
-    render(<SectionEditor onChange={onChange} section={section} />);
+    render(
+      <SectionEditor
+        defaultEntryGapPx={14}
+        defaultSectionGapPx={8}
+        onChange={onChange}
+        section={section}
+      />,
+    );
 
     const editor = screen.getByRole('textbox', { name: '技能内容' });
     fireEvent.change(editor, { target: { value: '**TypeScript**' } });
@@ -25,5 +33,34 @@ describe('SectionEditor', () => {
       description: '**TypeScript**',
     });
     expect(screen.queryByRole('button', { name: /新增一条技能/ })).not.toBeInTheDocument();
+  });
+
+  it('supports inherited and explicit section and record spacing', () => {
+    const onChange = vi.fn();
+    const work = createDefaultContent().sections.find(
+      (section): section is WorkSection => section.type === 'work',
+    );
+    if (!work) throw new Error('missing work section');
+    work.items = [createSectionItem('work') as WorkItem, createSectionItem('work') as WorkItem];
+
+    render(
+      <SectionEditor
+        defaultEntryGapPx={14}
+        defaultSectionGapPx={8}
+        onChange={onChange}
+        section={work}
+      />,
+    );
+
+    expect(screen.getByRole('spinbutton', { name: '模块上方间距' })).toHaveAttribute(
+      'placeholder',
+      '默认 8',
+    );
+    expect(screen.getAllByRole('spinbutton', { name: '与上一条记录间距' })).toHaveLength(1);
+
+    const sectionGap = screen.getByRole('spinbutton', { name: '模块上方间距' });
+    fireEvent.change(sectionGap, { target: { value: '0' } });
+    fireEvent.blur(sectionGap);
+    expect(onChange).toHaveBeenLastCalledWith({ ...work, spacingBeforePx: 0 });
   });
 });

@@ -3,6 +3,7 @@ package service_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"image"
 	"image/color"
@@ -36,8 +37,8 @@ func TestResumeServiceLifecycleAndOwnership(t *testing.T) {
 	if created.Title != "产品经理简历" || created.Status != model.ResumeStatusDraft {
 		t.Fatalf("unexpected created resume: %+v", created)
 	}
-	if created.ContentVersion != 2 {
-		t.Fatalf("new resumes must use content version 2, got %d", created.ContentVersion)
+	if created.ContentVersion != 3 || created.TemplateID == nil || *created.TemplateID != "left" {
+		t.Fatalf("new resumes must use v3 left alignment, got %+v", created)
 	}
 	if _, err := resumes.Get(ctx, otherUserID, created.ID); !errors.Is(err, model.ErrResumeNotFound) {
 		t.Fatalf("cross-user read must look missing, got %v", err)
@@ -161,22 +162,75 @@ func jpegAvatar(t *testing.T, width, height int) []byte {
 	return output.Bytes()
 }
 
-func TestResumeServiceImportsVersionedOpaqueContent(t *testing.T) {
+func TestResumeServiceImportsAndMigratesVersionedContent(t *testing.T) {
 	store := repository.NewMemoryStore()
 	resumes := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
 	userID := uuid.New()
 
 	imported, err := resumes.Import(context.Background(), userID, service.ImportResumeInput{
-		Version: 2, Title: "导入简历", Content: service.DefaultResumeContent(),
+		Version: 3, Title: "导入简历", Content: service.DefaultResumeContent(),
 	})
 	if err != nil {
 		t.Fatalf("import resume: %v", err)
 	}
-	if imported.ContentVersion != 2 || string(imported.ContentJSON) == "{}" {
+	if imported.ContentVersion != 3 || string(imported.ContentJSON) == "{}" {
 		t.Fatalf("opaque content was not preserved: %+v", imported)
+	}
+
+	v2 := service.DefaultResumeContent()
+	delete(v2["formatting"].(map[string]any), "entryGapPx")
+	classic := "classic-professional"
+	migrated, err := resumes.Import(context.Background(), userID, service.ImportResumeInput{
+		Version: 2, Title: "旧版导入", TemplateID: &classic, Content: v2,
+	})
+	if err != nil {
+		t.Fatalf("import v2 resume: %v", err)
+	}
+	if migrated.ContentVersion != 3 || migrated.TemplateID == nil || *migrated.TemplateID != "center" {
+		t.Fatalf("v2 import should persist canonical v3: %+v", migrated)
+	}
+	var migratedContent map[string]any
+	if err := json.Unmarshal(migrated.ContentJSON, &migratedContent); err != nil {
+		t.Fatalf("decode migrated content: %v", err)
+	}
+	if got := migratedContent["formatting"].(map[string]any)["entryGapPx"]; got != float64(14) {
+		t.Fatalf("v2 entry gap migration mismatch: %v", got)
 	}
 	if _, err := resumes.Import(context.Background(), userID, service.ImportResumeInput{Version: 1, Title: "旧版本", Content: service.DefaultResumeContent()}); !errors.Is(err, model.ErrResumeInvalidSchema) {
 		t.Fatalf("expected unsupported version error, got %v", err)
+	}
+}
+
+func TestResumeServiceReadsV2LazilyAndUpgradesOnCopy(t *testing.T) {
+	ctx := context.Background()
+	store := repository.NewMemoryStore()
+	resumes := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
+	userID := uuid.New()
+	v2 := service.DefaultResumeContent()
+	delete(v2["formatting"].(map[string]any), "entryGapPx")
+	raw, err := json.Marshal(v2)
+	if err != nil {
+		t.Fatalf("marshal v2 content: %v", err)
+	}
+	classic := "classic-professional"
+	legacy := &model.Resume{
+		ID: uuid.New(), UserID: userID, Title: "v2", Status: model.ResumeStatusDraft,
+		TemplateID: &classic, ContentVersion: 2, ContentJSON: raw, Revision: 1,
+	}
+	if err := store.CreateResume(ctx, legacy); err != nil {
+		t.Fatalf("seed v2 resume: %v", err)
+	}
+
+	read, err := resumes.Get(ctx, userID, legacy.ID)
+	if err != nil || read.ContentVersion != 2 || *read.TemplateID != classic {
+		t.Fatalf("ordinary read must not persist migration: resume=%+v err=%v", read, err)
+	}
+	copied, err := resumes.Copy(ctx, userID, legacy.ID)
+	if err != nil {
+		t.Fatalf("copy v2 resume: %v", err)
+	}
+	if copied.ContentVersion != 3 || copied.TemplateID == nil || *copied.TemplateID != "center" {
+		t.Fatalf("copy should persist canonical v3: %+v", copied)
 	}
 }
 

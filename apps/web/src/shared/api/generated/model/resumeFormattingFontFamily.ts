@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ResumeFormattingV2FontFamily = typeof ResumeFormattingV2FontFamily[keyof typeof ResumeFormattingV2FontFamily];
+export type ResumeFormattingFontFamily = typeof ResumeFormattingFontFamily[keyof typeof ResumeFormattingFontFamily];
 
 
-export const ResumeFormattingV2FontFamily = {
+export const ResumeFormattingFontFamily = {
   'source-han-sans': 'source-han-sans',
   'source-han-serif': 'source-han-serif',
 } as const;

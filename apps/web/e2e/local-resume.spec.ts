@@ -5,6 +5,7 @@ import { devices, expect, test, type Locator, type Page } from '@playwright/test
 test('local resume persists, refreshes PDF preview and downloads the current PDF', async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000);
   const workerRequests: string[] = [];
   const resumeApiRequests: string[] = [];
   page.on('request', (request) => {
@@ -74,9 +75,19 @@ test('local resume persists, refreshes PDF preview and downloads the current PDF
   await cropDialog.getByRole('button', { name: '确认头像' }).click();
   await expect(cropDialog).not.toBeVisible();
 
+  await page.getByRole('button', { name: '工作经历', exact: true }).click();
+  await page.getByRole('button', { name: '新增一条工作经历' }).click();
+  await page.getByRole('button', { name: '新增一条工作经历' }).click();
+  await page.getByLabel('公司').nth(0).fill('甲公司');
+  await page.getByLabel('公司').nth(1).fill('乙公司');
+  await page.getByLabel('角色/职位').nth(0).fill('前端实习生');
+  await page.getByLabel('角色/职位').nth(1).fill('前端实习生');
+  await page.getByRole('spinbutton', { name: '与上一条记录间距' }).fill('12');
+  await page.getByRole('spinbutton', { name: '与上一条记录间距' }).blur();
+
   await page.getByRole('button', { name: '排版设置' }).click();
-  await page.getByRole('combobox', { name: '模板' }).click();
-  await page.getByRole('option', { name: '经典专业' }).click();
+  await page.getByRole('combobox', { name: '基本信息布局' }).click();
+  await page.getByRole('option', { name: '右侧对齐' }).click();
   await page.getByRole('combobox', { name: '字体' }).click();
   await page.getByRole('option', { name: '思源宋体' }).click();
   await page.getByRole('button', { name: '完成' }).click();
@@ -88,7 +99,9 @@ test('local resume persists, refreshes PDF preview and downloads the current PDF
 
   const serifDownloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出 PDF' }).click();
-  await (await serifDownloadPromise).saveAs(testInfo.outputPath('local-resume-serif.pdf'));
+  await (
+    await serifDownloadPromise
+  ).saveAs(testInfo.outputPath('local-resume-right-custom-spacing.pdf'));
 
   await page.getByRole('button', { name: '个人简介', exact: true }).click();
   await page

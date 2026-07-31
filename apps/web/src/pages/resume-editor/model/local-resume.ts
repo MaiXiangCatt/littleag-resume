@@ -21,7 +21,7 @@ export type LocalResumeSummary = Pick<
   | 'id'
   | 'revision'
   | 'status'
-  | 'templateId'
+  | 'profileAlignment'
   | 'title'
   | 'updatedAt'
 >;

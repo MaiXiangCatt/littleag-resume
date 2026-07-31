@@ -48,6 +48,26 @@ type ResumeHandler struct {
 	webBaseURL  string
 }
 
+type importResumeBody struct {
+	Avatar           *string         `json:"avatar"`
+	Content          json.RawMessage `json:"content"`
+	ExpectedRevision *int64          `json:"expectedRevision"`
+	ProfileAlignment *string         `json:"profileAlignment"`
+	TemplateID       *string         `json:"templateId"`
+	Title            string          `json:"title"`
+	Version          int             `json:"version"`
+}
+
+type updateResumeBody struct {
+	Content          json.RawMessage     `json:"content"`
+	ContentVersion   *int                `json:"contentVersion"`
+	ExpectedRevision int64               `json:"expectedRevision"`
+	ProfileAlignment *string             `json:"profileAlignment"`
+	Status           *model.ResumeStatus `json:"status"`
+	TemplateID       *string             `json:"templateId"`
+	Title            *string             `json:"title"`
+}
+
 func NewResumeHandler(cfg ResumeHandlerConfig) *ResumeHandler {
 	return &ResumeHandler{
 		resumes:     cfg.Resumes,
@@ -123,7 +143,7 @@ func (h *ResumeHandler) ImportResume(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var body generated.ImportResumeJSONRequestBody
+	var body importResumeBody
 	if err := bindJSONWithLimit(c, &body, maxImportBodyBytes); err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
@@ -133,13 +153,14 @@ func (h *ResumeHandler) ImportResume(c *gin.Context) {
 		}
 		return
 	}
-	content, err := contentMap(body.Content)
+	content, err := rawContentMap(body.Content)
 	if err != nil {
 		writeError(c, model.ErrResumeInvalidSchema)
 		return
 	}
 	resume, err := h.resumes.Import(c.Request.Context(), userID, service.ImportResumeInput{
-		Version: int(body.Version), Title: body.Title, TemplateID: templateIDString(body.TemplateId), Content: content, Avatar: body.Avatar,
+		Version: body.Version, Title: body.Title, ProfileAlignment: body.ProfileAlignment,
+		TemplateID: body.TemplateID, Content: content, Avatar: body.Avatar,
 	})
 	if err != nil {
 		writeError(c, err)
@@ -181,19 +202,20 @@ func (h *ResumeHandler) UpdateResume(c *gin.Context, resumeID generated.ResumeId
 	if !ok {
 		return
 	}
-	var body generated.UpdateResumeJSONRequestBody
+	var body updateResumeBody
 	if err := bindJSONWithLimit(c, &body, maxResumeWriteBodyBytes); err != nil {
 		writeError(c, model.ErrInvalidParam)
 		return
 	}
-	var status *model.ResumeStatus
-	if body.Status != nil {
-		value := model.ResumeStatus(*body.Status)
-		status = &value
+	content, err := rawOptionalContentMap(body.Content)
+	if err != nil {
+		writeError(c, model.ErrResumeInvalidSchema)
+		return
 	}
 	resume, err := h.resumes.Update(c.Request.Context(), userID, uuid.UUID(resumeID), service.UpdateResumeInput{
-		ExpectedRevision: body.ExpectedRevision, Title: body.Title, Status: status, TemplateID: body.TemplateId,
-		Content: generatedContentMap(body.Content),
+		ExpectedRevision: body.ExpectedRevision, Title: body.Title, Status: body.Status,
+		ProfileAlignment: body.ProfileAlignment, TemplateID: body.TemplateID,
+		ContentVersion: body.ContentVersion, Content: content,
 	})
 	if err != nil {
 		writeError(c, err)
@@ -207,19 +229,19 @@ func (h *ResumeHandler) ReplaceResumeImport(c *gin.Context, resumeID generated.R
 	if !ok {
 		return
 	}
-	var body generated.ReplaceResumeImportJSONRequestBody
+	var body importResumeBody
 	if err := bindJSONWithLimit(c, &body, maxImportBodyBytes); err != nil {
 		writeError(c, model.ErrResumeInvalidSchema)
 		return
 	}
-	content, err := contentMap(body.Content)
+	content, err := rawContentMap(body.Content)
 	if err != nil {
 		writeError(c, model.ErrResumeInvalidSchema)
 		return
 	}
 	resume, err := h.resumes.ReplaceImport(c.Request.Context(), userID, uuid.UUID(resumeID), service.ImportResumeInput{
-		Version: int(body.Version), Title: body.Title, TemplateID: replaceTemplateIDString(body.TemplateId),
-		Content: content, Avatar: body.Avatar, ExpectedRevision: &body.ExpectedRevision,
+		Version: body.Version, Title: body.Title, ProfileAlignment: body.ProfileAlignment,
+		TemplateID: body.TemplateID, Content: content, Avatar: body.Avatar, ExpectedRevision: body.ExpectedRevision,
 	})
 	if err != nil {
 		writeError(c, err)
@@ -401,9 +423,15 @@ func currentVerifiedUserID(c *gin.Context) (uuid.UUID, bool) {
 }
 
 func resumeSummary(resume *model.Resume) generated.ResumeSummary {
+	profileAlignment, err := service.NormalizeProfileAlignment(nil, resume.TemplateID)
+	if err != nil {
+		profileAlignment = service.DefaultProfileAlignment
+	}
 	return generated.ResumeSummary{
 		Id: resume.ID, Title: resume.Title, Status: generated.ResumeStatus(resume.Status),
-		TemplateId: resume.TemplateID, Revision: resume.Revision, HasAvatar: resume.AvatarKey != nil, ExportCount: resume.ExportCount,
+		ProfileAlignment: generated.ProfileAlignment(profileAlignment),
+		TemplateId:       service.LegacyTemplateIDForAlignment(profileAlignment),
+		Revision:         resume.Revision, HasAvatar: resume.AvatarKey != nil, ExportCount: resume.ExportCount,
 		CreatedAt: resume.CreatedAt, UpdatedAt: resume.UpdatedAt,
 	}
 }
@@ -417,49 +445,32 @@ func resumeDetail(resume *model.Resume) (generated.ResumeDetail, error) {
 	}
 	summary := resumeSummary(resume)
 	return generated.ResumeDetail{
-		Id: summary.Id, Title: summary.Title, Status: summary.Status, TemplateId: summary.TemplateId,
+		Id: summary.Id, Title: summary.Title, Status: summary.Status, ProfileAlignment: summary.ProfileAlignment, TemplateId: summary.TemplateId,
 		Revision: summary.Revision, HasAvatar: summary.HasAvatar, ExportCount: summary.ExportCount, CreatedAt: summary.CreatedAt, UpdatedAt: summary.UpdatedAt,
 		ContentVersion: generated.ResumeDetailContentVersion(resume.ContentVersion), Content: content,
 	}, nil
 }
 
-func contentMap(content generated.ResumeContent) (map[string]any, error) {
-	data, err := json.Marshal(content)
-	if err != nil {
-		return nil, err
+func rawContentMap(content json.RawMessage) (map[string]any, error) {
+	if len(content) == 0 {
+		return nil, errors.New("missing content")
 	}
 	value := map[string]any{}
-	if err := json.Unmarshal(data, &value); err != nil {
+	if err := json.Unmarshal(content, &value); err != nil {
 		return nil, err
 	}
 	return value, nil
 }
 
-func generatedContentMap(content *generated.ResumeContent) *map[string]any {
-	if content == nil {
-		return nil
+func rawOptionalContentMap(content json.RawMessage) (*map[string]any, error) {
+	if len(content) == 0 {
+		return nil, nil
 	}
-	value, err := contentMap(*content)
+	value, err := rawContentMap(content)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return &value
-}
-
-func templateIDString(value *generated.ImportResumeRequestTemplateId) *string {
-	if value == nil {
-		return nil
-	}
-	text := string(*value)
-	return &text
-}
-
-func replaceTemplateIDString(value *generated.ReplaceResumeImportJSONBodyTemplateId) *string {
-	if value == nil {
-		return nil
-	}
-	text := string(*value)
-	return &text
+	return &value, nil
 }
 
 func writeResume(c *gin.Context, resume *model.Resume) {

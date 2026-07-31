@@ -32,9 +32,59 @@ describe('resume editor model', () => {
       lineHeightRatio: 1.5,
       pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
       sectionGapPx: 8,
+      entryGapPx: 14,
       fontFamily: 'source-han-sans',
       accentColor: 'plum',
     });
+  });
+
+  it('migrates v2 content and legacy templates into the v3 model', () => {
+    const legacyContent = structuredClone(createDefaultContent()) as Record<string, unknown>;
+    const formatting = legacyContent.formatting as Record<string, unknown>;
+    delete formatting.entryGapPx;
+    formatting.bodyFontSizePx = 16;
+
+    const migrated = parseImportEnvelope({
+      version: 2,
+      title: 'Legacy resume',
+      templateId: 'classic-professional',
+      content: legacyContent,
+    });
+
+    expect(migrated).toMatchObject({
+      version: 3,
+      profileAlignment: 'center',
+      content: {
+        formatting: {
+          bodyFontSizePx: 16,
+          entryGapPx: 16,
+        },
+      },
+    });
+    expect(migrated).not.toHaveProperty('templateId');
+  });
+
+  it('accepts v3 spacing boundaries and rejects invalid overrides', () => {
+    const content = createDefaultContent();
+    const work = content.sections.find((section) => section.type === 'work');
+    if (!work || work.type !== 'work') throw new Error('missing work section');
+    work.spacingBeforePx = 0;
+    work.items.push({
+      id: crypto.randomUUID(),
+      company: '',
+      role: '',
+      location: '',
+      startDate: '',
+      endDate: '',
+      isCurrent: false,
+      description: '',
+      spacingBeforePx: 64,
+    });
+
+    expect(parseResumeContent(content, 3)).toEqual(content);
+
+    work.items[0].spacingBeforePx = 1.5;
+    expect(() => parseResumeContent(content, 3)).toThrow();
   });
 
   it('rejects legacy and out-of-range formatting', () => {
@@ -77,7 +127,7 @@ describe('resume editor model', () => {
 
   it('strictly rejects unknown import fields and malformed dates', () => {
     const content = createDefaultContent();
-    const envelope = { version: 2, title: 'Resume', templateId: 'modern-editorial', content };
+    const envelope = { version: 3, title: 'Resume', profileAlignment: 'left', content };
 
     expect(() => parseImportEnvelope({ ...envelope, unknown: true })).toThrow();
     expect(() => parseImportEnvelope({ ...envelope, version: 1 })).toThrow();

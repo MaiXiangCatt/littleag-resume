@@ -15,7 +15,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowDown, ArrowUp, Check, GripVertical, ImagePlus, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  GripVertical,
+  ImagePlus,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Button } from '@/shared/ui/button';
@@ -185,9 +194,13 @@ export function ProfileEditor({
 }
 
 export function SectionEditor({
+  defaultEntryGapPx,
+  defaultSectionGapPx,
   onChange,
   section,
 }: {
+  defaultEntryGapPx: number;
+  defaultSectionGapPx: number;
   onChange: (section: ResumeSection) => void;
   section: ResumeSection;
 }) {
@@ -209,6 +222,12 @@ export function SectionEditor({
             onChange={(event) => onChange({ ...section, title: event.target.value })}
           />
         </Field>
+        <OptionalSpacingField
+          defaultValue={defaultSectionGapPx}
+          label="模块上方间距"
+          onChange={(spacingBeforePx) => onChange({ ...section, spacingBeforePx })}
+          value={section.spacingBeforePx}
+        />
         <Field label="简介内容">
           <MarkdownEditor
             ariaLabel="简介内容"
@@ -235,6 +254,12 @@ export function SectionEditor({
             onChange={(event) => onChange({ ...section, title: event.target.value })}
           />
         </Field>
+        <OptionalSpacingField
+          defaultValue={defaultSectionGapPx}
+          label="模块上方间距"
+          onChange={(spacingBeforePx) => onChange({ ...section, spacingBeforePx })}
+          value={section.spacingBeforePx}
+        />
         <Field label="技能内容">
           <MarkdownEditor
             ariaLabel="技能内容"
@@ -250,7 +275,7 @@ export function SectionEditor({
   const items = section.items as Array<{ id: string } & Record<string, unknown>>;
   const setItems = (nextItems: Array<{ id: string } & Record<string, unknown>>) =>
     onChange({ ...section, items: nextItems } as ResumeSection);
-  const updateItem = (id: string, key: string, value: string | boolean) =>
+  const updateItem = (id: string, key: string, value: string | boolean | number | undefined) =>
     setItems(items.map((item) => (item.id === id ? { ...item, [key]: value } : item)));
   const removeItem = (id: string) => setItems(items.filter((item) => item.id !== id));
   const moveItem = (id: string, delta: number) => {
@@ -275,6 +300,12 @@ export function SectionEditor({
           onChange={(event) => onChange({ ...section, title: event.target.value })}
         />
       </Field>
+      <OptionalSpacingField
+        defaultValue={defaultSectionGapPx}
+        label="模块上方间距"
+        onChange={(spacingBeforePx) => onChange({ ...section, spacingBeforePx })}
+        value={section.spacingBeforePx}
+      />
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd} sensors={sensors}>
         <SortableContext
           items={items.map((item) => item.id)}
@@ -289,10 +320,24 @@ export function SectionEditor({
                 onDown={() => moveItem(item.id, 1)}
                 onRemove={() => removeItem(item.id)}
                 onUp={() => moveItem(item.id, -1)}
+                spacingControl={
+                  index > 0 ? (
+                    <OptionalSpacingField
+                      defaultValue={defaultEntryGapPx}
+                      label="与上一条记录间距"
+                      onChange={(spacingBeforePx) =>
+                        updateItem(item.id, 'spacingBeforePx', spacingBeforePx)
+                      }
+                      value={
+                        typeof item.spacingBeforePx === 'number' ? item.spacingBeforePx : undefined
+                      }
+                    />
+                  ) : null
+                }
               >
                 {renderItemFields(
                   section.type,
-                  item as unknown as Record<string, string | boolean>,
+                  item as unknown as Record<string, string | boolean | number | undefined>,
                   updateItem,
                 )}
               </SortableItemCard>
@@ -314,8 +359,8 @@ export function SectionEditor({
 
 function renderItemFields(
   type: Exclude<ResumeSection['type'], 'summary' | 'skills'>,
-  item: Record<string, string | boolean>,
-  update: (id: string, key: string, value: string | boolean) => void,
+  item: Record<string, string | boolean | number | undefined>,
+  update: (id: string, key: string, value: string | boolean | number | undefined) => void,
 ) {
   const id = String(item.id);
   const input = (key: string, label: string, placeholder = '') => (
@@ -429,6 +474,7 @@ function SortableItemCard({
   onDown,
   onRemove,
   onUp,
+  spacingControl,
 }: {
   children: ReactNode;
   index: number;
@@ -436,6 +482,7 @@ function SortableItemCard({
   onDown: () => void;
   onRemove: () => void;
   onUp: () => void;
+  spacingControl: ReactNode;
 }) {
   const sortable = useSortable({ id: itemId });
   return (
@@ -472,6 +519,11 @@ function SortableItemCard({
           </Button>
         </div>
       </div>
+      {spacingControl ? (
+        <div className="mb-4 rounded-xl border border-dashed border-[#ded4da] bg-[#fbf9fa] p-3">
+          {spacingControl}
+        </div>
+      ) : null}
       {children}
     </Card>
   );
@@ -505,6 +557,72 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
     <div className="space-y-2">
       <Label>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function OptionalSpacingField({
+  defaultValue,
+  label,
+  onChange,
+  value,
+}: {
+  defaultValue: number;
+  label: string;
+  onChange: (value: number | undefined) => void;
+  value?: number;
+}) {
+  function commit(input: HTMLInputElement) {
+    if (input.value === '') {
+      onChange(undefined);
+      return;
+    }
+    const parsed = Number(input.value);
+    if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 64) {
+      onChange(parsed);
+      input.value = String(parsed);
+      return;
+    }
+    input.value = value == null ? '' : String(value);
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Input
+            aria-label={label}
+            className="pr-10 font-mono tabular-nums"
+            defaultValue={value}
+            inputMode="numeric"
+            key={value ?? 'default'}
+            max={64}
+            min={0}
+            onBlur={(event) => commit(event.currentTarget)}
+            onChange={(event) => {
+              if (event.target.value === '') onChange(undefined);
+            }}
+            placeholder={`默认 ${defaultValue}`}
+            step={1}
+            type="number"
+          />
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-[#a0929b]">
+            px
+          </span>
+        </div>
+        <Button
+          aria-label={`恢复${label}默认值`}
+          disabled={value == null}
+          onClick={() => onChange(undefined)}
+          size="icon"
+          type="button"
+          variant="ghost"
+        >
+          <RotateCcw size={15} />
+        </Button>
+      </div>
+      <p className="text-xs text-[#948790]">留空时继承全局默认值 {defaultValue}px。</p>
     </div>
   );
 }

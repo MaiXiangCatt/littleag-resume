@@ -1,4 +1,5 @@
-export type TemplateId = 'modern-editorial' | 'classic-professional';
+export type ProfileAlignment = 'left' | 'center' | 'right';
+export type LegacyTemplateId = 'modern-editorial' | 'classic-professional';
 export type ResumeStatus = 'draft' | 'completed';
 export type SectionType =
   'summary' | 'work' | 'education' | 'project' | 'skills' | 'awards' | 'custom';
@@ -17,7 +18,7 @@ export type ResumeProfile = {
   links: ContactLink[];
 };
 
-export type BaseItem = { id: string };
+export type BaseItem = { id: string; spacingBeforePx?: number };
 export type WorkItem = BaseItem & {
   company: string;
   role: string;
@@ -59,7 +60,13 @@ export type CustomItem = BaseItem & {
   description: string;
 };
 
-type SectionBase<T extends SectionType> = { id: string; type: T; title: string; enabled: boolean };
+type SectionBase<T extends SectionType> = {
+  id: string;
+  type: T;
+  title: string;
+  enabled: boolean;
+  spacingBeforePx?: number;
+};
 export type SummarySection = SectionBase<'summary'> & { text: string };
 export type WorkSection = SectionBase<'work'> & { items: WorkItem[] };
 export type EducationSection = SectionBase<'education'> & { items: EducationItem[] };
@@ -89,11 +96,12 @@ export type ResumeFormatting = {
     left: number;
   };
   sectionGapPx: number;
+  entryGapPx: number;
   fontFamily: ResumeFontFamily;
   accentColor: AccentColor;
 };
 
-export type ResumeContentV2 = {
+export type ResumeContentV3 = {
   profile: ResumeProfile;
   sections: ResumeSection[];
   formatting: ResumeFormatting;
@@ -105,19 +113,19 @@ export type ResumeDocument = {
   status: ResumeStatus;
   revision: number;
   hasAvatar: boolean;
-  templateId: TemplateId;
+  profileAlignment: ProfileAlignment;
   exportCount: number;
-  contentVersion: 2;
-  content: ResumeContentV2;
+  contentVersion: 3;
+  content: ResumeContentV3;
   createdAt: string;
   updatedAt: string;
 };
 
 export type ResumeImportEnvelope = {
-  version: 2;
+  version: 3;
   title: string;
-  templateId: TemplateId;
-  content: ResumeContentV2;
+  profileAlignment: ProfileAlignment;
+  content: ResumeContentV3;
   avatar?: string | null;
 };
 

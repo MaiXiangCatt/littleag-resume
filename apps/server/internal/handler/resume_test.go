@@ -3,6 +3,7 @@ package handler_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"image"
 	"image/jpeg"
@@ -70,7 +71,10 @@ func TestResumeHandlersLifecycleAndStats(t *testing.T) {
 	}
 	createdData := decodeEnvelope(t, created)["data"].(map[string]any)
 	resumeID := createdData["id"].(string)
-	if createdData["status"] != "draft" {
+	if createdData["status"] != "draft" ||
+		createdData["profileAlignment"] != "left" ||
+		createdData["templateId"] != "modern-editorial" ||
+		createdData["contentVersion"] != float64(3) {
 		t.Fatalf("new resume should be draft: %+v", createdData)
 	}
 
@@ -102,6 +106,76 @@ func TestResumeHandlersLifecycleAndStats(t *testing.T) {
 	deleted := performAuthorizedJSON(router, token, http.MethodDelete, "/api/resumes/"+resumeID, "")
 	if deleted.Code != http.StatusOK {
 		t.Fatalf("delete status=%d body=%s", deleted.Code, deleted.Body.String())
+	}
+}
+
+func TestResumeHandlersAcceptCompatibleAlignmentFieldsAndRejectConflicts(t *testing.T) {
+	router := newTestRouter(t)
+	token := registerAccessToken(t, router, "alignment-user", "alignment@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	compatible := performAuthorizedJSON(
+		router,
+		token,
+		http.MethodPatch,
+		"/api/resumes/"+resumeID,
+		`{"expectedRevision":1,"profileAlignment":"center","templateId":"classic-professional"}`,
+	)
+	if compatible.Code != http.StatusOK {
+		t.Fatalf("compatible fields status=%d body=%s", compatible.Code, compatible.Body.String())
+	}
+	compatibleData := decodeEnvelope(t, compatible)["data"].(map[string]any)
+	if compatibleData["profileAlignment"] != "center" ||
+		compatibleData["templateId"] != "classic-professional" {
+		t.Fatalf("unexpected compatible projection: %+v", compatibleData)
+	}
+
+	conflict := performAuthorizedJSON(
+		router,
+		token,
+		http.MethodPatch,
+		"/api/resumes/"+resumeID,
+		`{"expectedRevision":2,"profileAlignment":"right","templateId":"classic-professional"}`,
+	)
+	if conflict.Code != http.StatusBadRequest {
+		t.Fatalf("conflicting fields status=%d body=%s", conflict.Code, conflict.Body.String())
+	}
+
+	right := performAuthorizedJSON(
+		router,
+		token,
+		http.MethodPatch,
+		"/api/resumes/"+resumeID,
+		`{"expectedRevision":2,"profileAlignment":"right"}`,
+	)
+	if right.Code != http.StatusOK {
+		t.Fatalf("right alignment status=%d body=%s", right.Code, right.Body.String())
+	}
+	rightData := decodeEnvelope(t, right)["data"].(map[string]any)
+	if rightData["profileAlignment"] != "right" || rightData["templateId"] != nil {
+		t.Fatalf("right alignment legacy projection must be null: %+v", rightData)
+	}
+
+	content := service.DefaultResumeContent()
+	content["unexpected"] = true
+	payload, err := json.Marshal(map[string]any{
+		"expectedRevision": 3,
+		"contentVersion":   3,
+		"content":          content,
+	})
+	if err != nil {
+		t.Fatalf("marshal strict validation payload: %v", err)
+	}
+	strict := performAuthorizedJSON(
+		router,
+		token,
+		http.MethodPatch,
+		"/api/resumes/"+resumeID,
+		string(payload),
+	)
+	if strict.Code != http.StatusBadRequest {
+		t.Fatalf("v3 unknown content field status=%d body=%s", strict.Code, strict.Body.String())
 	}
 }
 

@@ -1,4 +1,4 @@
-import type { ResumeFormatting } from './resume.types';
+import type { ProfileAlignment, ResumeFormatting } from './resume.types';
 
 const CSS_PIXELS_PER_INCH = 96;
 const MILLIMETERS_PER_INCH = 25.4;
@@ -18,7 +18,10 @@ export function formatTargetRole(targetRole: string) {
   return `求职意向：${targetRole}`;
 }
 
-export function createResumePresentation(formatting: ResumeFormatting, isClassic: boolean) {
+export function createResumePresentation(
+  formatting: ResumeFormatting,
+  profileAlignment: ProfileAlignment,
+) {
   const body = formatting.bodyFontSizePx;
   const photoGapPx = body * 2;
   const photoWidthPx = mmToPx(RESUME_PHOTO_SPEC.widthMm);
@@ -28,14 +31,13 @@ export function createResumePresentation(formatting: ResumeFormatting, isClassic
     contactsMarginTopPx: body * 0.8,
     contactsRowGapPx: body * 0.35,
     entryDescriptionMarginTopPx: body * 0.45,
-    entryGapPx: body,
     headerPaddingBottomPx: body * 1.4,
     nameLetterSpacingPx: formatting.nameFontSizePx * -0.02,
     nameLineHeight: 1.08,
     photoGapPx,
     photoHeightPx: mmToPx(RESUME_PHOTO_SPEC.heightMm),
     photoWidthPx,
-    profileTextAlign: isClassic ? ('center' as const) : ('left' as const),
+    profileTextAlign: profileAlignment,
     profileAvatarInsetPx: photoWidthPx + photoGapPx,
     roleMarginTopPx: body * 0.45,
     sectionContentMarginTopPx: body * 0.8,

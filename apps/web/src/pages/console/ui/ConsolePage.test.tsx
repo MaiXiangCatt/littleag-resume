@@ -27,6 +27,7 @@ const resume = {
   exportCount: 0,
   hasAvatar: false,
   id: '2b305475-8ed1-428d-bd35-a53957592ba6',
+  profileAlignment: 'left' as const,
   revision: 1,
   status: 'completed' as const,
   title: '产品经理简历',

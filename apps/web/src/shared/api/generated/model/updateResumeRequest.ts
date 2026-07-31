@@ -5,8 +5,11 @@
  * Contract for authentication and resume management.
  * OpenAPI spec version: 0.2.0
  */
+import type { ProfileAlignment } from './profileAlignment';
 import type { ResumeContent } from './resumeContent';
 import type { ResumeStatus } from './resumeStatus';
+import type { UpdateResumeRequestContentVersion } from './updateResumeRequestContentVersion';
+import type { UpdateResumeRequestTemplateId } from './updateResumeRequestTemplateId';
 
 export interface UpdateResumeRequest {
   /** @minimum 1 */
@@ -17,7 +20,12 @@ export interface UpdateResumeRequest {
      */
   title?: string;
   status?: ResumeStatus;
-  /** @nullable */
-  templateId?: string | null;
+  profileAlignment?: ProfileAlignment;
+  /**
+     * @deprecated
+     * @nullable
+     */
+  templateId?: UpdateResumeRequestTemplateId;
+  contentVersion?: UpdateResumeRequestContentVersion;
   content?: ResumeContent;
 }
