@@ -164,7 +164,42 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   await (await modernDownload).saveAs('test-results/resume-modern-editorial.pdf');
 
   await page.getByRole('button', { name: '排版设置' }).click();
-  await page.getByRole('dialog').getByLabel('姓名', { exact: true }).fill('24');
+  const formattingDialog = page.getByRole('dialog', { name: '排版设置' });
+  const formattingDialogBeforeDrag = await formattingDialog.boundingBox();
+  const formattingDragHandle = formattingDialog.getByRole('button', {
+    name: '拖动排版设置弹窗',
+  });
+  const formattingDialogBody = formattingDialog.locator('[data-slot="formatting-dialog-body"]');
+  const formattingDragHandleBeforeScroll = await formattingDragHandle.boundingBox();
+  await formattingDialogBody.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  const formattingDragHandleAfterScroll = await formattingDragHandle.boundingBox();
+  expect(formattingDragHandleAfterScroll?.y).toBe(formattingDragHandleBeforeScroll?.y);
+  await formattingDialogBody.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  const formattingDragHandleBox = await formattingDragHandle.boundingBox();
+  if (!formattingDialogBeforeDrag || !formattingDragHandleBox) {
+    throw new Error('排版设置弹窗未生成可测量的拖拽布局');
+  }
+  await page.mouse.move(
+    formattingDragHandleBox.x + formattingDragHandleBox.width / 2,
+    formattingDragHandleBox.y + formattingDragHandleBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    formattingDragHandleBox.x + formattingDragHandleBox.width / 2 - 280,
+    formattingDragHandleBox.y + formattingDragHandleBox.height / 2,
+    { steps: 8 },
+  );
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await formattingDialog.boundingBox())?.x)
+    .toBeLessThan(formattingDialogBeforeDrag.x - 200);
+  await expect(preview).toBeVisible();
+
+  await formattingDialog.getByLabel('姓名', { exact: true }).fill('24');
   await expect(preview.locator('h1', { hasText: '林清清' })).toHaveCSS('font-size', '24px');
   await page.getByRole('combobox', { name: '基本信息布局' }).click();
   await page.getByRole('option', { name: '居中对齐' }).click();

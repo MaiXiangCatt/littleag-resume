@@ -51,6 +51,7 @@ describe('FormattingDialog', () => {
     const entryGap = screen.getByRole('spinbutton', { name: '默认记录间距' });
 
     expect(screen.getByRole('combobox', { name: '基本信息布局' })).toHaveTextContent('居中对齐');
+    expect(screen.getByRole('button', { name: '拖动排版设置弹窗' })).toBeInTheDocument();
 
     await user.clear(nameSize);
     await user.type(nameSize, '24');
