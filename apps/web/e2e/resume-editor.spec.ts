@@ -9,7 +9,34 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     profile: { fullName: '', targetRole: '', phone: '', email: '', location: '', links: [] },
     sections: [
       { id: 'summary', type: 'summary', title: '个人简介', enabled: true, text: '' },
-      { id: 'work', type: 'work', title: '工作经历', enabled: true, items: [] },
+      {
+        id: 'work',
+        type: 'work',
+        title: '工作经历',
+        enabled: true,
+        items: [
+          {
+            id: 'work-1',
+            company: '甲公司',
+            role: '前端实习生',
+            location: '杭州',
+            startDate: '2025-01',
+            endDate: '2025-03',
+            isCurrent: false,
+            description: '负责编辑器体验。',
+          },
+          {
+            id: 'work-2',
+            company: '乙公司',
+            role: '前端实习生',
+            location: '上海',
+            startDate: '2025-04',
+            endDate: '2025-06',
+            isCurrent: false,
+            description: '负责 PDF 渲染。',
+          },
+        ],
+      },
       { id: 'education', type: 'education', title: '教育背景', enabled: true, items: [] },
       { id: 'project', type: 'project', title: '项目经历', enabled: true, items: [] },
       { id: 'skills', type: 'skills', title: '技能', enabled: true, description: '' },
@@ -23,12 +50,13 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
       lineHeightRatio: 1.5,
       pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
       sectionGapPx: 8,
+      entryGapPx: 14,
       fontFamily: 'source-han-sans',
       accentColor: 'plum',
     },
   };
   let title = '产品设计师简历';
-  let templateId = 'modern-editorial';
+  let profileAlignment = 'left';
 
   const detail = () => ({
     id: resumeId,
@@ -36,9 +64,9 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     status: 'draft',
     revision,
     hasAvatar: true,
-    templateId,
+    profileAlignment,
     exportCount: 0,
-    contentVersion: 2,
+    contentVersion: 3,
     content,
     createdAt: '2026-07-22T00:00:00Z',
     updatedAt: '2026-07-22T00:00:00Z',
@@ -60,12 +88,12 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
       const body = route.request().postDataJSON() as {
         content: typeof content;
         expectedRevision: number;
-        templateId: string;
+        profileAlignment: string;
         title: string;
       };
       expect(body.expectedRevision).toBe(revision);
       content = body.content;
-      templateId = body.templateId;
+      profileAlignment = body.profileAlignment;
       title = body.title;
       revision += 1;
     }
@@ -115,6 +143,20 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     .poll(() => content.sections.some((section) => section.type === 'custom'), { timeout: 5000 })
     .toBe(true);
 
+  await page.getByRole('button', { name: '工作经历', exact: true }).click();
+  await page.getByRole('spinbutton', { name: '与上一条记录间距' }).fill('12');
+  await page.getByRole('spinbutton', { name: '与上一条记录间距' }).blur();
+  await expect
+    .poll(
+      () =>
+        (
+          content.sections.find((section) => section.type === 'work')?.items?.[1] as
+            { spacingBeforePx?: number } | undefined
+        )?.spacingBeforePx,
+      { timeout: 5000 },
+    )
+    .toBe(12);
+
   await page.screenshot({ path: 'test-results/resume-editor-desktop.png', fullPage: true });
 
   const modernDownload = page.waitForEvent('download');
@@ -122,13 +164,48 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   await (await modernDownload).saveAs('test-results/resume-modern-editorial.pdf');
 
   await page.getByRole('button', { name: '排版设置' }).click();
-  await page.getByRole('dialog').getByLabel('姓名', { exact: true }).fill('24');
+  const formattingDialog = page.getByRole('dialog', { name: '排版设置' });
+  const formattingDialogBeforeDrag = await formattingDialog.boundingBox();
+  const formattingDragHandle = formattingDialog.getByRole('button', {
+    name: '拖动排版设置弹窗',
+  });
+  const formattingDialogBody = formattingDialog.locator('[data-slot="formatting-dialog-body"]');
+  const formattingDragHandleBeforeScroll = await formattingDragHandle.boundingBox();
+  await formattingDialogBody.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  const formattingDragHandleAfterScroll = await formattingDragHandle.boundingBox();
+  expect(formattingDragHandleAfterScroll?.y).toBe(formattingDragHandleBeforeScroll?.y);
+  await formattingDialogBody.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  const formattingDragHandleBox = await formattingDragHandle.boundingBox();
+  if (!formattingDialogBeforeDrag || !formattingDragHandleBox) {
+    throw new Error('排版设置弹窗未生成可测量的拖拽布局');
+  }
+  await page.mouse.move(
+    formattingDragHandleBox.x + formattingDragHandleBox.width / 2,
+    formattingDragHandleBox.y + formattingDragHandleBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    formattingDragHandleBox.x + formattingDragHandleBox.width / 2 - 280,
+    formattingDragHandleBox.y + formattingDragHandleBox.height / 2,
+    { steps: 8 },
+  );
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await formattingDialog.boundingBox())?.x)
+    .toBeLessThan(formattingDialogBeforeDrag.x - 200);
+  await expect(preview).toBeVisible();
+
+  await formattingDialog.getByLabel('姓名', { exact: true }).fill('24');
   await expect(preview.locator('h1', { hasText: '林清清' })).toHaveCSS('font-size', '24px');
-  await page.getByRole('combobox', { name: '模板' }).click();
-  await page.getByRole('option', { name: '经典专业' }).click();
+  await page.getByRole('combobox', { name: '基本信息布局' }).click();
+  await page.getByRole('option', { name: '居中对齐' }).click();
   await page.getByRole('button', { name: '完成' }).click();
-  await expect.poll(() => templateId, { timeout: 5000 }).toBe('classic-professional');
-  await expect(preview).toHaveAttribute('data-template', 'classic-professional');
+  await expect.poll(() => profileAlignment, { timeout: 5000 }).toBe('center');
+  await expect(preview).toHaveAttribute('data-profile-alignment', 'center');
   await expect(preview.locator('header img')).toBeVisible();
   const previewBox = await preview.boundingBox();
   const nameBox = await preview.getByRole('heading', { name: '林清清' }).boundingBox();
@@ -141,4 +218,19 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   const classicDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出 PDF' }).click();
   await (await classicDownload).saveAs('test-results/resume-classic-professional.pdf');
+
+  await page.getByRole('button', { name: '排版设置' }).click();
+  await page.getByRole('combobox', { name: '基本信息布局' }).click();
+  await page.getByRole('option', { name: '右侧对齐' }).click();
+  await page.getByRole('button', { name: '完成' }).click();
+  await expect.poll(() => profileAlignment, { timeout: 5000 }).toBe('right');
+  await expect(preview).toHaveAttribute('data-profile-alignment', 'right');
+  const rightPhotoBox = await preview.locator('header img').boundingBox();
+  const rightNameBox = await preview.getByRole('heading', { name: '林清清' }).boundingBox();
+  if (!rightPhotoBox || !rightNameBox) throw new Error('右对齐头像布局未生成可测量元素');
+  expect(rightPhotoBox.x).toBeLessThan(rightNameBox.x);
+
+  const rightDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出 PDF' }).click();
+  await (await rightDownload).saveAs('test-results/resume-right-custom-spacing.pdf');
 });

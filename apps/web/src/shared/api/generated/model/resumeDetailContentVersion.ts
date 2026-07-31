@@ -11,4 +11,5 @@ export type ResumeDetailContentVersion = typeof ResumeDetailContentVersion[keyof
 
 export const ResumeDetailContentVersion = {
   NUMBER_2: 2,
+  NUMBER_3: 3,
 } as const;

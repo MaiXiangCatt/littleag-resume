@@ -1,4 +1,8 @@
-import type { ResumeImportEnvelope, ResumeStatus } from '@/pages/resume-editor/model/resume.types';
+import type {
+  ProfileAlignment,
+  ResumeImportEnvelope,
+  ResumeStatus,
+} from '@/pages/resume-editor/model/resume.types';
 
 export type ConsoleStatusFilter = 'all' | ResumeStatus;
 export type ConsoleSort = 'updated_desc' | 'updated_asc' | 'created_desc' | 'title_asc';
@@ -24,7 +28,7 @@ export type ConsoleResumeSummary = {
   id: string;
   revision: number;
   status: ResumeStatus;
-  templateId?: string | null;
+  profileAlignment: ProfileAlignment;
   title: string;
   updatedAt: string;
 };

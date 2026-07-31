@@ -165,12 +165,15 @@ func (e ImportResumeRequestTemplateId) Valid() bool {
 // Defines values for ImportResumeRequestVersion.
 const (
 	ImportResumeRequestVersionN2 ImportResumeRequestVersion = 2
+	ImportResumeRequestVersionN3 ImportResumeRequestVersion = 3
 )
 
 // Valid indicates whether the value is a known member of the ImportResumeRequestVersion enum.
 func (e ImportResumeRequestVersion) Valid() bool {
 	switch e {
 	case ImportResumeRequestVersionN2:
+		return true
+	case ImportResumeRequestVersionN3:
 		return true
 	default:
 		return false
@@ -237,6 +240,27 @@ func (e InvitationCodeResponseMessage) Valid() bool {
 	}
 }
 
+// Defines values for ProfileAlignment.
+const (
+	Center ProfileAlignment = "center"
+	Left   ProfileAlignment = "left"
+	Right  ProfileAlignment = "right"
+)
+
+// Valid indicates whether the value is a known member of the ProfileAlignment enum.
+func (e ProfileAlignment) Valid() bool {
+	switch e {
+	case Center:
+		return true
+	case Left:
+		return true
+	case Right:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RegistrationMode.
 const (
 	Closed RegistrationMode = "closed"
@@ -291,12 +315,15 @@ func (e RegistrationPolicyResponseMessage) Valid() bool {
 // Defines values for ResumeDetailContentVersion.
 const (
 	ResumeDetailContentVersionN2 ResumeDetailContentVersion = 2
+	ResumeDetailContentVersionN3 ResumeDetailContentVersion = 3
 )
 
 // Valid indicates whether the value is a known member of the ResumeDetailContentVersion enum.
 func (e ResumeDetailContentVersion) Valid() bool {
 	switch e {
 	case ResumeDetailContentVersionN2:
+		return true
+	case ResumeDetailContentVersionN3:
 		return true
 	default:
 		return false
@@ -333,14 +360,14 @@ func (e ResumeDetailResponseMessage) Valid() bool {
 	}
 }
 
-// Defines values for ResumeFormattingV2FontFamily.
+// Defines values for ResumeFormattingFontFamily.
 const (
-	SourceHanSans  ResumeFormattingV2FontFamily = "source-han-sans"
-	SourceHanSerif ResumeFormattingV2FontFamily = "source-han-serif"
+	SourceHanSans  ResumeFormattingFontFamily = "source-han-sans"
+	SourceHanSerif ResumeFormattingFontFamily = "source-han-serif"
 )
 
-// Valid indicates whether the value is a known member of the ResumeFormattingV2FontFamily enum.
-func (e ResumeFormattingV2FontFamily) Valid() bool {
+// Valid indicates whether the value is a known member of the ResumeFormattingFontFamily enum.
+func (e ResumeFormattingFontFamily) Valid() bool {
 	switch e {
 	case SourceHanSans:
 		return true
@@ -504,6 +531,42 @@ func (e ResumeStatus) Valid() bool {
 	}
 }
 
+// Defines values for UpdateResumeRequestContentVersion.
+const (
+	UpdateResumeRequestContentVersionN2 UpdateResumeRequestContentVersion = 2
+	UpdateResumeRequestContentVersionN3 UpdateResumeRequestContentVersion = 3
+)
+
+// Valid indicates whether the value is a known member of the UpdateResumeRequestContentVersion enum.
+func (e UpdateResumeRequestContentVersion) Valid() bool {
+	switch e {
+	case UpdateResumeRequestContentVersionN2:
+		return true
+	case UpdateResumeRequestContentVersionN3:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateResumeRequestTemplateId.
+const (
+	UpdateResumeRequestTemplateIdClassicProfessional UpdateResumeRequestTemplateId = "classic-professional"
+	UpdateResumeRequestTemplateIdModernEditorial     UpdateResumeRequestTemplateId = "modern-editorial"
+)
+
+// Valid indicates whether the value is a known member of the UpdateResumeRequestTemplateId enum.
+func (e UpdateResumeRequestTemplateId) Valid() bool {
+	switch e {
+	case UpdateResumeRequestTemplateIdClassicProfessional:
+		return true
+	case UpdateResumeRequestTemplateIdModernEditorial:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListResumesParamsPageSize.
 const (
 	ListResumesParamsPageSizeN12 ListResumesParamsPageSize = 12
@@ -527,16 +590,16 @@ func (e ListResumesParamsPageSize) Valid() bool {
 
 // Defines values for ReplaceResumeImportJSONBodyTemplateId.
 const (
-	ReplaceResumeImportJSONBodyTemplateIdClassicProfessional ReplaceResumeImportJSONBodyTemplateId = "classic-professional"
-	ReplaceResumeImportJSONBodyTemplateIdModernEditorial     ReplaceResumeImportJSONBodyTemplateId = "modern-editorial"
+	ClassicProfessional ReplaceResumeImportJSONBodyTemplateId = "classic-professional"
+	ModernEditorial     ReplaceResumeImportJSONBodyTemplateId = "modern-editorial"
 )
 
 // Valid indicates whether the value is a known member of the ReplaceResumeImportJSONBodyTemplateId enum.
 func (e ReplaceResumeImportJSONBodyTemplateId) Valid() bool {
 	switch e {
-	case ReplaceResumeImportJSONBodyTemplateIdClassicProfessional:
+	case ClassicProfessional:
 		return true
-	case ReplaceResumeImportJSONBodyTemplateIdModernEditorial:
+	case ModernEditorial:
 		return true
 	default:
 		return false
@@ -545,13 +608,16 @@ func (e ReplaceResumeImportJSONBodyTemplateId) Valid() bool {
 
 // Defines values for ReplaceResumeImportJSONBodyVersion.
 const (
-	N2 ReplaceResumeImportJSONBodyVersion = 2
+	ReplaceResumeImportJSONBodyVersionN2 ReplaceResumeImportJSONBodyVersion = 2
+	ReplaceResumeImportJSONBodyVersionN3 ReplaceResumeImportJSONBodyVersion = 3
 )
 
 // Valid indicates whether the value is a known member of the ReplaceResumeImportJSONBodyVersion enum.
 func (e ReplaceResumeImportJSONBodyVersion) Valid() bool {
 	switch e {
-	case N2:
+	case ReplaceResumeImportJSONBodyVersionN2:
+		return true
+	case ReplaceResumeImportJSONBodyVersionN3:
 		return true
 	default:
 		return false
@@ -673,7 +739,9 @@ type ImportResumeRequest struct {
 	Avatar *string `json:"avatar,omitempty"`
 
 	// Content Serialized resume content must not exceed 512 KiB.
-	Content    ResumeContent                  `json:"content"`
+	Content          ResumeContent     `json:"content"`
+	ProfileAlignment *ProfileAlignment `json:"profileAlignment,omitempty"`
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	TemplateId *ImportResumeRequestTemplateId `json:"templateId,omitempty"`
 	Title      string                         `json:"title"`
 	Version    ImportResumeRequestVersion     `json:"version"`
@@ -729,6 +797,9 @@ type LoginRequest struct {
 	Password string              `json:"password"`
 }
 
+// ProfileAlignment defines model for ProfileAlignment.
+type ProfileAlignment string
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	ConfirmPassword  string              `json:"confirmPassword"`
@@ -769,7 +840,7 @@ type ResendEmailVerificationRequest struct {
 
 // ResumeContent Serialized resume content must not exceed 512 KiB.
 type ResumeContent struct {
-	Formatting ResumeFormattingV2       `json:"formatting"`
+	Formatting ResumeFormatting         `json:"formatting"`
 	Profile    map[string]interface{}   `json:"profile"`
 	Sections   []map[string]interface{} `json:"sections"`
 }
@@ -777,17 +848,21 @@ type ResumeContent struct {
 // ResumeDetail defines model for ResumeDetail.
 type ResumeDetail struct {
 	// Content Serialized resume content must not exceed 512 KiB.
-	Content        ResumeContent              `json:"content"`
-	ContentVersion ResumeDetailContentVersion `json:"contentVersion"`
-	CreatedAt      time.Time                  `json:"createdAt"`
-	ExportCount    int64                      `json:"exportCount"`
-	HasAvatar      bool                       `json:"hasAvatar"`
-	Id             openapi_types.UUID         `json:"id"`
-	Revision       int64                      `json:"revision"`
-	Status         ResumeStatus               `json:"status"`
-	TemplateId     *string                    `json:"templateId,omitempty"`
-	Title          string                     `json:"title"`
-	UpdatedAt      time.Time                  `json:"updatedAt"`
+	Content          ResumeContent              `json:"content"`
+	ContentVersion   ResumeDetailContentVersion `json:"contentVersion"`
+	CreatedAt        time.Time                  `json:"createdAt"`
+	ExportCount      int64                      `json:"exportCount"`
+	HasAvatar        bool                       `json:"hasAvatar"`
+	Id               openapi_types.UUID         `json:"id"`
+	ProfileAlignment ProfileAlignment           `json:"profileAlignment"`
+	Revision         int64                      `json:"revision"`
+	Status           ResumeStatus               `json:"status"`
+
+	// TemplateId Legacy projection. Left maps to modern-editorial, center to classic-professional, and right to null.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	TemplateId *string   `json:"templateId"`
+	Title      string    `json:"title"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 // ResumeDetailContentVersion defines model for ResumeDetail.ContentVersion.
@@ -806,14 +881,15 @@ type ResumeDetailResponseCode int32
 // ResumeDetailResponseMessage defines model for ResumeDetailResponse.Message.
 type ResumeDetailResponseMessage string
 
-// ResumeFormattingV2 defines model for ResumeFormattingV2.
-type ResumeFormattingV2 struct {
-	AccentColor          string                       `json:"accentColor"`
-	BodyFontSizePx       int                          `json:"bodyFontSizePx"`
-	EntryTitleFontSizePx int                          `json:"entryTitleFontSizePx"`
-	FontFamily           ResumeFormattingV2FontFamily `json:"fontFamily"`
-	LineHeightRatio      float32                      `json:"lineHeightRatio"`
-	NameFontSizePx       int                          `json:"nameFontSizePx"`
+// ResumeFormatting defines model for ResumeFormatting.
+type ResumeFormatting struct {
+	AccentColor          string                     `json:"accentColor"`
+	BodyFontSizePx       int                        `json:"bodyFontSizePx"`
+	EntryGapPx           *int                       `json:"entryGapPx,omitempty"`
+	EntryTitleFontSizePx int                        `json:"entryTitleFontSizePx"`
+	FontFamily           ResumeFormattingFontFamily `json:"fontFamily"`
+	LineHeightRatio      float32                    `json:"lineHeightRatio"`
+	NameFontSizePx       int                        `json:"nameFontSizePx"`
 	PageMarginPx         struct {
 		Bottom int `json:"bottom"`
 		Left   int `json:"left"`
@@ -824,8 +900,8 @@ type ResumeFormattingV2 struct {
 	SectionTitleFontSizePx int `json:"sectionTitleFontSizePx"`
 }
 
-// ResumeFormattingV2FontFamily defines model for ResumeFormattingV2.FontFamily.
-type ResumeFormattingV2FontFamily string
+// ResumeFormattingFontFamily defines model for ResumeFormatting.FontFamily.
+type ResumeFormattingFontFamily string
 
 // ResumeListPayload defines model for ResumeListPayload.
 type ResumeListPayload struct {
@@ -900,15 +976,19 @@ type ResumeStatus string
 
 // ResumeSummary defines model for ResumeSummary.
 type ResumeSummary struct {
-	CreatedAt   time.Time          `json:"createdAt"`
-	ExportCount int64              `json:"exportCount"`
-	HasAvatar   bool               `json:"hasAvatar"`
-	Id          openapi_types.UUID `json:"id"`
-	Revision    int64              `json:"revision"`
-	Status      ResumeStatus       `json:"status"`
-	TemplateId  *string            `json:"templateId,omitempty"`
-	Title       string             `json:"title"`
-	UpdatedAt   time.Time          `json:"updatedAt"`
+	CreatedAt        time.Time          `json:"createdAt"`
+	ExportCount      int64              `json:"exportCount"`
+	HasAvatar        bool               `json:"hasAvatar"`
+	Id               openapi_types.UUID `json:"id"`
+	ProfileAlignment ProfileAlignment   `json:"profileAlignment"`
+	Revision         int64              `json:"revision"`
+	Status           ResumeStatus       `json:"status"`
+
+	// TemplateId Legacy projection. Left maps to modern-editorial, center to classic-professional, and right to null.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	TemplateId *string   `json:"templateId"`
+	Title      string    `json:"title"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 // SendRegistrationEmailVerificationRequest defines model for SendRegistrationEmailVerificationRequest.
@@ -920,12 +1000,21 @@ type SendRegistrationEmailVerificationRequest struct {
 // UpdateResumeRequest defines model for UpdateResumeRequest.
 type UpdateResumeRequest struct {
 	// Content Serialized resume content must not exceed 512 KiB.
-	Content          *ResumeContent `json:"content,omitempty"`
-	ExpectedRevision int64          `json:"expectedRevision"`
-	Status           *ResumeStatus  `json:"status,omitempty"`
-	TemplateId       *string        `json:"templateId,omitempty"`
-	Title            *string        `json:"title,omitempty"`
+	Content          *ResumeContent                     `json:"content,omitempty"`
+	ContentVersion   *UpdateResumeRequestContentVersion `json:"contentVersion,omitempty"`
+	ExpectedRevision int64                              `json:"expectedRevision"`
+	ProfileAlignment *ProfileAlignment                  `json:"profileAlignment,omitempty"`
+	Status           *ResumeStatus                      `json:"status,omitempty"`
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	TemplateId *UpdateResumeRequestTemplateId `json:"templateId,omitempty"`
+	Title      *string                        `json:"title,omitempty"`
 }
+
+// UpdateResumeRequestContentVersion defines model for UpdateResumeRequest.ContentVersion.
+type UpdateResumeRequestContentVersion int
+
+// UpdateResumeRequestTemplateId defines model for UpdateResumeRequest.TemplateId.
+type UpdateResumeRequestTemplateId string
 
 // RefreshTokenCookie defines model for RefreshTokenCookie.
 type RefreshTokenCookie = string
@@ -989,11 +1078,13 @@ type ReplaceResumeImportJSONBody struct {
 	Avatar *string `json:"avatar,omitempty"`
 
 	// Content Serialized resume content must not exceed 512 KiB.
-	Content          ResumeContent                          `json:"content"`
-	ExpectedRevision int64                                  `json:"expectedRevision"`
-	TemplateId       *ReplaceResumeImportJSONBodyTemplateId `json:"templateId,omitempty"`
-	Title            string                                 `json:"title"`
-	Version          ReplaceResumeImportJSONBodyVersion     `json:"version"`
+	Content          ResumeContent     `json:"content"`
+	ExpectedRevision int64             `json:"expectedRevision"`
+	ProfileAlignment *ProfileAlignment `json:"profileAlignment,omitempty"`
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	TemplateId *ReplaceResumeImportJSONBodyTemplateId `json:"templateId,omitempty"`
+	Title      string                                 `json:"title"`
+	Version    ReplaceResumeImportJSONBodyVersion     `json:"version"`
 }
 
 // ReplaceResumeImportJSONBodyTemplateId defines parameters for ReplaceResumeImport.
@@ -1772,79 +1863,80 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"/w==",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -1,11 +1,13 @@
 import type { ResumeContent } from '@/shared/api/generated/model/resumeContent';
 
-import { importEnvelopeSchema, resumeContentSchema } from './resume.schema';
+import { importEnvelopeSchema, resumeContentSchema, resumeContentV2Schema } from './resume.schema';
 import type {
   AccentColor,
   CustomItem,
+  LegacyTemplateId,
   PresetAccentColor,
-  ResumeContentV2,
+  ProfileAlignment,
+  ResumeContentV3,
   ResumeFontFamily,
   ResumeFormatting,
   ResumeImportEnvelope,
@@ -60,12 +62,13 @@ export function createDefaultFormatting(): ResumeFormatting {
     lineHeightRatio: 1.5,
     pageMarginPx: { top: 33, right: 33, bottom: 33, left: 33 },
     sectionGapPx: 8,
+    entryGapPx: 14,
     fontFamily: 'source-han-sans',
     accentColor: 'plum',
   };
 }
 
-export function createDefaultContent(): ResumeContentV2 {
+export function createDefaultContent(): ResumeContentV3 {
   return {
     profile: { fullName: '', targetRole: '', phone: '', email: '', location: '', links: [] },
     sections: [
@@ -80,12 +83,50 @@ export function createDefaultContent(): ResumeContentV2 {
   };
 }
 
-export function parseResumeContent(value: ResumeContent | unknown): ResumeContentV2 {
-  return resumeContentSchema.parse(value);
+export function parseResumeContent(
+  value: ResumeContent | unknown,
+  version: 2 | 3 = 3,
+): ResumeContentV3 {
+  if (version === 3) return resumeContentSchema.parse(value) as ResumeContentV3;
+  const content = resumeContentV2Schema.parse(value) as {
+    profile: ResumeContentV3['profile'];
+    sections: ResumeContentV3['sections'];
+    formatting: Omit<ResumeFormatting, 'entryGapPx'>;
+  };
+  return resumeContentSchema.parse({
+    ...content,
+    formatting: {
+      ...content.formatting,
+      entryGapPx: content.formatting.bodyFontSizePx,
+    },
+  }) as ResumeContentV3;
 }
 
 export function parseImportEnvelope(value: unknown): ResumeImportEnvelope {
-  return importEnvelopeSchema.parse(value);
+  const envelope = importEnvelopeSchema.parse(value);
+  if (envelope.version === 3) return envelope as ResumeImportEnvelope;
+  return {
+    version: 3,
+    title: envelope.title,
+    profileAlignment: normalizeProfileAlignment(envelope.templateId),
+    content: parseResumeContent(envelope.content, 2),
+    avatar: envelope.avatar,
+  };
+}
+
+export function normalizeProfileAlignment(
+  value: ProfileAlignment | LegacyTemplateId | null | undefined | unknown,
+): ProfileAlignment {
+  if (value === 'classic-professional') return 'center';
+  if (value === 'modern-editorial' || value == null) return 'left';
+  if (value === 'left' || value === 'center' || value === 'right') return value;
+  throw new Error('Unsupported profile alignment');
+}
+
+export function legacyTemplateIdForAlignment(alignment: ProfileAlignment): LegacyTemplateId | null {
+  if (alignment === 'left') return 'modern-editorial';
+  if (alignment === 'center') return 'classic-professional';
+  return null;
 }
 
 export function createCustomSection(title: string): ResumeSection {
@@ -150,7 +191,7 @@ export function moveById<T extends { id: string }>(items: T[], activeId: string,
   return next;
 }
 
-export function completionIssues(content: ResumeContentV2) {
+export function completionIssues(content: ResumeContentV3) {
   const issues: string[] = [];
   if (!content.profile.fullName.trim()) issues.push('请填写姓名');
   if (!content.profile.targetRole.trim()) issues.push('请填写目标岗位');

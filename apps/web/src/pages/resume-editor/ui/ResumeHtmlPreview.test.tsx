@@ -65,9 +65,9 @@ function createResume(): ResumeDocument {
     status: 'draft',
     revision: 1,
     hasAvatar: false,
-    templateId: 'modern-editorial',
+    profileAlignment: 'left',
     exportCount: 0,
-    contentVersion: 2,
+    contentVersion: 3,
     content,
     createdAt: '2026-07-22T00:00:00Z',
     updatedAt: '2026-07-22T00:00:00Z',
@@ -80,8 +80,8 @@ describe('ResumeHtmlPreview', () => {
     render(<ResumeHtmlPreview avatar={null} resume={resume} />);
 
     expect(screen.getByLabelText('测试简历 A4 实时预览')).toHaveAttribute(
-      'data-template',
-      'modern-editorial',
+      'data-profile-alignment',
+      'left',
     );
     expect(screen.getByRole('heading', { name: '林清清' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '林清清' })).toHaveStyle({ fontSize: '20px' });
@@ -134,26 +134,23 @@ describe('ResumeHtmlPreview', () => {
     });
   });
 
-  it('switches template presentation without changing content', () => {
+  it('switches profile alignment without changing content', () => {
     const resume = createResume();
     const { rerender } = render(<ResumeHtmlPreview avatar={null} resume={resume} />);
 
     rerender(
-      <ResumeHtmlPreview
-        avatar={null}
-        resume={{ ...resume, templateId: 'classic-professional' }}
-      />,
+      <ResumeHtmlPreview avatar={null} resume={{ ...resume, profileAlignment: 'center' }} />,
     );
 
     expect(screen.getByLabelText('测试简历 A4 实时预览')).toHaveAttribute(
-      'data-template',
-      'classic-professional',
+      'data-profile-alignment',
+      'center',
     );
     expect(screen.getByRole('heading', { name: '林清清' })).toBeVisible();
   });
 
   it('uses a rectangular one-inch photo without a header divider', () => {
-    const resume = { ...createResume(), templateId: 'classic-professional' as const };
+    const resume = { ...createResume(), profileAlignment: 'center' as const };
     const { container } = render(
       <ResumeHtmlPreview
         avatar="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q=="
@@ -164,7 +161,7 @@ describe('ResumeHtmlPreview', () => {
     const photo = container.querySelector('header img');
     const header = container.querySelector('header');
     const identity = screen.getByRole('heading', { name: '林清清' }).parentElement;
-    const presentation = createResumePresentation(resume.content.formatting, true);
+    const presentation = createResumePresentation(resume.content.formatting, 'center');
 
     expect(photo).toBeInTheDocument();
     expect(
@@ -185,6 +182,76 @@ describe('ResumeHtmlPreview', () => {
       textAlign: 'center',
     });
     expect(photo).toHaveClass('absolute', 'right-0', 'top-0');
+  });
+
+  it('places the avatar on the left for right alignment while keeping profile text neutral', () => {
+    const resume = { ...createResume(), profileAlignment: 'right' as const };
+    const { container } = render(
+      <ResumeHtmlPreview
+        avatar="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q=="
+        resume={resume}
+      />,
+    );
+
+    const header = container.querySelector('header');
+    const photo = header?.querySelector('img');
+    const identity = screen.getByRole('heading', { name: '林清清' }).parentElement;
+    const sectionHeading = screen.getByRole('heading', { name: '工作经历' });
+
+    expect(header?.firstElementChild).toBe(photo);
+    expect(identity).toHaveStyle({ textAlign: 'right' });
+    expect(screen.getByRole('heading', { name: '林清清' })).toHaveStyle({ color: '#242126' });
+    expect(sectionHeading).toHaveClass('text-[var(--resume-accent)]');
+  });
+
+  it('resolves section and printable-entry spacing with explicit zero overrides', () => {
+    const resume = createResume();
+    const work = resume.content.sections.find((section) => section.type === 'work');
+    if (work?.type !== 'work') throw new Error('missing work section');
+    work.spacingBeforePx = 0;
+    work.items = [
+      {
+        id: 'empty',
+        company: '',
+        role: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        isCurrent: false,
+        description: '',
+        spacingBeforePx: 64,
+      },
+      {
+        id: 'first-printable',
+        company: '第一家公司',
+        role: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        isCurrent: false,
+        description: '',
+        spacingBeforePx: 0,
+      },
+      {
+        id: 'second-printable',
+        company: '第二家公司',
+        role: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        isCurrent: false,
+        description: '',
+      },
+    ];
+
+    render(<ResumeHtmlPreview avatar={null} resume={resume} />);
+
+    const workSection = screen.getByRole('heading', { name: '工作经历' }).parentElement;
+    const firstEntry = screen.getByRole('heading', { name: '第一家公司' }).closest('article');
+    const secondEntry = screen.getByRole('heading', { name: '第二家公司' }).closest('article');
+    expect(workSection).toHaveStyle({ marginTop: '0px' });
+    expect(firstEntry?.style.marginTop).toBe('');
+    expect(secondEntry).toHaveStyle({ marginTop: '14px' });
   });
 
   it('uses the printable page content width instead of overflowing the A4 margins', () => {

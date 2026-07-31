@@ -25,6 +25,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogDragHandle,
   DialogFooter,
   DialogTitle,
 } from '@/shared/ui/dialog';
@@ -54,12 +55,12 @@ import {
 import type {
   AccentColor,
   PresetAccentColor,
+  ProfileAlignment,
   ResumeDocument,
   ResumeFontFamily,
   ResumeFormatting,
   ResumeImportEnvelope,
   ResumeSection,
-  TemplateId,
 } from '../model/resume.types';
 import { useResumeEditorStore } from '../store/resume-editor.store';
 import { localResumeStore } from '../store/local-resume.store';
@@ -239,9 +240,9 @@ export function ResumeEditorPage({
   async function exportJson() {
     if (!document) return;
     const envelope: ResumeImportEnvelope = {
-      version: 2,
+      version: 3,
       title: document.title,
-      templateId: document.templateId,
+      profileAlignment: document.profileAlignment,
       content: document.content,
       avatar: await getAvatarDataUrl(),
     };
@@ -547,7 +548,12 @@ export function ResumeEditorPage({
               profile={document.content.profile}
             />
           ) : activeSection ? (
-            <SectionEditor onChange={(section) => updateSection(section)} section={activeSection} />
+            <SectionEditor
+              defaultEntryGapPx={document.content.formatting.entryGapPx}
+              defaultSectionGapPx={document.content.formatting.sectionGapPx}
+              onChange={(section) => updateSection(section)}
+              section={activeSection}
+            />
           ) : null}
           <input
             accept="image/jpeg,image/png,image/webp"
@@ -588,9 +594,9 @@ export function ResumeEditorPage({
             setFormatOpen(false);
             void flushSave();
           }}
-          onTemplate={(templateId) =>
+          onProfileAlignment={(profileAlignment) =>
             mutate((draft) => {
-              draft.templateId = templateId;
+              draft.profileAlignment = profileAlignment;
             }, true)
           }
         />
@@ -719,12 +725,12 @@ export function FormattingDialog({
   document,
   onChange,
   onClose,
-  onTemplate,
+  onProfileAlignment,
 }: {
   document: ResumeDocument;
   onChange: (formatting: ResumeFormatting) => void;
   onClose: () => void;
-  onTemplate: (value: TemplateId) => void;
+  onProfileAlignment: (value: ProfileAlignment) => void;
 }) {
   const formatting = document.content.formatting;
   const [fieldRevision, setFieldRevision] = useState(0);
@@ -738,194 +744,217 @@ export function FormattingDialog({
       }}
       open
     >
-      <DialogContent className="max-h-[88vh] w-[min(92vw,680px)] overflow-y-auto rounded-3xl p-7">
-        <DialogTitle className="font-serif text-2xl">排版设置</DialogTitle>
-        <DialogDescription>所有数值都会实时应用到预览与导出的 PDF。</DialogDescription>
-        <div className="mt-6 grid grid-cols-2 gap-4 rounded-2xl border border-[#e8e0e5] bg-[#fbf9fa] p-4">
-          <SelectField
-            label="模板"
-            value={document.templateId}
-            onChange={(value) => onTemplate(value as TemplateId)}
-            options={[
-              ['modern-editorial', '现代编辑'],
-              ['classic-professional', '经典专业'],
-            ]}
-          />
-          <SelectField
-            label="字体"
-            value={formatting.fontFamily}
-            onChange={(value) => update({ fontFamily: value as ResumeFontFamily })}
-            options={[
-              ['source-han-sans', RESUME_FONT_FAMILIES['source-han-sans'].label],
-              ['source-han-serif', RESUME_FONT_FAMILIES['source-han-serif'].label],
-            ]}
-          />
-          <div className="col-span-2">
-            <div className="flex items-center justify-between gap-4">
-              <Label>主题色</Label>
-              <span className="font-mono text-xs uppercase text-[#766a72]">
-                {resolveAccentColor(formatting.accentColor)}
-              </span>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {(Object.entries(ACCENT_COLORS) as [PresetAccentColor, string][]).map(
-                ([key, color]) => (
-                  <Button
-                    aria-label={`选择${ACCENT_COLOR_LABELS[key]}主题色`}
-                    className={cn(
-                      'size-8 rounded-full border-[3px] p-0',
-                      resolveAccentColor(formatting.accentColor).toLowerCase() ===
-                        color.toLowerCase()
-                        ? 'border-[#241b21]'
-                        : 'border-white',
-                    )}
-                    key={key}
-                    onClick={() => update({ accentColor: key })}
-                    style={{ backgroundColor: color }}
+      <DialogContent
+        className="flex max-h-[88vh] w-[min(92vw,680px)] flex-col overflow-hidden rounded-3xl p-0"
+        draggable
+        overlayClassName="bg-transparent"
+      >
+        <div className="flex shrink-0 items-start gap-2 border-b border-[#eee7eb] bg-white px-7 py-5 pr-12">
+          <DialogDragHandle aria-label="拖动排版设置弹窗" className="-ml-2 mt-0.5" />
+          <div className="min-w-0">
+            <DialogTitle className="font-serif text-2xl">排版设置</DialogTitle>
+            <DialogDescription>
+              所有数值都会实时应用到预览与导出的 PDF；恢复默认不会清除模块和记录的单独设置。
+            </DialogDescription>
+          </div>
+        </div>
+        <div className="min-h-0 overflow-y-auto px-7 pb-7" data-slot="formatting-dialog-body">
+          <div className="mt-5 grid grid-cols-2 gap-4 rounded-2xl border border-[#e8e0e5] bg-[#fbf9fa] p-4">
+            <SelectField
+              label="基本信息布局"
+              value={document.profileAlignment}
+              onChange={(value) => onProfileAlignment(value as ProfileAlignment)}
+              options={[
+                ['left', '左侧对齐'],
+                ['center', '居中对齐'],
+                ['right', '右侧对齐'],
+              ]}
+            />
+            <SelectField
+              label="字体"
+              value={formatting.fontFamily}
+              onChange={(value) => update({ fontFamily: value as ResumeFontFamily })}
+              options={[
+                ['source-han-sans', RESUME_FONT_FAMILIES['source-han-sans'].label],
+                ['source-han-serif', RESUME_FONT_FAMILIES['source-han-serif'].label],
+              ]}
+            />
+            <div className="col-span-2">
+              <div className="flex items-center justify-between gap-4">
+                <Label>主题色</Label>
+                <span className="font-mono text-xs uppercase text-[#766a72]">
+                  {resolveAccentColor(formatting.accentColor)}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {(Object.entries(ACCENT_COLORS) as [PresetAccentColor, string][]).map(
+                  ([key, color]) => (
+                    <Button
+                      aria-label={`选择${ACCENT_COLOR_LABELS[key]}主题色`}
+                      className={cn(
+                        'size-8 rounded-full border-[3px] p-0',
+                        resolveAccentColor(formatting.accentColor).toLowerCase() ===
+                          color.toLowerCase()
+                          ? 'border-[#241b21]'
+                          : 'border-white',
+                      )}
+                      key={key}
+                      onClick={() => update({ accentColor: key })}
+                      style={{ backgroundColor: color }}
+                    />
+                  ),
+                )}
+                <div className="ml-1 flex items-center gap-2 border-l border-[#ddd4d9] pl-3">
+                  <Input
+                    aria-label="自定义主题色"
+                    className="h-8 w-11 cursor-pointer rounded-lg border-0 bg-transparent p-0 shadow-none"
+                    onChange={(event) => update({ accentColor: event.target.value as AccentColor })}
+                    type="color"
+                    value={resolveAccentColor(formatting.accentColor)}
                   />
-                ),
-              )}
-              <div className="ml-1 flex items-center gap-2 border-l border-[#ddd4d9] pl-3">
-                <Input
-                  aria-label="自定义主题色"
-                  className="h-8 w-11 cursor-pointer rounded-lg border-0 bg-transparent p-0 shadow-none"
-                  onChange={(event) => update({ accentColor: event.target.value as AccentColor })}
-                  type="color"
-                  value={resolveAccentColor(formatting.accentColor)}
-                />
-                <span className="text-xs text-[#766a72]">自定义</span>
+                  <span className="text-xs text-[#766a72]">自定义</span>
+                </div>
               </div>
             </div>
           </div>
+          <div key={fieldRevision}>
+            <FormattingSection
+              description="四类文字角色全局生效，基本信息对齐方式不会覆盖这些数值。"
+              title="字号"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <NumericField
+                  label="姓名"
+                  maximum={48}
+                  minimum={12}
+                  onChange={(value) => update({ nameFontSizePx: value })}
+                  suffix="px"
+                  value={formatting.nameFontSizePx}
+                />
+                <NumericField
+                  label="模块标题"
+                  maximum={32}
+                  minimum={10}
+                  onChange={(value) => update({ sectionTitleFontSizePx: value })}
+                  suffix="px"
+                  value={formatting.sectionTitleFontSizePx}
+                />
+                <NumericField
+                  label="条目标题"
+                  maximum={28}
+                  minimum={8}
+                  onChange={(value) => update({ entryTitleFontSizePx: value })}
+                  suffix="px"
+                  value={formatting.entryTitleFontSizePx}
+                />
+                <NumericField
+                  label="正文"
+                  maximum={24}
+                  minimum={8}
+                  onChange={(value) => update({ bodyFontSizePx: value })}
+                  suffix="px"
+                  value={formatting.bodyFontSizePx}
+                />
+              </div>
+            </FormattingSection>
+            <FormattingSection
+              description="行高使用倍数；默认间距可由具体模块或记录单独覆盖。"
+              title="阅读节奏"
+            >
+              <div className="grid grid-cols-3 gap-4">
+                <NumericField
+                  label="行高"
+                  maximum={2.5}
+                  minimum={1}
+                  onChange={(value) => update({ lineHeightRatio: value })}
+                  step={0.05}
+                  suffix="×"
+                  value={formatting.lineHeightRatio}
+                />
+                <NumericField
+                  label="默认模块间距"
+                  maximum={64}
+                  minimum={0}
+                  onChange={(value) => update({ sectionGapPx: value })}
+                  suffix="px"
+                  value={formatting.sectionGapPx}
+                />
+                <NumericField
+                  label="默认记录间距"
+                  maximum={64}
+                  minimum={0}
+                  onChange={(value) => update({ entryGapPx: value })}
+                  suffix="px"
+                  value={formatting.entryGapPx}
+                />
+              </div>
+            </FormattingSection>
+            <FormattingSection
+              description="四个方向独立控制，数值对应 A4 纸张内容到纸边的距离。"
+              title="页边距"
+            >
+              <div className="grid grid-cols-[1fr_110px_1fr] grid-rows-[auto_76px_auto] items-center gap-3">
+                <div className="col-start-2">
+                  <NumericField
+                    label="上"
+                    maximum={160}
+                    minimum={0}
+                    onChange={(value) => updateMargin('top', value)}
+                    suffix="px"
+                    value={formatting.pageMarginPx.top}
+                  />
+                </div>
+                <div className="col-start-1 row-start-2">
+                  <NumericField
+                    label="左"
+                    maximum={160}
+                    minimum={0}
+                    onChange={(value) => updateMargin('left', value)}
+                    suffix="px"
+                    value={formatting.pageMarginPx.left}
+                  />
+                </div>
+                <div
+                  aria-hidden="true"
+                  className="col-start-2 row-start-2 mx-auto h-16 w-11 rounded-sm border border-[#d8ccd4] bg-white shadow-[0_7px_18px_rgba(54,39,49,0.12)]"
+                />
+                <div className="col-start-3 row-start-2">
+                  <NumericField
+                    label="右"
+                    maximum={160}
+                    minimum={0}
+                    onChange={(value) => updateMargin('right', value)}
+                    suffix="px"
+                    value={formatting.pageMarginPx.right}
+                  />
+                </div>
+                <div className="col-start-2 row-start-3">
+                  <NumericField
+                    label="下"
+                    maximum={160}
+                    minimum={0}
+                    onChange={(value) => updateMargin('bottom', value)}
+                    suffix="px"
+                    value={formatting.pageMarginPx.bottom}
+                  />
+                </div>
+              </div>
+            </FormattingSection>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                onChange(createDefaultFormatting());
+                onProfileAlignment('left');
+                setFieldRevision((revision) => revision + 1);
+              }}
+              variant="outline"
+            >
+              恢复默认
+            </Button>
+            <Button onClick={onClose}>完成</Button>
+          </DialogFooter>
         </div>
-        <div key={fieldRevision}>
-          <FormattingSection
-            description="四类文字角色全局生效，模板切换不会覆盖这些数值。"
-            title="字号"
-          >
-            <div className="grid grid-cols-2 gap-4">
-              <NumericField
-                label="姓名"
-                maximum={48}
-                minimum={12}
-                onChange={(value) => update({ nameFontSizePx: value })}
-                suffix="px"
-                value={formatting.nameFontSizePx}
-              />
-              <NumericField
-                label="模块标题"
-                maximum={32}
-                minimum={10}
-                onChange={(value) => update({ sectionTitleFontSizePx: value })}
-                suffix="px"
-                value={formatting.sectionTitleFontSizePx}
-              />
-              <NumericField
-                label="条目标题"
-                maximum={28}
-                minimum={8}
-                onChange={(value) => update({ entryTitleFontSizePx: value })}
-                suffix="px"
-                value={formatting.entryTitleFontSizePx}
-              />
-              <NumericField
-                label="正文"
-                maximum={24}
-                minimum={8}
-                onChange={(value) => update({ bodyFontSizePx: value })}
-                suffix="px"
-                value={formatting.bodyFontSizePx}
-              />
-            </div>
-          </FormattingSection>
-          <FormattingSection
-            description="行高使用倍数；模块间距控制相邻内容板块的留白。"
-            title="阅读节奏"
-          >
-            <div className="grid grid-cols-2 gap-4">
-              <NumericField
-                label="行高"
-                maximum={2.5}
-                minimum={1}
-                onChange={(value) => update({ lineHeightRatio: value })}
-                step={0.05}
-                suffix="×"
-                value={formatting.lineHeightRatio}
-              />
-              <NumericField
-                label="模块间距"
-                maximum={64}
-                minimum={0}
-                onChange={(value) => update({ sectionGapPx: value })}
-                suffix="px"
-                value={formatting.sectionGapPx}
-              />
-            </div>
-          </FormattingSection>
-          <FormattingSection
-            description="四个方向独立控制，数值对应 A4 纸张内容到纸边的距离。"
-            title="页边距"
-          >
-            <div className="grid grid-cols-[1fr_110px_1fr] grid-rows-[auto_76px_auto] items-center gap-3">
-              <div className="col-start-2">
-                <NumericField
-                  label="上"
-                  maximum={160}
-                  minimum={0}
-                  onChange={(value) => updateMargin('top', value)}
-                  suffix="px"
-                  value={formatting.pageMarginPx.top}
-                />
-              </div>
-              <div className="col-start-1 row-start-2">
-                <NumericField
-                  label="左"
-                  maximum={160}
-                  minimum={0}
-                  onChange={(value) => updateMargin('left', value)}
-                  suffix="px"
-                  value={formatting.pageMarginPx.left}
-                />
-              </div>
-              <div
-                aria-hidden="true"
-                className="col-start-2 row-start-2 mx-auto h-16 w-11 rounded-sm border border-[#d8ccd4] bg-white shadow-[0_7px_18px_rgba(54,39,49,0.12)]"
-              />
-              <div className="col-start-3 row-start-2">
-                <NumericField
-                  label="右"
-                  maximum={160}
-                  minimum={0}
-                  onChange={(value) => updateMargin('right', value)}
-                  suffix="px"
-                  value={formatting.pageMarginPx.right}
-                />
-              </div>
-              <div className="col-start-2 row-start-3">
-                <NumericField
-                  label="下"
-                  maximum={160}
-                  minimum={0}
-                  onChange={(value) => updateMargin('bottom', value)}
-                  suffix="px"
-                  value={formatting.pageMarginPx.bottom}
-                />
-              </div>
-            </div>
-          </FormattingSection>
-        </div>
-        <DialogFooter>
-          <Button
-            onClick={() => {
-              onChange(createDefaultFormatting());
-              setFieldRevision((revision) => revision + 1);
-            }}
-            variant="outline"
-          >
-            恢复默认
-          </Button>
-          <Button onClick={onClose}>完成</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -31,9 +31,9 @@ function createClassicResume(): ResumeDocument {
     status: 'draft',
     revision: 1,
     hasAvatar: true,
-    templateId: 'classic-professional',
+    profileAlignment: 'center',
     exportCount: 0,
-    contentVersion: 2,
+    contentVersion: 3,
     content,
     createdAt: '2026-07-29T00:00:00Z',
     updatedAt: '2026-07-29T00:00:00Z',
@@ -43,7 +43,7 @@ function createClassicResume(): ResumeDocument {
 describe('ResumePdfDocument classic header layout', () => {
   it('centers identity across the page and overlays the avatar at the right edge', () => {
     const resume = createClassicResume();
-    const presentation = createResumePresentation(resume.content.formatting, true);
+    const presentation = createResumePresentation(resume.content.formatting, 'center');
     const document = ResumePdfDocument({
       avatar: 'data:image/jpeg;base64,avatar',
       resume,
@@ -68,5 +68,23 @@ describe('ResumePdfDocument classic header layout', () => {
       right: 0,
       top: 0,
     });
+  });
+
+  it('places the avatar before the identity for right-aligned profile content', () => {
+    const resume = { ...createClassicResume(), profileAlignment: 'right' as const };
+    const document = ResumePdfDocument({
+      avatar: 'data:image/jpeg;base64,avatar',
+      resume,
+    }) as PdfElement;
+    const page = childAt(document, 0);
+    const header = childAt(page, 0);
+    const avatar = childAt(header, 0);
+    const identity = childAt(header, 1);
+    const name = childAt(identity, 0);
+
+    expect(avatar.props.style).toMatchObject({
+      marginRight: pxToPt(createResumePresentation(resume.content.formatting, 'right').photoGapPx),
+    });
+    expect(name.props.style).toMatchObject({ textAlign: 'right' });
   });
 });

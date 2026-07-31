@@ -7,6 +7,7 @@
  */
 import type { ImportResumeRequestTemplateId } from './importResumeRequestTemplateId';
 import type { ImportResumeRequestVersion } from './importResumeRequestVersion';
+import type { ProfileAlignment } from './profileAlignment';
 import type { ResumeContent } from './resumeContent';
 
 export interface ImportResumeRequest {
@@ -16,8 +17,12 @@ export interface ImportResumeRequest {
      * @maxLength 80
      */
   title: string;
-  /** @nullable */
+  /**
+     * @deprecated
+     * @nullable
+     */
   templateId?: ImportResumeRequestTemplateId;
+  profileAlignment?: ProfileAlignment;
   /**
      * @maxLength 750000
      * @nullable

@@ -10,10 +10,10 @@
  * @deprecated
  * @nullable
  */
-export type ImportResumeRequestTemplateId = typeof ImportResumeRequestTemplateId[keyof typeof ImportResumeRequestTemplateId] | null;
+export type UpdateResumeRequestTemplateId = typeof UpdateResumeRequestTemplateId[keyof typeof UpdateResumeRequestTemplateId] | null;
 
 
-export const ImportResumeRequestTemplateId = {
+export const UpdateResumeRequestTemplateId = {
   'modern-editorial': 'modern-editorial',
   'classic-professional': 'classic-professional',
 } as const;

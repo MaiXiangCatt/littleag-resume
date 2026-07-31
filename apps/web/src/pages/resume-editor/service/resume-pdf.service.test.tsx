@@ -43,7 +43,7 @@ beforeAll(() => {
   });
 });
 
-function createResume(templateId: ResumeDocument['templateId']): ResumeDocument {
+function createResume(profileAlignment: ResumeDocument['profileAlignment']): ResumeDocument {
   const content = createDefaultContent();
   content.profile = {
     fullName: '林清清',
@@ -63,9 +63,9 @@ function createResume(templateId: ResumeDocument['templateId']): ResumeDocument 
     status: 'draft',
     revision: 1,
     hasAvatar: false,
-    templateId,
+    profileAlignment,
     exportCount: 0,
-    contentVersion: 2,
+    contentVersion: 3,
     content,
     createdAt: '2026-07-28T00:00:00Z',
     updatedAt: '2026-07-28T00:00:00Z',
@@ -73,10 +73,10 @@ function createResume(templateId: ResumeDocument['templateId']): ResumeDocument 
 }
 
 describe('createResumePdfBlob', () => {
-  it.each(['modern-editorial', 'classic-professional'] as const)(
+  it.each(['left', 'center', 'right'] as const)(
     'generates a valid %s PDF with Markdown',
-    async (templateId) => {
-      const blob = await createResumePdfBlob(createResume(templateId), null);
+    async (profileAlignment) => {
+      const blob = await createResumePdfBlob(createResume(profileAlignment), null);
       const signature = new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 4));
 
       expect(blob.type).toBe('application/pdf');
@@ -90,7 +90,7 @@ describe('createResumePdfBlob', () => {
     const onePixelJpeg =
       'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABAf/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPxB//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPxB//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxB//9k=';
     const blob = await createResumePdfBlob(
-      { ...createResume('modern-editorial'), hasAvatar: true },
+      { ...createResume('left'), hasAvatar: true },
       onePixelJpeg,
     );
 

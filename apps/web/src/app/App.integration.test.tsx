@@ -207,7 +207,12 @@ describe('app auth flow integration', () => {
         templateId: 'modern-editorial',
         exportCount: 0,
         contentVersion: 2,
-        content: createDefaultContent(),
+        content: (() => {
+          const content = createDefaultContent();
+          const formatting = { ...content.formatting } as Partial<typeof content.formatting>;
+          delete formatting.entryGapPx;
+          return { ...content, formatting };
+        })(),
         createdAt: '2026-07-28T00:00:00.000Z',
         updatedAt: '2026-07-28T00:00:00.000Z',
       },

@@ -1090,12 +1090,20 @@ components:
         - updated_asc
         - created_desc
         - title_asc
+    ProfileAlignment:
+      type: string
+      enum:
+        - left
+        - center
+        - right
     ResumeSummary:
       type: object
       required:
         - id
         - title
         - status
+        - profileAlignment
+        - templateId
         - revision
         - hasAvatar
         - exportCount
@@ -1111,6 +1119,8 @@ components:
           maxLength: 80
         status:
           $ref: "#/components/schemas/ResumeStatus"
+        profileAlignment:
+          $ref: "#/components/schemas/ProfileAlignment"
         revision:
           type: integer
           format: int64
@@ -1120,6 +1130,8 @@ components:
         templateId:
           type: string
           nullable: true
+          deprecated: true
+          description: Legacy projection. Left maps to modern-editorial, center to classic-professional, and right to null.
         exportCount:
           type: integer
           format: int64
@@ -1140,7 +1152,7 @@ components:
           properties:
             contentVersion:
               type: integer
-              enum: [2]
+              enum: [2, 3]
             content:
               $ref: "#/components/schemas/ResumeContent"
     ResumeStats:
@@ -1208,9 +1220,18 @@ components:
           maxLength: 80
         status:
           $ref: "#/components/schemas/ResumeStatus"
+        profileAlignment:
+          $ref: "#/components/schemas/ProfileAlignment"
         templateId:
           type: string
           nullable: true
+          deprecated: true
+          enum:
+            - modern-editorial
+            - classic-professional
+        contentVersion:
+          type: integer
+          enum: [2, 3]
         content:
           $ref: "#/components/schemas/ResumeContent"
     ImportResumeRequest:
@@ -1222,7 +1243,7 @@ components:
       properties:
         version:
           type: integer
-          enum: [2]
+          enum: [2, 3]
         title:
           type: string
           minLength: 1
@@ -1230,9 +1251,12 @@ components:
         templateId:
           type: string
           nullable: true
+          deprecated: true
           enum:
             - modern-editorial
             - classic-professional
+        profileAlignment:
+          $ref: "#/components/schemas/ProfileAlignment"
         avatar:
           type: string
           nullable: true
@@ -1258,8 +1282,8 @@ components:
             type: object
             additionalProperties: true
         formatting:
-          $ref: "#/components/schemas/ResumeFormattingV2"
-    ResumeFormattingV2:
+          $ref: "#/components/schemas/ResumeFormatting"
+    ResumeFormatting:
       type: object
       additionalProperties: false
       required:
@@ -1319,6 +1343,10 @@ components:
               minimum: 0
               maximum: 160
         sectionGapPx:
+          type: integer
+          minimum: 0
+          maximum: 64
+        entryGapPx:
           type: integer
           minimum: 0
           maximum: 64

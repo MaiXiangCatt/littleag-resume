@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	DefaultTemplateID          = "modern-editorial"
+	DefaultProfileAlignment    = "left"
 	ContentVersionV2           = 2
+	ContentVersionV3           = 3
 	MaxResumeContentBytes      = 512 << 10
 	MaxResumeDescriptionRunes  = 20_000
 	maxResumeIDRunes           = 128
@@ -20,9 +21,10 @@ const (
 	maxResumeLinkURLRunes      = 2_048
 )
 
-var validTemplateIDs = map[string]struct{}{
-	"modern-editorial":     {},
-	"classic-professional": {},
+var validProfileAlignments = map[string]struct{}{
+	"left":   {},
+	"center": {},
+	"right":  {},
 }
 
 func DefaultResumeContent() map[string]any {
@@ -43,12 +45,19 @@ func DefaultResumeContent() map[string]any {
 			"nameFontSizePx": 20, "sectionTitleFontSizePx": 16, "entryTitleFontSizePx": 14,
 			"bodyFontSizePx": 14, "lineHeightRatio": 1.5,
 			"pageMarginPx": map[string]any{"top": 33, "right": 33, "bottom": 33, "left": 33},
-			"sectionGapPx": 8, "fontFamily": "source-han-sans", "accentColor": "plum",
+			"sectionGapPx": 8, "entryGapPx": 14, "fontFamily": "source-han-sans", "accentColor": "plum",
 		},
 	}
 }
 
 func ValidateResumeContent(content map[string]any) error {
+	return ValidateResumeContentVersion(content, ContentVersionV3)
+}
+
+func ValidateResumeContentVersion(content map[string]any, version int) error {
+	if version != ContentVersionV2 && version != ContentVersionV3 {
+		return fmt.Errorf("unsupported content version")
+	}
 	serialized, err := json.Marshal(content)
 	if err != nil || len(serialized) > MaxResumeContentBytes {
 		return fmt.Errorf("content exceeds size limit")
@@ -61,11 +70,11 @@ func ValidateResumeContent(content map[string]any) error {
 		return fmt.Errorf("invalid profile")
 	}
 	sections, ok := content["sections"].([]any)
-	if !ok || len(sections) > 64 || !validateSections(sections) {
+	if !ok || len(sections) > 64 || !validateSections(sections, version) {
 		return fmt.Errorf("invalid sections")
 	}
 	formatting, ok := content["formatting"].(map[string]any)
-	if !ok || !validateFormatting(formatting) {
+	if !ok || !validateFormatting(formatting, version) {
 		return fmt.Errorf("invalid formatting")
 	}
 	return nil
@@ -88,7 +97,7 @@ func validateProfile(profile map[string]any) bool {
 	for _, raw := range links {
 		link, ok := raw.(map[string]any)
 		if !ok ||
-			!stringFields(link, []string{"id", "label", "url"}, nil) ||
+			!stringFields(link, []string{"id", "label", "url"}, nil, nil) ||
 			!boundedString(link["id"], maxResumeIDRunes) ||
 			!boundedString(link["label"], maxResumeTitleRunes) ||
 			!boundedString(link["url"], maxResumeLinkURLRunes) {
@@ -98,11 +107,14 @@ func validateProfile(profile map[string]any) bool {
 	return true
 }
 
-func validateFormatting(formatting map[string]any) bool {
+func validateFormatting(formatting map[string]any, version int) bool {
 	allowed := map[string]bool{
 		"nameFontSizePx": true, "sectionTitleFontSizePx": true, "entryTitleFontSizePx": true,
 		"bodyFontSizePx": true, "lineHeightRatio": true, "pageMarginPx": true,
 		"sectionGapPx": true, "fontFamily": true, "accentColor": true,
+	}
+	if version == ContentVersionV3 {
+		allowed["entryGapPx"] = true
 	}
 	if !onlyAllowed(formatting, allowed) ||
 		!integerBetween(formatting["nameFontSizePx"], 12, 48) ||
@@ -113,6 +125,9 @@ func validateFormatting(formatting map[string]any) bool {
 		!integerBetween(formatting["sectionGapPx"], 0, 64) ||
 		!oneOf(formatting["fontFamily"], "source-han-sans", "source-han-serif") ||
 		!validAccentColor(formatting["accentColor"]) {
+		return false
+	}
+	if version == ContentVersionV3 && !integerBetween(formatting["entryGapPx"], 0, 64) {
 		return false
 	}
 	margins, ok := formatting["pageMarginPx"].(map[string]any)
@@ -146,7 +161,7 @@ func validAccentColor(value any) bool {
 	return true
 }
 
-func validateSections(sections []any) bool {
+func validateSections(sections []any, version int) bool {
 	ids := map[string]bool{}
 	builtins := map[string]bool{}
 	for _, raw := range sections {
@@ -171,11 +186,18 @@ func validateSections(sections []any) bool {
 			return false
 		}
 		ids[id] = true
+		optionalSpacing := []string(nil)
+		if version == ContentVersionV3 {
+			optionalSpacing = []string{"spacingBeforePx"}
+			if !optionalIntegerBetween(section, "spacingBeforePx", 0, 64) {
+				return false
+			}
+		}
 		switch typeName {
 		case "summary":
 			if builtins[typeName] ||
 				id != "summary" ||
-				!stringFields(section, []string{"id", "type", "title", "text"}, []string{"enabled"}) ||
+				!stringFields(section, []string{"id", "type", "title", "text"}, []string{"enabled"}, optionalSpacing) ||
 				!boundedString(section["text"], MaxResumeDescriptionRunes) {
 				return false
 			}
@@ -183,18 +205,18 @@ func validateSections(sections []any) bool {
 		case "skills":
 			if builtins[typeName] ||
 				id != "skills" ||
-				!stringFields(section, []string{"id", "type", "title", "description"}, []string{"enabled"}) ||
+				!stringFields(section, []string{"id", "type", "title", "description"}, []string{"enabled"}, optionalSpacing) ||
 				!boundedString(section["description"], MaxResumeDescriptionRunes) {
 				return false
 			}
 			builtins[typeName] = true
 		case "work", "education", "project", "awards":
-			if builtins[typeName] || id != typeName || !validateItemSection(section, typeName) {
+			if builtins[typeName] || id != typeName || !validateItemSection(section, typeName, version) {
 				return false
 			}
 			builtins[typeName] = true
 		case "custom":
-			if !validateItemSection(section, typeName) {
+			if !validateItemSection(section, typeName, version) {
 				return false
 			}
 		default:
@@ -204,12 +226,19 @@ func validateSections(sections []any) bool {
 	return true
 }
 
-func validateItemSection(section map[string]any, typeName string) bool {
+func validateItemSection(section map[string]any, typeName string, version int) bool {
 	items, ok := section["items"].([]any)
-	if !ok || len(items) > 100 || !stringFields(section, []string{"id", "type", "title"}, []string{"enabled", "items"}) {
+	optionalSectionFields := []string(nil)
+	if version == ContentVersionV3 {
+		optionalSectionFields = []string{"spacingBeforePx"}
+	}
+	if !ok || len(items) > 100 || !stringFields(section, []string{"id", "type", "title"}, []string{"enabled", "items"}, optionalSectionFields) {
 		return false
 	}
 	allowed := map[string]bool{"id": true}
+	if version == ContentVersionV3 {
+		allowed["spacingBeforePx"] = true
+	}
 	switch typeName {
 	case "awards":
 		allowed["title"], allowed["issuer"], allowed["date"], allowed["description"] = true, true, true, true
@@ -238,8 +267,11 @@ func validateItemSection(section map[string]any, typeName string) bool {
 		if id, ok := item["id"].(string); !ok || id == "" || utf8.RuneCountInString(id) > maxResumeIDRunes {
 			return false
 		}
+		if version == ContentVersionV3 && !optionalIntegerBetween(item, "spacingBeforePx", 0, 64) {
+			return false
+		}
 		for key, value := range item {
-			if key == "id" {
+			if key == "id" || key == "spacingBeforePx" {
 				continue
 			}
 			if key == "isCurrent" {
@@ -260,9 +292,75 @@ func validateItemSection(section map[string]any, typeName string) bool {
 	return true
 }
 
-func ValidTemplateID(templateID string) bool {
-	_, ok := validTemplateIDs[templateID]
+func ValidProfileAlignment(alignment string) bool {
+	_, ok := validProfileAlignments[alignment]
 	return ok
+}
+
+func NormalizeProfileAlignment(profileAlignment, templateID *string) (string, error) {
+	alignment := ""
+	if profileAlignment != nil && strings.TrimSpace(*profileAlignment) != "" {
+		alignment = strings.TrimSpace(*profileAlignment)
+		if !ValidProfileAlignment(alignment) {
+			return "", fmt.Errorf("invalid profile alignment")
+		}
+	}
+	legacyAlignment := ""
+	if templateID != nil && strings.TrimSpace(*templateID) != "" {
+		switch strings.TrimSpace(*templateID) {
+		case "modern-editorial", "left":
+			legacyAlignment = "left"
+		case "classic-professional", "center":
+			legacyAlignment = "center"
+		case "right":
+			legacyAlignment = "right"
+		default:
+			return "", fmt.Errorf("invalid template id")
+		}
+	}
+	if alignment != "" && legacyAlignment != "" && alignment != legacyAlignment {
+		return "", fmt.Errorf("conflicting profile alignment")
+	}
+	if alignment != "" {
+		return alignment, nil
+	}
+	if legacyAlignment != "" {
+		return legacyAlignment, nil
+	}
+	return DefaultProfileAlignment, nil
+}
+
+func LegacyTemplateIDForAlignment(alignment string) *string {
+	var templateID string
+	switch alignment {
+	case "left":
+		templateID = "modern-editorial"
+	case "center":
+		templateID = "classic-professional"
+	default:
+		return nil
+	}
+	return &templateID
+}
+
+func MigrateResumeContentV2(content map[string]any) (map[string]any, error) {
+	if err := ValidateResumeContentVersion(content, ContentVersionV2); err != nil {
+		return nil, err
+	}
+	serialized, err := json.Marshal(content)
+	if err != nil {
+		return nil, err
+	}
+	migrated := map[string]any{}
+	if err := json.Unmarshal(serialized, &migrated); err != nil {
+		return nil, err
+	}
+	formatting := migrated["formatting"].(map[string]any)
+	formatting["entryGapPx"] = formatting["bodyFontSizePx"]
+	if err := ValidateResumeContentVersion(migrated, ContentVersionV3); err != nil {
+		return nil, err
+	}
+	return migrated, nil
 }
 
 func onlyAllowed(values map[string]any, allowed map[string]bool) bool {
@@ -274,7 +372,7 @@ func onlyAllowed(values map[string]any, allowed map[string]bool) bool {
 	return true
 }
 
-func stringFields(values map[string]any, stringsRequired []string, otherRequired []string) bool {
+func stringFields(values map[string]any, stringsRequired, otherRequired, optional []string) bool {
 	allowed := map[string]bool{}
 	for _, key := range stringsRequired {
 		allowed[key] = true
@@ -288,7 +386,15 @@ func stringFields(values map[string]any, stringsRequired []string, otherRequired
 			return false
 		}
 	}
+	for _, key := range optional {
+		allowed[key] = true
+	}
 	return onlyAllowed(values, allowed)
+}
+
+func optionalIntegerBetween(values map[string]any, key string, minimum, maximum float64) bool {
+	value, ok := values[key]
+	return !ok || integerBetween(value, minimum, maximum)
 }
 
 func boundedString(value any, maxRunes int) bool {
