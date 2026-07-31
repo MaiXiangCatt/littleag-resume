@@ -5,6 +5,7 @@ import {
   type ResumeMarkdownBlock,
   type ResumeMarkdownInline,
 } from '../model/resume.markdown';
+import { createPdfTextBreaks } from '../model/resume.pdf-text';
 
 type MarkdownPdfStyles = ReturnType<typeof createStyles>;
 
@@ -41,7 +42,10 @@ function PdfBlock({
 }) {
   if (block.type === 'paragraph') {
     return (
-      <Text style={first ? [styles.block, styles.firstBlock] : styles.block}>
+      <Text
+        hyphenationCallback={createPdfTextBreaks}
+        style={first ? [styles.block, styles.firstBlock] : styles.block}
+      >
         <PdfInline nodes={block.children} styles={styles} />
       </Text>
     );

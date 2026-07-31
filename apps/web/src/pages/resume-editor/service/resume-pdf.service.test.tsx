@@ -1,11 +1,13 @@
 /// <reference types="node" />
 
 import { resolve } from 'node:path';
-import { Font } from '@react-pdf/renderer';
+import { cloneElement, type ReactElement } from 'react';
+import { Font, pdf } from '@react-pdf/renderer';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createDefaultContent } from '../model/resume.model';
 import type { ResumeDocument } from '../model/resume.types';
+import { ResumePdfDocument } from '../ui/ResumePdfDocument';
 import { createResumePdfBlob } from './resume-pdf.service';
 
 beforeAll(() => {
@@ -73,6 +75,29 @@ function createResume(profileAlignment: ResumeDocument['profileAlignment']): Res
 }
 
 describe('createResumePdfBlob', () => {
+  it('wraps long CJK Markdown paragraphs onto multiple lines', async () => {
+    const resume = createResume('left');
+    const summary = resume.content.sections.find((section) => section.type === 'summary');
+    const longSummary = '这是一段没有任何空格并且长度足够超过页面宽度的中文描述'.repeat(5);
+    if (summary?.type === 'summary') {
+      summary.text = longSummary;
+    }
+    let layout: PdfLayoutNode | undefined;
+    const document = ResumePdfDocument({ avatar: null, resume }) as ReactElement<
+      Record<string, unknown>
+    >;
+    const renderedDocument = cloneElement(document, {
+      onRender: (result: { _INTERNAL__LAYOUT__DATA_?: PdfLayoutNode }) => {
+        layout = result._INTERNAL__LAYOUT__DATA_;
+      },
+    });
+
+    await pdf(renderedDocument).toBlob();
+    const summaryLayout = collectTextLayouts(layout).find(([, text]) => text === longSummary);
+
+    expect(summaryLayout?.[0]).toBeGreaterThan(1);
+  });
+
   it.each(['left', 'center', 'right'] as const)(
     'generates a valid %s PDF with Markdown',
     async (profileAlignment) => {
@@ -98,3 +123,22 @@ describe('createResumePdfBlob', () => {
     expect(blob.size).toBeGreaterThan(1_000);
   }, 20_000);
 });
+
+type PdfLayoutNode = {
+  children?: PdfLayoutNode[];
+  lines?: unknown[];
+  type?: string;
+  value?: string;
+};
+
+function collectTextLayouts(node: PdfLayoutNode | undefined): Array<[number, string]> {
+  if (!node) return [];
+  const own =
+    node.type === 'TEXT' ? [[node.lines?.length ?? 0, collectText(node)] as [number, string]] : [];
+  return [...own, ...(node.children ?? []).flatMap((child) => collectTextLayouts(child))];
+}
+
+function collectText(node: PdfLayoutNode): string {
+  if (node.type === 'TEXT_INSTANCE') return node.value ?? '';
+  return (node.children ?? []).map(collectText).join('');
+}
