@@ -4,6 +4,7 @@ import {
   completionIssues,
   createCustomSection,
   createDefaultContent,
+  createSectionItem,
   moveById,
   parseImportEnvelope,
   parseResumeContent,
@@ -177,12 +178,20 @@ describe('resume editor model', () => {
     ]);
   });
 
-  it('allows drafts but reports completion requirements', () => {
+  it('only requires a name for completion', () => {
     const content = createDefaultContent();
 
-    expect(completionIssues(content)).toEqual(['请填写姓名', '请填写目标岗位']);
+    expect(completionIssues(content)).toEqual(['请填写姓名']);
     content.profile.fullName = 'Ada';
-    content.profile.targetRole = 'Engineer';
+    content.sections = content.sections.map((section) =>
+      section.type === 'work'
+        ? { ...section, items: [createSectionItem('work')] }
+        : section.type === 'education'
+          ? { ...section, items: [createSectionItem('education')] }
+          : section.type === 'project'
+            ? { ...section, items: [createSectionItem('project')] }
+            : section,
+    );
     expect(completionIssues(content)).toEqual([]);
   });
 });

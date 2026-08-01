@@ -192,27 +192,5 @@ export function moveById<T extends { id: string }>(items: T[], activeId: string,
 }
 
 export function completionIssues(content: ResumeContentV3) {
-  const issues: string[] = [];
-  if (!content.profile.fullName.trim()) issues.push('请填写姓名');
-  if (!content.profile.targetRole.trim()) issues.push('请填写目标岗位');
-  for (const section of content.sections) {
-    if (!section.enabled || section.type === 'summary' || section.type === 'skills') continue;
-    for (const item of section.items) {
-      if (
-        section.type === 'work' &&
-        !('company' in item && item.company.trim() && item.role.trim())
-      )
-        issues.push(`${section.title}中有未完成记录`);
-      if (section.type === 'education' && !('school' in item && item.school.trim()))
-        issues.push(`${section.title}中有未完成记录`);
-      if (section.type === 'project' && !('name' in item && item.name.trim()))
-        issues.push(`${section.title}中有未完成记录`);
-      if (
-        (section.type === 'awards' || section.type === 'custom') &&
-        !('title' in item && item.title.trim())
-      )
-        issues.push(`${section.title}中有未完成记录`);
-    }
-  }
-  return [...new Set(issues)];
+  return content.profile.fullName.trim() ? [] : ['请填写姓名'];
 }
