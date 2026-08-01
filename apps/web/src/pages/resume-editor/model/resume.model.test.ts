@@ -4,7 +4,6 @@ import {
   completionIssues,
   createCustomSection,
   createDefaultContent,
-  createSectionItem,
   moveById,
   parseImportEnvelope,
   parseResumeContent,
@@ -183,15 +182,54 @@ describe('resume editor model', () => {
 
     expect(completionIssues(content)).toEqual(['请填写姓名']);
     content.profile.fullName = 'Ada';
-    content.sections = content.sections.map((section) =>
-      section.type === 'work'
-        ? { ...section, items: [createSectionItem('work')] }
-        : section.type === 'education'
-          ? { ...section, items: [createSectionItem('education')] }
-          : section.type === 'project'
-            ? { ...section, items: [createSectionItem('project')] }
-            : section,
-    );
+    for (const section of content.sections) {
+      if (section.type === 'work') {
+        section.items.push({
+          id: crypto.randomUUID(),
+          company: '',
+          role: '',
+          location: '',
+          startDate: '',
+          endDate: '',
+          isCurrent: false,
+          description: '',
+        });
+      }
+      if (section.type === 'education') {
+        section.items.push({
+          id: crypto.randomUUID(),
+          school: '',
+          major: '',
+          degree: '',
+          startDate: '',
+          endDate: '',
+          description: '',
+        });
+      }
+      if (section.type === 'project') {
+        section.items.push({
+          id: crypto.randomUUID(),
+          name: '',
+          role: '',
+          startDate: '',
+          endDate: '',
+          isCurrent: false,
+          description: '',
+        });
+      }
+      if (section.type === 'awards') {
+        section.enabled = true;
+        section.items.push({
+          id: crypto.randomUUID(),
+          title: '',
+          issuer: '',
+          date: '',
+          description: '',
+        });
+      }
+    }
+    content.sections.push(createCustomSection('自定义板块'));
+
     expect(completionIssues(content)).toEqual([]);
   });
 });
