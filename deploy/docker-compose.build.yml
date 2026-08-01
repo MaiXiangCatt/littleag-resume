@@ -8,3 +8,5 @@ services:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
+      args:
+        BUILD_REVISION: ${IMAGE_TAG:-local}

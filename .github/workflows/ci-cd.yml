@@ -98,6 +98,8 @@ jobs:
           file: apps/web/Dockerfile
           push: true
           tags: ${{ steps.images.outputs.web }}:${{ github.sha }}
+          build-args: |
+            BUILD_REVISION=${{ github.sha }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
