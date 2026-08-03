@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.2.0
  */
 import type {
+  AnalyticsConfig,
+  AnalyticsDeletionRequest,
+  AnalyticsEventRequest,
   AnswerInvitationChallengeRequest,
   AuthResponse,
   AuthUserResponse,
@@ -1623,4 +1626,179 @@ export const deleteResumeAvatar = async (resumeId: string, options?: RequestInit
 
   const data: deleteResumeAvatarResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteResumeAvatarResponse
+}
+
+
+
+export type getAnalyticsConfigResponse200 = {
+  data: AnalyticsConfig
+  status: 200
+}
+
+export type getAnalyticsConfigResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
+}
+
+export type getAnalyticsConfigResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type getAnalyticsConfigResponseSuccess = (getAnalyticsConfigResponse200) & {
+  headers: Headers;
+};
+export type getAnalyticsConfigResponseError = (getAnalyticsConfigResponse429 | getAnalyticsConfigResponse500) & {
+  headers: Headers;
+};
+
+export type getAnalyticsConfigResponse = (getAnalyticsConfigResponseSuccess | getAnalyticsConfigResponseError)
+
+export const getGetAnalyticsConfigUrl = () => {
+
+
+
+
+  return `/api/analytics/config`
+}
+
+/**
+ * @summary Get anonymous analytics availability and consent version
+ */
+export const getAnalyticsConfig = async ( options?: RequestInit): Promise<getAnalyticsConfigResponse> => {
+
+  const res = await fetch(getGetAnalyticsConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAnalyticsConfigResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAnalyticsConfigResponse
+}
+
+
+
+export type postAnalyticsEventResponse202 = {
+  data: void
+  status: 202
+}
+
+export type postAnalyticsEventResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type postAnalyticsEventResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
+}
+
+export type postAnalyticsEventResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type postAnalyticsEventResponseSuccess = (postAnalyticsEventResponse202) & {
+  headers: Headers;
+};
+export type postAnalyticsEventResponseError = (postAnalyticsEventResponse400 | postAnalyticsEventResponse429 | postAnalyticsEventResponse500) & {
+  headers: Headers;
+};
+
+export type postAnalyticsEventResponse = (postAnalyticsEventResponseSuccess | postAnalyticsEventResponseError)
+
+export const getPostAnalyticsEventUrl = () => {
+
+
+
+
+  return `/api/analytics/events`
+}
+
+/**
+ * @summary Accept one anonymous product milestone event
+ */
+export const postAnalyticsEvent = async (analyticsEventRequest: AnalyticsEventRequest, options?: RequestInit): Promise<postAnalyticsEventResponse> => {
+
+  const res = await fetch(getPostAnalyticsEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(analyticsEventRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postAnalyticsEventResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as postAnalyticsEventResponse
+}
+
+
+
+export type deleteAnalyticsInstallationResponse202 = {
+  data: void
+  status: 202
+}
+
+export type deleteAnalyticsInstallationResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type deleteAnalyticsInstallationResponse429 = {
+  data: TooManyRequestsResponse
+  status: 429
+}
+
+export type deleteAnalyticsInstallationResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type deleteAnalyticsInstallationResponseSuccess = (deleteAnalyticsInstallationResponse202) & {
+  headers: Headers;
+};
+export type deleteAnalyticsInstallationResponseError = (deleteAnalyticsInstallationResponse400 | deleteAnalyticsInstallationResponse429 | deleteAnalyticsInstallationResponse500) & {
+  headers: Headers;
+};
+
+export type deleteAnalyticsInstallationResponse = (deleteAnalyticsInstallationResponseSuccess | deleteAnalyticsInstallationResponseError)
+
+export const getDeleteAnalyticsInstallationUrl = () => {
+
+
+
+
+  return `/api/analytics/deletions`
+}
+
+/**
+ * @summary Delete anonymous installation detail without revealing whether it existed
+ */
+export const deleteAnalyticsInstallation = async (analyticsDeletionRequest: AnalyticsDeletionRequest, options?: RequestInit): Promise<deleteAnalyticsInstallationResponse> => {
+
+  const res = await fetch(getDeleteAnalyticsInstallationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(analyticsDeletionRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteAnalyticsInstallationResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deleteAnalyticsInstallationResponse
 }

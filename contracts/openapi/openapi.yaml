@@ -698,6 +698,65 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/analytics/config:
+    get:
+      operationId: getAnalyticsConfig
+      tags:
+        - Analytics
+      summary: Get anonymous analytics availability and consent version
+      responses:
+        "200":
+          description: Current anonymous analytics configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsConfig"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/analytics/events:
+    post:
+      operationId: postAnalyticsEvent
+      tags:
+        - Analytics
+      summary: Accept one anonymous product milestone event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyticsEventRequest"
+      responses:
+        "202":
+          description: Event accepted, already recorded, or silently discarded by installation quota.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/analytics/deletions:
+    post:
+      operationId: deleteAnalyticsInstallation
+      tags:
+        - Analytics
+      summary: Delete anonymous installation detail without revealing whether it existed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyticsDeletionRequest"
+      responses:
+        "202":
+          description: Deletion completed or the installation did not exist.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 components:
   securitySchemes:
     bearerAuth:
@@ -845,6 +904,65 @@ components:
             data:
               nullable: true
               example: null
+    AnalyticsConfig:
+      type: object
+      additionalProperties: false
+      required:
+        - enabled
+        - consentVersion
+      properties:
+        enabled:
+          type: boolean
+        consentVersion:
+          type: string
+          enum:
+            - "1"
+    AnalyticsEventName:
+      type: string
+      enum:
+        - workspace_activated
+        - resume_created
+        - resume_imported
+        - resume_exported_pdf
+        - resume_exported_json
+    AnalyticsMode:
+      type: string
+      enum:
+        - local
+        - cloud
+    AnalyticsEventRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - installationId
+        - eventId
+        - eventName
+        - mode
+        - consentVersion
+      properties:
+        installationId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        eventName:
+          $ref: "#/components/schemas/AnalyticsEventName"
+        mode:
+          $ref: "#/components/schemas/AnalyticsMode"
+        consentVersion:
+          type: string
+          enum:
+            - "1"
+    AnalyticsDeletionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - installationId
+      properties:
+        installationId:
+          type: string
+          format: uuid
     EmptyResponse:
       allOf:
         - $ref: "#/components/schemas/BaseResponse"

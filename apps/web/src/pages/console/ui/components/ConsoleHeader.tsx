@@ -8,10 +8,12 @@ import {
   LogOut,
   Search,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 import type { AuthUser } from '@/shared/auth/model/auth';
+import { useAnalyticsStore } from '@/shared/analytics/store/analytics.store';
 import { Button } from '@/shared/ui/button';
 import {
   DropdownMenu,
@@ -47,6 +49,8 @@ export function ConsoleHeader({
   user,
 }: ConsoleHeaderProps) {
   const searchRef = useRef<HTMLInputElement>(null);
+  const analyticsEnabled = useAnalyticsStore((state) => state.enabled);
+  const openPrivacySettings = useAnalyticsStore((state) => state.openSettings);
 
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
@@ -105,6 +109,17 @@ export function ConsoleHeader({
           </Button>
           {mode === 'local' ? (
             <>
+              {analyticsEnabled ? (
+                <Button
+                  aria-label="隐私设置"
+                  className="rounded-full text-[#655d69] hover:bg-[#f7eff7] hover:text-[#bf301e]"
+                  onClick={openPrivacySettings}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <ShieldCheck size={21} strokeWidth={1.7} />
+                </Button>
+              ) : null}
               <span className="hidden items-center gap-2 rounded-full border border-[#ead9d4] bg-[#fff7f4] px-3 py-2 text-xs font-semibold text-[#8a4a3f] sm:flex">
                 <HardDrive aria-hidden="true" size={15} />
                 仅存此浏览器
@@ -160,6 +175,15 @@ export function ConsoleHeader({
                     <Settings aria-hidden="true" size={17} />
                     账号设置
                   </DropdownMenuItem>
+                  {analyticsEnabled ? (
+                    <DropdownMenuItem
+                      className="gap-2 rounded-xl px-3 py-2.5 text-sm text-[#514955] focus:bg-[#f8f3f8] focus:text-[#bf301e]"
+                      onClick={openPrivacySettings}
+                    >
+                      <ShieldCheck aria-hidden="true" size={17} />
+                      隐私设置
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuItem
                     className="gap-2 rounded-xl px-3 py-2.5 text-sm text-[#514955] focus:bg-red-50 focus:text-red-700"
                     disabled={isLoggingOut}

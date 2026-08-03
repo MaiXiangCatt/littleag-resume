@@ -6,6 +6,13 @@
  * OpenAPI spec version: 0.2.0
  */
 
+export * from './analyticsConfig';
+export * from './analyticsConfigConsentVersion';
+export * from './analyticsDeletionRequest';
+export * from './analyticsEventName';
+export * from './analyticsEventRequest';
+export * from './analyticsEventRequestConsentVersion';
+export * from './analyticsMode';
 export * from './answerInvitationChallengeRequest';
 export * from './authPayload';
 export * from './authResponse';

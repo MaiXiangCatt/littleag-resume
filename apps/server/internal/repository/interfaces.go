@@ -108,3 +108,13 @@ type ResumeRepository interface {
 	DeleteResume(ctx context.Context, userID, resumeID uuid.UUID) error
 	GetResumeStats(ctx context.Context, userID uuid.UUID) (ResumeStats, error)
 }
+
+type AnalyticsRepository interface {
+	RecordAnalyticsEvent(
+		ctx context.Context,
+		event *model.AnalyticsEvent,
+		dailyLimit int,
+	) (AnalyticsRecordResult, error)
+	DeleteAnalyticsInstallation(ctx context.Context, visitorHash string) error
+	CleanupAnalytics(ctx context.Context, now time.Time) error
+}

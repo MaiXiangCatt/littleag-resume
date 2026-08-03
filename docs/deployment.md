@@ -35,6 +35,7 @@ cp apps/server/.env.prod.example .env.prod
 mkdir -p .secrets
 umask 077
 openssl rand -base64 48 > .secrets/postgres_password
+openssl rand -hex 32 > .secrets/analytics-hash-key
 cp apps/server/config/invitation-challenges.example.json .secrets/invitation-challenges.json
 ```
 
@@ -48,6 +49,10 @@ cp apps/server/config/invitation-challenges.example.json .secrets/invitation-cha
 - `REGISTRATION_MODE`：生产默认使用 `invite`；也可以显式切换为 `open` 或 `closed`。
 - `INVITATION_CHALLENGES_HOST_FILE`：默认是
   `../.secrets/invitation-challenges.json`，相对于 `deploy/docker-compose.yml`。
+- `ANALYTICS_ENABLED`：匿名统计首发保持 `false`，完成下方验证后再改为 `true`。
+- `ANALYTICS_ALLOWED_ORIGINS`：只填写生产站点的完整 Origin，例如
+  `https://littleag.com`；多个来源使用英文逗号分隔。
+- `ANALYTICS_HASH_KEY_HOST_FILE`：独立 HMAC 密钥文件，不能复用访问令牌、邮件或数据库密钥。
 
 编辑 `.secrets/invitation-challenges.json`，填入生产使用的银临暗号题库。每道题必须有唯一且
 非空的 `id`、`prompt` 和 `answer`；服务只在启动时读取该文件，修改后需要重新创建或重启
@@ -57,7 +62,7 @@ cp apps/server/config/invitation-challenges.example.json .secrets/invitation-cha
 权限设为 `600`：
 
 ```bash
-chmod 600 .env.prod .secrets/postgres_password .secrets/invitation-challenges.json
+chmod 600 .env.prod .secrets/postgres_password .secrets/analytics-hash-key .secrets/invitation-challenges.json
 ```
 
 ## 3. 第一次启动
@@ -89,6 +94,19 @@ HTTPS 直接暴露公网。
 
 从 `invite` 切换为其他模式只需修改 `.env.prod` 后重新执行 `make deploy`。邀请码表是纯新增
 表，没有存量数据回填；回滚旧镜像时可以保留并忽略该表。
+
+匿名统计应分两步启用：先以 `ANALYTICS_ENABLED=false` 部署并确认
+`/api/analytics/config` 返回 `{"enabled":false,"consentVersion":"1"}`，再把开关改为
+`true` 并只重新创建 `server` 服务。新增统计表和密钥均可在旧镜像回滚时保留；不要执行
+`docker compose down -v`。
+
+只读汇总报告可以在生产服务容器中执行：
+
+```bash
+docker compose --env-file .env.prod -f deploy/docker-compose.yml exec server analytics-report
+```
+
+报告只输出匿名安装/事件聚合与账号运营计数，不输出安装摘要、IP、邮箱或逐条事件。
 
 执行 `make smoke` 可检查首页是否能够从宿主机访问。首次启动失败时，优先看上面的 `server`
 日志，而不是反复重启。
@@ -272,15 +290,15 @@ known_hosts 行放入 `PRODUCTION_KNOWN_HOSTS`。不要在未核对指纹时直�
 docker login ghcr.io -u YOUR_GITHUB_USERNAME
 ```
 
-在 `PRODUCTION_DEPLOY_PATH` 中保留现有 `.env.prod`、`.secrets/postgres_password` 和
-`.secrets/invitation-challenges.json`。如果是全新目录：
+在 `PRODUCTION_DEPLOY_PATH` 中保留现有 `.env.prod`、`.secrets/postgres_password`、
+`.secrets/analytics-hash-key` 和 `.secrets/invitation-challenges.json`。如果是全新目录：
 
 ```bash
 cd /home/deploy/vega-resume
 mkdir -p .secrets
 chmod 700 .secrets
-# 从安全渠道写入 .env.prod、数据库密码和真实暗号题库
-chmod 600 .env.prod .secrets/postgres_password .secrets/invitation-challenges.json
+# 从安全渠道写入 .env.prod、数据库密码、analytics HMAC 密钥和真实暗号题库
+chmod 600 .env.prod .secrets/postgres_password .secrets/analytics-hash-key .secrets/invitation-challenges.json
 ```
 
 部署用户还需要可执行 `docker compose` 和 `curl`。GitHub Actions 会自动同步
@@ -313,6 +331,7 @@ IMAGE_TAG=<完整的40位成功commit SHA> make deploy
 - [ ] 安装 Docker Engine、Compose 插件与 Caddy。
 - [ ] 创建 `.env.prod` 和数据库 secret，所有密钥使用生产值。
 - [ ] 创建生产暗号题库，并确认 `REGISTRATION_MODE=invite` 时服务能正常启动。
+- [ ] 创建独立 analytics HMAC 密钥，先以 `ANALYTICS_ENABLED=false` 验证再启用。
 - [ ] 轮换任何曾经出现在仓库、截图或聊天中的 Resend/API 密钥。
 - [ ] 启动容器并检查日志、注册、保存、头像和 PDF 全链路。
 - [ ] 配置 HTTPS。

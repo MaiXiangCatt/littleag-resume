@@ -18,6 +18,7 @@ import (
 
 const (
 	minAccessTokenKeyLength       = 32
+	minAnalyticsHashKeyLength     = 32
 	minEmailVerificationKeyLength = 32
 )
 
@@ -35,6 +36,9 @@ type Config struct {
 	LoginFailureCapacity int
 	AvatarStorageDir     string
 	TrustedProxies       []string
+	AnalyticsEnabled     bool
+	AnalyticsHashKey     []byte
+	AnalyticsOrigins     []string
 
 	EmailProvider          string
 	ResendAPIKey           string
@@ -123,6 +127,25 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	analyticsEnabled, err := boolEnv("ANALYTICS_ENABLED", false)
+	if err != nil {
+		return Config{}, err
+	}
+	analyticsHashKey, err := loadOptionalSecret(
+		"ANALYTICS_HASH_KEY_FILE",
+		minAnalyticsHashKeyLength,
+		analyticsEnabled,
+	)
+	if err != nil {
+		return Config{}, err
+	}
+	analyticsOrigins, err := parseOrigins("ANALYTICS_ALLOWED_ORIGINS")
+	if err != nil {
+		return Config{}, err
+	}
+	if analyticsEnabled && environmentIsProduction() && len(analyticsOrigins) == 0 {
+		return Config{}, fmt.Errorf("ANALYTICS_ALLOWED_ORIGINS is required when analytics is enabled in production")
+	}
 
 	return Config{
 		Addr:                 env("SERVER_ADDR", ":8080"),
@@ -137,6 +160,9 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 		LoginFailureCapacity: intEnv("LOGIN_FAILURE_CAPACITY", 10_000),
 		AvatarStorageDir:     env("AVATAR_STORAGE_DIR", "data/avatars"),
 		TrustedProxies:       stringListEnv("TRUSTED_PROXIES", []string{"127.0.0.1", "::1"}),
+		AnalyticsEnabled:     analyticsEnabled,
+		AnalyticsHashKey:     analyticsHashKey,
+		AnalyticsOrigins:     analyticsOrigins,
 
 		EmailProvider:          emailProvider,
 		ResendAPIKey:           resendAPIKey,
@@ -155,6 +181,46 @@ func LoadFrom(dotenvPaths ...string) (Config, error) {
 		PdfMaxQueue:       intEnv("PDF_MAX_QUEUE", 8),
 		PrintTokenTTL:     durationEnv("PRINT_TOKEN_TTL", 90*time.Second),
 	}, nil
+}
+
+func loadOptionalSecret(name string, minLength int, required bool) ([]byte, error) {
+	path := strings.TrimSpace(os.Getenv(name))
+	if path == "" {
+		if required {
+			return nil, fmt.Errorf("%s is required when analytics is enabled", name)
+		}
+		return nil, nil
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", name, err)
+	}
+	contents = bytes.TrimSpace(contents)
+	if len(contents) < minLength {
+		return nil, fmt.Errorf("%s must contain at least %d bytes", name, minLength)
+	}
+	return contents, nil
+}
+
+func parseOrigins(name string) ([]string, error) {
+	values := stringListEnv(name, nil)
+	origins := make([]string, 0, len(values))
+	for _, value := range values {
+		parsed, err := url.Parse(value)
+		if err != nil || parsed.Scheme == "" || parsed.Host == "" || parsed.Path != "" ||
+			parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil {
+			return nil, fmt.Errorf("%s contains invalid origin %q", name, value)
+		}
+		if parsed.Scheme != "http" && parsed.Scheme != "https" {
+			return nil, fmt.Errorf("%s origin %q must use http or https", name, value)
+		}
+		origins = append(origins, parsed.Scheme+"://"+parsed.Host)
+	}
+	return origins, nil
+}
+
+func environmentIsProduction() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("APP_ENV")), "prod")
 }
 
 func loadInvitationChallenges(path, registrationMode string) ([]InvitationChallenge, error) {
@@ -285,6 +351,18 @@ func intEnv(key string, fallback int) int {
 		return fallback
 	}
 	return parsed
+}
+
+func boolEnv(key string, fallback bool) (bool, error) {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("%s must be true or false", key)
+	}
+	return parsed, nil
 }
 
 func stringListEnv(key string, fallback []string) []string {

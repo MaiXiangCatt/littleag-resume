@@ -10,6 +10,7 @@ import {
 } from 'react-router-dom';
 
 import { useAuthBootstrap } from '@/shared/auth/hooks/useAuthBootstrap';
+import { AnalyticsConsentController } from '@/shared/analytics/ui/AnalyticsConsentDialog';
 import { useRegistrationPolicy } from '@/shared/auth/hooks/useRegistrationPolicy';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { authService } from '@/shared/auth/api/auth.service';
@@ -46,6 +47,7 @@ export function App() {
     <>
       <BrowserRouter>
         <AppRoutes />
+        <AnalyticsConsentController />
       </BrowserRouter>
       <BuildUpdateNotifier />
       <Toaster />

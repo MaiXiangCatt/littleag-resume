@@ -15,6 +15,7 @@ import {
 import { localResumeStore } from '@/pages/resume-editor/store/local-resume.store';
 import { useLocalResumeStatus } from '@/pages/resume-editor/hooks/useLocalResumeStatus';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
+import { useAnalyticsWorkspace, useTrackAnalytics } from '@/shared/analytics/hooks/useAnalytics';
 import { Button } from '@/shared/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog';
 import { Input } from '@/shared/ui/input';
@@ -197,10 +198,12 @@ function ResumeConsole({
   const importInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const consoleData = useConsoleData(query, dataSource, errorMessage);
+  const trackAnalytics = useTrackAnalytics();
   const isLocal = mode === 'local';
   const isReadOnly = isLocal && storage.availability === 'read-only';
   const isAtLimit = isLocal && consoleData.stats.total >= LOCAL_RESUME_LIMIT;
   const disablesCreation = isReadOnly || isAtLimit;
+  useAnalyticsWorkspace(mode);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -252,6 +255,7 @@ function ResumeConsole({
     setPendingAction('create');
     try {
       const resume = await dataSource.create();
+      trackAnalytics('resume_created', mode);
       navigate(editorPath(mode, resume.id));
     } catch (error) {
       setFeedback({ kind: 'error', message: errorMessage(error) });
@@ -264,6 +268,7 @@ function ResumeConsole({
     setPendingAction(`copy:${resume.id}`);
     try {
       await dataSource.copy(resume.id);
+      trackAnalytics('resume_created', mode);
       setFeedback({ kind: 'success', message: `已复制“${resume.title}”` });
       consoleData.reload();
     } catch (error) {
@@ -318,6 +323,7 @@ function ResumeConsole({
           : await resumeEditorService.exportPdf(resume.id);
       downloadBlob(blob, `${resume.title.trim() || 'resume'}.pdf`);
       downloadStarted = true;
+      trackAnalytics('resume_exported_pdf', mode);
       if (mode === 'local' && !isReadOnly) {
         try {
           await localResumeStore.recordExport(resume.id);
@@ -364,6 +370,7 @@ function ResumeConsole({
     }
     try {
       await dataSource.import(envelope);
+      trackAnalytics('resume_imported', mode);
       setFeedback({ kind: 'success', message: `已导入“${envelope.title.trim()}”` });
       consoleData.reload();
     } catch (error) {

@@ -1,8 +1,12 @@
 package middleware
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 func TestIPRateLimiterCountsWithinAWindow(t *testing.T) {
@@ -17,6 +21,28 @@ func TestIPRateLimiterCountsWithinAWindow(t *testing.T) {
 	}
 	if !limiter.allow("192.0.2.1", now.Add(time.Minute)) {
 		t.Fatal("a new window should reset the bucket")
+	}
+}
+
+func TestAnalyticsRateLimitOnlyAppliesToAnalyticsWrites(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(AnalyticsRateLimit(1, time.Minute))
+	router.POST("/api/analytics/events", func(c *gin.Context) { c.Status(http.StatusAccepted) })
+	router.GET("/api/analytics/config", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	first := httptest.NewRecorder()
+	router.ServeHTTP(first, httptest.NewRequest(http.MethodPost, "/api/analytics/events", nil))
+	second := httptest.NewRecorder()
+	router.ServeHTTP(second, httptest.NewRequest(http.MethodPost, "/api/analytics/events", nil))
+	config := httptest.NewRecorder()
+	router.ServeHTTP(config, httptest.NewRequest(http.MethodGet, "/api/analytics/config", nil))
+
+	if first.Code != http.StatusAccepted || second.Code != http.StatusTooManyRequests {
+		t.Fatalf("analytics write rate limit got first=%d second=%d", first.Code, second.Code)
+	}
+	if config.Code != http.StatusOK {
+		t.Fatalf("analytics config must not use the write limiter, got %d", config.Code)
 	}
 }
 

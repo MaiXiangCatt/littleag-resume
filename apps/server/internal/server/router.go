@@ -22,6 +22,7 @@ func NewRouter(
 	}
 	router.Use(gin.Recovery())
 	router.Use(middleware.RateLimit(120, time.Minute))
+	router.Use(middleware.AnalyticsRateLimit(20, time.Minute))
 	router.GET("/api/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})

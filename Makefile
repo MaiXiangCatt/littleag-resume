@@ -10,7 +10,7 @@
 	test test-web test-server test-cli tdd-check e2e \
 	build build-web build-server build-cli storybook docker-build deploy deploy-check backup smoke \
 	dev-web dev-server db-up db-down \
-	archive vega-build vega-link
+	analytics-report archive vega-build vega-link
 .DEFAULT_GOAL := help
 
 help: ## 列出所有可用命令
@@ -96,6 +96,8 @@ db-up:             ## 启动 PostgreSQL (Docker)
 	docker compose -f deploy/docker-compose.dev.yml up -d postgres
 db-down:           ## 停止 PostgreSQL
 	docker compose -f deploy/docker-compose.dev.yml down
+analytics-report:  ## 输出匿名统计与账号运营汇总（只读）
+	cd apps/server && go run ./cmd/analytics-report
 
 # ---- 归档 ----
 archive:           ## 归档已完成需求，同步 docs 与规则文件

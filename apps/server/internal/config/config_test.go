@@ -18,6 +18,33 @@ func TestLoadFromRequiresAccessTokenKey(t *testing.T) {
 	}
 }
 
+func TestLoadFromRequiresIndependentAnalyticsSecretWhenEnabled(t *testing.T) {
+	t.Setenv("ACCESS_TOKEN_KEY", "local-development-secret-with-32-bytes")
+	t.Setenv("EMAIL_VERIFICATION_KEY", "local-email-verification-secret-32-bytes")
+	t.Setenv("EMAIL_PROVIDER", "console")
+	t.Setenv("ANALYTICS_ENABLED", "true")
+	withoutEnvironment(t, "ANALYTICS_HASH_KEY_FILE")
+
+	_, err := LoadFrom(filepath.Join(t.TempDir(), "missing.env"))
+	if err == nil || !strings.Contains(err.Error(), "ANALYTICS_HASH_KEY_FILE") {
+		t.Fatalf("expected missing analytics secret error, got %v", err)
+	}
+
+	secretPath := filepath.Join(t.TempDir(), "analytics-key")
+	if err := os.WriteFile(secretPath, []byte("independent-analytics-secret-at-least-32-bytes"), 0o600); err != nil {
+		t.Fatalf("write analytics secret: %v", err)
+	}
+	t.Setenv("ANALYTICS_HASH_KEY_FILE", secretPath)
+	t.Setenv("ANALYTICS_ALLOWED_ORIGINS", "https://littleag.example")
+	cfg, err := LoadFrom(filepath.Join(t.TempDir(), "missing.env"))
+	if err != nil {
+		t.Fatalf("load analytics config: %v", err)
+	}
+	if !cfg.AnalyticsEnabled || string(cfg.AnalyticsHashKey) != "independent-analytics-secret-at-least-32-bytes" {
+		t.Fatalf("unexpected analytics config: enabled=%v keyLength=%d", cfg.AnalyticsEnabled, len(cfg.AnalyticsHashKey))
+	}
+}
+
 func TestLoadFromDotEnvWithoutOverridingEnvironment(t *testing.T) {
 	withoutEnvironment(t, "ACCESS_TOKEN_KEY")
 	withoutEnvironment(t, "EMAIL_VERIFICATION_KEY")

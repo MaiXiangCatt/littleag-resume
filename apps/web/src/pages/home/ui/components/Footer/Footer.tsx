@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 
 import { useInvitationChallenge } from '@/pages/home/hooks/useInvitationChallenge';
+import { PrivacySettingsButton } from '@/shared/analytics/ui/PrivacySettingsButton';
 import type { RegistrationPolicy } from '@/shared/auth/model/auth';
 import { Button } from '@/shared/ui/button';
 
@@ -37,7 +38,7 @@ export function Footer({ onRegister, registrationPolicy }: FooterProps) {
         className="border-t border-[#5c251d] bg-[#2f1714] px-4 py-8 text-sm text-[#f5ded9]"
         role="contentinfo"
       >
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-semibold">
             Little
             <Button
@@ -51,7 +52,14 @@ export function Footer({ onRegister, registrationPolicy }: FooterProps) {
             </Button>
             Resume
           </p>
-          <p>一个用爱发电的开源项目</p>
+          <div className="flex items-center gap-3">
+            <PrivacySettingsButton
+              className="h-8 border-[#79524c] bg-transparent px-3 text-xs text-[#f5ded9] hover:bg-[#4b2924] hover:text-white"
+              size="sm"
+              variant="outline"
+            />
+            <p>一个用爱发电的开源项目</p>
+          </div>
         </div>
       </footer>
       <InvitationChallengeDialog challengeState={challengeState} onRegister={onRegister} />

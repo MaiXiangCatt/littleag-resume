@@ -34,6 +34,7 @@ const DIALOG_VIEWPORT_PADDING_PX = 12;
 type DialogContentPrimitiveProps = ComponentProps<typeof DialogPrimitive.Content>;
 type DialogContentBaseProps = Omit<DialogContentPrimitiveProps, 'draggable'> & {
   overlayClassName?: string;
+  showCloseButton?: boolean;
 };
 type DialogContentProps = DialogContentBaseProps & {
   draggable?: boolean;
@@ -143,6 +144,7 @@ function DialogContentFrame({
   dragHandle,
   dragOffset,
   overlayClassName,
+  showCloseButton = true,
   style,
   ...props
 }: DialogContentBaseProps & {
@@ -173,10 +175,12 @@ function DialogContentFrame({
         <DialogDragHandleContext.Provider value={dragHandle ?? null}>
           {children}
         </DialogDragHandleContext.Provider>
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2">
-          <X aria-hidden="true" size={16} />
-          <span className="sr-only">关闭</span>
-        </DialogPrimitive.Close>
+        {showCloseButton ? (
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2">
+            <X aria-hidden="true" size={16} />
+            <span className="sr-only">关闭</span>
+          </DialogPrimitive.Close>
+        ) : null}
       </DialogPrimitive.Content>
     </DialogPortal>
   );
