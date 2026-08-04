@@ -45,10 +45,12 @@ make build
 
 LittleAgResume 使用 [Semantic Versioning](https://semver.org/)：
 
-- 根目录 `package.json` 的 `version` 是开发中的产品版本唯一来源。
+- 根目录 `package.json` 的 `version` 是正式产品版本的唯一来源，日常功能和修复 PR
+  不需要逐个修改它。
 - Git tag 和 GitHub Release 使用相同的 `vX.Y.Z`，例如 `v0.1.0`。
 - `apps/web` 和 `packages/vega-cli` 的版本仅表示内部包版本，不要求和产品版本同步。
-- 生产容器继续使用完整 commit SHA，保证部署和回滚指向不可变构建。
+- 每次生产构建使用完整 commit SHA 识别实际部署，保证版本检测、问题定位和回滚都指向
+  不可变构建。
 
 完整发版步骤见 [版本发布指南](./docs/releasing.md)。
 

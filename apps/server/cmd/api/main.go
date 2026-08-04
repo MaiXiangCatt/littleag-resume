@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/vega-resume/server/internal/config"
 	"github.com/vega-resume/server/internal/handler"
@@ -34,6 +35,17 @@ func main() {
 	}
 
 	store := repository.NewGormStore(db)
+	analyticsService := service.NewAnalyticsService(service.AnalyticsServiceConfig{
+		Enabled: cfg.AnalyticsEnabled,
+		HashKey: cfg.AnalyticsHashKey,
+		Store:   store,
+	})
+	if err := analyticsService.Cleanup(context.Background()); err != nil {
+		log.Fatalf("cleanup analytics: %v", err)
+	}
+	cleanupContext, stopCleanup := context.WithCancel(context.Background())
+	defer stopCleanup()
+	go runAnalyticsCleanup(cleanupContext, analyticsService)
 	invitationChallenges := make([]service.InvitationChallenge, 0, len(cfg.InvitationChallenges))
 	for _, challenge := range cfg.InvitationChallenges {
 		invitationChallenges = append(invitationChallenges, service.InvitationChallenge{
@@ -90,6 +102,7 @@ func main() {
 			PrintTokens: service.NewPrintTokenService(cfg.PrintTokenTTL),
 			WebBaseURL:  cfg.WebBaseURL,
 		}),
+		handler.NewAnalyticsHandler(analyticsService, cfg.AnalyticsOrigins),
 	)
 	router, err := server.NewRouter(
 		apiHandler,
@@ -101,5 +114,20 @@ func main() {
 	}
 	if err := router.Run(cfg.Addr); err != nil {
 		log.Fatalf("run server: %v", err)
+	}
+}
+
+func runAnalyticsCleanup(ctx context.Context, analytics *service.AnalyticsService) {
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := analytics.Cleanup(ctx); err != nil {
+				log.Printf("cleanup analytics: %v", err)
+			}
+		}
 	}
 }

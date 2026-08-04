@@ -10,9 +10,11 @@ import {
 } from 'react-router-dom';
 
 import { useAuthBootstrap } from '@/shared/auth/hooks/useAuthBootstrap';
+import { AnalyticsConsentController } from '@/shared/analytics/ui/AnalyticsConsentDialog';
 import { useRegistrationPolicy } from '@/shared/auth/hooks/useRegistrationPolicy';
 import { useAuthStore } from '@/shared/auth/store/auth.store';
 import { authService } from '@/shared/auth/api/auth.service';
+import { BuildUpdateNotifier } from '@/shared/build/ui/BuildUpdateNotifier';
 import { Toaster } from '@/shared/ui/sonner';
 import { AuthModal } from '@/pages/home/ui/components/AuthModal/AuthModal';
 import { ConsolePage, LocalConsolePage } from '@/pages/console/ui/ConsolePage';
@@ -45,7 +47,9 @@ export function App() {
     <>
       <BrowserRouter>
         <AppRoutes />
+        <AnalyticsConsentController />
       </BrowserRouter>
+      <BuildUpdateNotifier />
       <Toaster />
     </>
   );

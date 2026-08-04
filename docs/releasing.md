@@ -2,9 +2,13 @@
 
 ## 版本来源
 
-产品版本只在根目录 `package.json` 中维护。README 的版本徽章会自动读取这个字段。
+正式产品版本只在根目录 `package.json` 中维护。README 的版本徽章会自动读取这个字段。
 
 Web App 和 Vega CLI 是私有工作区包，它们的 `package.json` 版本不代表产品版本，无需跟随产品一起修改。生产镜像继续使用完整 commit SHA，不额外维护一份可变版本号。
+
+日常功能和修复 PR 不需要修改产品版本。前端构建会同时记录产品版本和 commit SHA，
+并使用 SHA 判断线上是否出现了新构建；因此连续部署多个同版本提交也不会影响版本识别。
+只有准备创建 Git tag 和 GitHub Release 时，才在单独的 Release PR 中修改产品版本。
 
 ## 版本规则
 
@@ -20,7 +24,7 @@ LittleAgResume 使用 Semantic Versioning：
 
 ### 1. 确定版本并更新唯一来源
 
-在发布分支或单独的 Release PR 中执行：
+在单独的 Release PR 中执行：
 
 ```bash
 pnpm pkg set version=0.1.0
@@ -60,4 +64,5 @@ GitHub Release 建立在 Git tag 之上；tag 固定代码位置，Release 则�
 
 ## 首次发布建议
 
-当前项目仍处于邀请制和早期迭代阶段，首个正式记录建议使用 `v0.1.0`。本次仓库已经把开发版本设置为 `0.1.0`，等相关改动进入 `main` 后即可创建对应 GitHub Release。
+当前项目仍处于邀请制和早期迭代阶段，可以根据实际发布范围选择 `PATCH` 或 `MINOR`
+版本。普通 PR 不需要提前猜测下一个版本；准备发布时统一创建 Release PR 即可。

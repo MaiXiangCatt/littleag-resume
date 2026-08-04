@@ -12,12 +12,15 @@ import {
   Plus,
   Save,
   Settings2,
+  ShieldCheck,
   UserRound,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useAuthStore } from '@/shared/auth/store/auth.store';
+import { useAnalyticsWorkspace, useTrackAnalytics } from '@/shared/analytics/hooks/useAnalytics';
+import { useAnalyticsStore } from '@/shared/analytics/store/analytics.store';
 import { ApiError } from '@/shared/http/http.client';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
@@ -116,12 +119,16 @@ export function ResumeEditorPage({
   const [isClearingLocalData, setClearingLocalData] = useState(false);
   const avatarInput = useRef<HTMLInputElement>(null);
   const importInput = useRef<HTMLInputElement>(null);
+  const analyticsEnabled = useAnalyticsStore((state) => state.enabled);
+  const openPrivacySettings = useAnalyticsStore((state) => state.openSettings);
+  const trackAnalytics = useTrackAnalytics();
 
   const deferredDocument = useDeferredValue(document);
   const isReadOnly = mode === 'local' && durability === 'read-only';
   const visibleAvatar = document?.hasAvatar ? avatarUrl : null;
   const activeSection =
     document?.content.sections.find((section) => section.id === activeId) ?? null;
+  useAnalyticsWorkspace(mode, !isLoading && Boolean(document));
 
   function retryReadOnlyStorage() {
     setFormatOpen(false);
@@ -229,6 +236,7 @@ export function ResumeEditorPage({
     if (!importEnvelope) return;
     try {
       await replaceImport(importEnvelope);
+      trackAnalytics('resume_imported', mode);
       setImportEnvelope(null);
       setActiveId('profile');
       toast.success('简历已导入');
@@ -250,6 +258,7 @@ export function ResumeEditorPage({
       new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' }),
       `${safeFileName(document.title)}.json`,
     );
+    trackAnalytics('resume_exported_json', mode);
   }
 
   async function runPdfExport() {
@@ -261,6 +270,7 @@ export function ResumeEditorPage({
     try {
       downloadBlob(await exportPdf(), `${safeFileName(current.title)}.pdf`);
       downloaded = true;
+      trackAnalytics('resume_exported_pdf', mode);
       const finalSaveStatus = useResumeEditorStore.getState().saveStatus;
       if (finalSaveStatus === 'failed' || finalSaveStatus === 'conflict') {
         toast.warning('PDF 已开始下载；当前修改仍未保存');
@@ -475,14 +485,40 @@ export function ResumeEditorPage({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={returnFromEditor}>我的控制台</DropdownMenuItem>
+                {analyticsEnabled ? (
+                  <DropdownMenuItem onClick={openPrivacySettings}>
+                    <ShieldCheck aria-hidden="true" />
+                    隐私设置
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem disabled>{user?.username ?? '当前账号'}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="ml-1 flex items-center gap-2 rounded-full bg-[#f9efec] px-3 py-2 text-xs font-medium text-[#77524c]">
-              <HardDrive size={14} />
-              仅存此浏览器
-            </div>
+            <>
+              {analyticsEnabled ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="ml-1 rounded-full" variant="ghost">
+                      <HardDrive size={14} />
+                      仅存此浏览器
+                      <ChevronDown size={13} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={openPrivacySettings}>
+                      <ShieldCheck aria-hidden="true" />
+                      隐私设置
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <div className="ml-1 flex items-center gap-2 rounded-full bg-[#f9efec] px-3 py-2 text-xs font-medium text-[#77524c]">
+                  <HardDrive size={14} />
+                  仅存此浏览器
+                </div>
+              )}
+            </>
           )}
         </div>
       </header>

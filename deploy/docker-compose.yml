@@ -52,10 +52,14 @@ services:
       LOGIN_FAILURE_CAPACITY: ${LOGIN_FAILURE_CAPACITY:-10000}
       REGISTRATION_MODE: ${REGISTRATION_MODE:-invite}
       INVITATION_CHALLENGES_FILE: /run/secrets/invitation_challenges
+      ANALYTICS_ENABLED: ${ANALYTICS_ENABLED:-false}
+      ANALYTICS_HASH_KEY_FILE: /run/secrets/analytics_hash_key
+      ANALYTICS_ALLOWED_ORIGINS: ${ANALYTICS_ALLOWED_ORIGINS:-}
       PDF_MAX_QUEUE: ${PDF_MAX_QUEUE:-8}
     secrets:
       - postgres_password
       - invitation_challenges
+      - analytics_hash_key
     volumes:
       - avatars:/data/avatars
     depends_on:
@@ -83,3 +87,5 @@ secrets:
     file: ${POSTGRES_PASSWORD_FILE:-../.secrets/postgres_password}
   invitation_challenges:
     file: ${INVITATION_CHALLENGES_HOST_FILE:-../.secrets/invitation-challenges.json}
+  analytics_hash_key:
+    file: ${ANALYTICS_HASH_KEY_HOST_FILE:-../.secrets/analytics-hash-key}

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	"github.com/vega-resume/server/internal/model"
@@ -50,6 +51,9 @@ func Migrate(ctx context.Context, db *gorm.DB) error {
 		&model.RegistrationInvitation{},
 		&model.RefreshToken{},
 		&model.Resume{},
+		&model.AnalyticsInstallation{},
+		&model.AnalyticsEvent{},
+		&model.AnalyticsDailyAggregate{},
 	); err != nil {
 		return err
 	}
@@ -65,12 +69,122 @@ func Migrate(ctx context.Context, db *gorm.DB) error {
 		`CREATE UNIQUE INDEX IF NOT EXISTS users_username_active_uidx ON users (username) WHERE deleted_at IS NULL`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS email_verification_challenges_user_active_uidx ON email_verification_challenges (user_id) WHERE consumed_at IS NULL AND invalidated_at IS NULL`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS registration_email_verifications_email_active_uidx ON registration_email_verifications (email_normalized) WHERE consumed_at IS NULL AND invalidated_at IS NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS analytics_workspace_activated_visitor_uidx ON analytics_events (visitor_hash) WHERE event_name = 'workspace_activated'`,
 	} {
 		if err := gdb.Exec(statement).Error; err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+type AnalyticsRecordResult string
+
+const (
+	AnalyticsRecordInserted  AnalyticsRecordResult = "inserted"
+	AnalyticsRecordDuplicate AnalyticsRecordResult = "duplicate"
+	AnalyticsRecordQuota     AnalyticsRecordResult = "quota"
+)
+
+func (s *GormStore) RecordAnalyticsEvent(
+	ctx context.Context,
+	event *model.AnalyticsEvent,
+	dailyLimit int,
+) (AnalyticsRecordResult, error) {
+	result := AnalyticsRecordDuplicate
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		installation := model.AnalyticsInstallation{
+			VisitorHash: event.VisitorHash,
+			FirstSeenAt: event.RecordedAt,
+			LastSeenAt:  event.RecordedAt,
+		}
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "visitor_hash"}},
+			DoUpdates: clause.Assignments(map[string]any{"last_seen_at": event.RecordedAt}),
+		}).Create(&installation).Error; err != nil {
+			return err
+		}
+
+		var duplicateCount int64
+		if err := tx.Model(&model.AnalyticsEvent{}).
+			Where("event_id = ?", event.EventID).
+			Count(&duplicateCount).Error; err != nil {
+			return err
+		}
+		if duplicateCount > 0 {
+			result = AnalyticsRecordDuplicate
+			return nil
+		}
+
+		dayStart := time.Date(
+			event.RecordedAt.Year(),
+			event.RecordedAt.Month(),
+			event.RecordedAt.Day(),
+			0, 0, 0, 0,
+			time.UTC,
+		)
+		var acceptedToday int64
+		if err := tx.Model(&model.AnalyticsEvent{}).
+			Where("visitor_hash = ? AND recorded_at >= ? AND recorded_at < ?", event.VisitorHash, dayStart, dayStart.AddDate(0, 0, 1)).
+			Count(&acceptedToday).Error; err != nil {
+			return err
+		}
+		if acceptedToday >= int64(dailyLimit) {
+			result = AnalyticsRecordQuota
+			return nil
+		}
+
+		insert := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(event)
+		if insert.Error != nil {
+			return insert.Error
+		}
+		if insert.RowsAffected == 0 {
+			result = AnalyticsRecordDuplicate
+			return nil
+		}
+
+		aggregate := model.AnalyticsDailyAggregate{
+			Day:       dayStart,
+			EventName: event.EventName,
+			Mode:      event.Mode,
+			Count:     1,
+		}
+		if err := tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "day"},
+				{Name: "event_name"},
+				{Name: "mode"},
+			},
+			DoUpdates: clause.Assignments(map[string]any{
+				"count": gorm.Expr("analytics_daily_aggregates.count + 1"),
+			}),
+		}).Create(&aggregate).Error; err != nil {
+			return err
+		}
+		result = AnalyticsRecordInserted
+		return nil
+	})
+	return result, err
+}
+
+func (s *GormStore) DeleteAnalyticsInstallation(ctx context.Context, visitorHash string) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("visitor_hash = ?", visitorHash).Delete(&model.AnalyticsEvent{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("visitor_hash = ?", visitorHash).Delete(&model.AnalyticsInstallation{}).Error
+	})
+}
+
+func (s *GormStore) CleanupAnalytics(ctx context.Context, now time.Time) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("recorded_at < ?", now.AddDate(0, 0, -180)).
+			Delete(&model.AnalyticsEvent{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("last_seen_at < ?", now.AddDate(-1, -1, 0)).
+			Delete(&model.AnalyticsInstallation{}).Error
+	})
 }
 
 func (s *GormStore) CreateResume(ctx context.Context, resume *model.Resume) error {
