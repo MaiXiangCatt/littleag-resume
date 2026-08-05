@@ -1,4 +1,4 @@
-import { BarChart3, Check, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Check, RotateCcw, ShieldCheck } from 'lucide-react';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -51,47 +51,52 @@ function AnalyticsConsentDialog() {
       open
     >
       <DialogContent
-        className="w-[min(92vw,500px)] overflow-hidden rounded-[28px] border border-[#eadbd7] bg-[#fffdfc] p-0 shadow-[0_30px_100px_rgba(70,28,21,0.24)]"
+        className="w-[min(calc(100vw-2rem),440px)] overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl"
         onEscapeKeyDown={(event) => {
           if (isPrompt) event.preventDefault();
         }}
         onInteractOutside={(event) => {
           if (isPrompt) event.preventDefault();
         }}
+        overlayClassName="bg-slate-950/35 backdrop-blur-[1px]"
         showCloseButton={!isPrompt}
       >
-        <div className="relative overflow-hidden border-b border-[#ecdeda] bg-[#351d19] px-7 pb-7 pt-8 text-[#fff8f5]">
-          <div className="absolute -right-12 -top-16 size-48 rounded-full border-[28px] border-[#bf301e]/45" />
-          <div className="absolute -bottom-20 right-20 size-40 rounded-full border-[22px] border-[#f1b4a8]/10" />
-          <span className="relative grid size-12 place-items-center rounded-2xl bg-[#bf301e] shadow-[0_12px_30px_rgba(191,48,30,0.35)]">
-            <ShieldCheck aria-hidden="true" size={24} />
+        <div className="flex items-start gap-3 px-6 pb-4 pt-6">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <ShieldCheck aria-hidden="true" size={21} />
           </span>
-          <DialogTitle className="relative mt-5 font-serif text-2xl text-white">
-            {isPrompt ? '帮我们了解功能是否真的有用' : '匿名统计与隐私'}
-          </DialogTitle>
-          <DialogDescription className="relative mt-2 max-w-md leading-6 text-[#ead5d0]">
-            只记录创建、导入和导出是否成功，不读取简历内容，也不会和你的账号关联。
-          </DialogDescription>
+          <div className="min-w-0 pr-4">
+            <DialogTitle className="text-lg font-semibold text-slate-950">
+              {isPrompt ? '匿名使用统计' : '匿名统计设置'}
+            </DialogTitle>
+            <DialogDescription className="mt-1.5 leading-6 text-slate-600">
+              是否允许我们收集少量匿名使用数据，帮助改进功能体验？
+            </DialogDescription>
+          </div>
         </div>
 
-        <div className="px-7 py-6">
-          <div className="grid gap-3 text-sm text-[#5f5055] sm:grid-cols-2">
-            <div className="rounded-2xl border border-[#eee4e1] bg-white p-4">
-              <BarChart3 aria-hidden="true" className="text-[#bf301e]" size={19} />
-              <p className="mt-3 font-semibold text-[#2f2327]">我们会记录</p>
-              <p className="mt-1 leading-6">匿名安装标识、功能里程碑、模式与时间。</p>
+        <div className="px-6 pb-5">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+            <div className="flex items-start gap-3">
+              <Check aria-hidden="true" className="mt-1 shrink-0 text-primary" size={17} />
+              <p>
+                <span className="font-medium text-slate-900">会记录：</span>
+                随机匿名安装标识、创建/导入/导出是否成功、使用模式与时间。
+              </p>
             </div>
-            <div className="rounded-2xl border border-[#eee4e1] bg-white p-4">
-              <Check aria-hidden="true" className="text-[#bf301e]" size={19} />
-              <p className="mt-3 font-semibold text-[#2f2327]">我们不会记录</p>
-              <p className="mt-1 leading-6">姓名、邮箱、IP、设备信息或任何简历字段。</p>
+            <div className="flex items-start gap-3">
+              <ShieldCheck aria-hidden="true" className="mt-1 shrink-0 text-primary" size={17} />
+              <p>
+                <span className="font-medium text-slate-900">不会记录：</span>
+                姓名、邮箱、IP、设备信息或任何简历内容，也不会与账号关联。
+              </p>
             </div>
           </div>
 
           {choice ? (
-            <p className="mt-5 rounded-xl bg-[#f7f0ee] px-4 py-3 text-sm text-[#5d4946]">
+            <p className="mt-4 rounded-lg bg-primary/5 px-3.5 py-2.5 text-sm text-slate-600">
               当前状态：
-              <span className="ml-1 font-semibold text-[#a12b1c]">
+              <span className="ml-1 font-medium text-primary">
                 {choice === 'granted' ? '已参与匿名统计' : '未参与匿名统计'}
               </span>
             </p>
@@ -112,44 +117,48 @@ function AnalyticsConsentDialog() {
             </div>
           ) : null}
 
-          <p className="mt-5 text-xs leading-5 text-[#84777b]">
+          <p className="mt-4 text-xs leading-5 text-slate-500">
             你可以随时修改选择；撤回后会删除与该匿名安装标识关联的事件明细。无标识的汇总计数不会回滚。
-            <Link className="ml-1 text-[#9f2718]" href="/legal/privacy" target="_blank">
+            <Link
+              className="ml-1 text-primary hover:underline"
+              href="/legal/privacy"
+              target="_blank"
+            >
               查看隐私政策
             </Link>
           </p>
-
-          <DialogFooter className="mt-6 flex-col-reverse gap-3 sm:flex-row">
-            {choice === 'granted' && !isPrompt ? (
-              <Button
-                className="w-full sm:w-auto"
-                disabled={isSaving}
-                onClick={() => void withdraw()}
-                variant="outline"
-              >
-                {isSaving ? '正在处理…' : '退出匿名统计'}
-              </Button>
-            ) : (
-              <Button
-                className="w-full sm:w-auto"
-                disabled={isSaving}
-                onClick={() => void choose('denied')}
-                variant="outline"
-              >
-                暂不参与
-              </Button>
-            )}
-            {choice !== 'granted' ? (
-              <Button
-                className="w-full bg-[#bf301e] shadow-[0_8px_22px_rgba(191,48,30,0.2)] hover:bg-[#9f2718] sm:w-auto"
-                disabled={isSaving || deletionError}
-                onClick={() => void choose('granted')}
-              >
-                {isSaving ? '正在保存…' : '同意匿名统计'}
-              </Button>
-            ) : null}
-          </DialogFooter>
         </div>
+
+        <DialogFooter className="mt-0 flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/70 px-6 py-4 sm:flex-row">
+          {choice === 'granted' && !isPrompt ? (
+            <Button
+              className="w-full sm:w-auto"
+              disabled={isSaving}
+              onClick={() => void withdraw()}
+              variant="outline"
+            >
+              {isSaving ? '正在处理…' : '退出匿名统计'}
+            </Button>
+          ) : (
+            <Button
+              className="w-full sm:w-auto"
+              disabled={isSaving}
+              onClick={() => void choose('denied')}
+              variant="outline"
+            >
+              暂不参与
+            </Button>
+          )}
+          {choice !== 'granted' ? (
+            <Button
+              className="w-full sm:min-w-32 sm:w-auto"
+              disabled={isSaving || deletionError}
+              onClick={() => void choose('granted')}
+            >
+              {isSaving ? '正在保存…' : '同意匿名统计'}
+            </Button>
+          ) : null}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
