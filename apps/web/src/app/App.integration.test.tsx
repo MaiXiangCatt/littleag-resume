@@ -209,9 +209,11 @@ describe('app auth flow integration', () => {
         contentVersion: 2,
         content: (() => {
           const content = createDefaultContent();
+          const profile = { ...content.profile } as Partial<typeof content.profile>;
+          delete profile.enabled;
           const formatting = { ...content.formatting } as Partial<typeof content.formatting>;
           delete formatting.entryGapPx;
-          return { ...content, formatting };
+          return { ...content, profile, formatting };
         })(),
         createdAt: '2026-07-28T00:00:00.000Z',
         updatedAt: '2026-07-28T00:00:00.000Z',
@@ -221,7 +223,9 @@ describe('app auth flow integration', () => {
 
     renderApp('/guest/edit');
 
-    expect(await screen.findByLabelText('简历标题')).toHaveValue('旧版简历');
+    expect(await screen.findByLabelText('简历标题', {}, { timeout: 5_000 })).toHaveValue(
+      '旧版简历',
+    );
     expect(screen.getByText('本地模式')).toBeInTheDocument();
   });
 

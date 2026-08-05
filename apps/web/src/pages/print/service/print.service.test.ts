@@ -21,7 +21,7 @@ const printPayload = {
     profileAlignment: 'left' as const,
     templateId: 'modern-editorial',
     exportCount: 0,
-    contentVersion: 3 as const,
+    contentVersion: 4 as const,
     content: createDefaultContent(),
     createdAt: '2026-07-22T00:00:00Z',
     updatedAt: '2026-07-22T00:00:00Z',

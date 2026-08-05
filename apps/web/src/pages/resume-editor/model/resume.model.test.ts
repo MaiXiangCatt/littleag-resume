@@ -38,8 +38,10 @@ describe('resume editor model', () => {
     });
   });
 
-  it('migrates v2 content and legacy templates into the v3 model', () => {
+  it('migrates v2 content and legacy templates into the v4 model', () => {
     const legacyContent = structuredClone(createDefaultContent()) as Record<string, unknown>;
+    const profile = legacyContent.profile as Record<string, unknown>;
+    delete profile.enabled;
     const formatting = legacyContent.formatting as Record<string, unknown>;
     delete formatting.entryGapPx;
     formatting.bodyFontSizePx = 16;
@@ -52,9 +54,12 @@ describe('resume editor model', () => {
     });
 
     expect(migrated).toMatchObject({
-      version: 3,
+      version: 4,
       profileAlignment: 'center',
       content: {
+        profile: {
+          enabled: true,
+        },
         formatting: {
           bodyFontSizePx: 16,
           entryGapPx: 16,
@@ -64,7 +69,7 @@ describe('resume editor model', () => {
     expect(migrated).not.toHaveProperty('templateId');
   });
 
-  it('accepts v3 spacing boundaries and rejects invalid overrides', () => {
+  it('accepts v4 spacing boundaries and rejects invalid overrides', () => {
     const content = createDefaultContent();
     const work = content.sections.find((section) => section.type === 'work');
     if (!work || work.type !== 'work') throw new Error('missing work section');
@@ -81,10 +86,10 @@ describe('resume editor model', () => {
       spacingBeforePx: 64,
     });
 
-    expect(parseResumeContent(content, 3)).toEqual(content);
+    expect(parseResumeContent(content, 4)).toEqual(content);
 
     work.items[0].spacingBeforePx = 1.5;
-    expect(() => parseResumeContent(content, 3)).toThrow();
+    expect(() => parseResumeContent(content, 4)).toThrow();
   });
 
   it('rejects legacy and out-of-range formatting', () => {
@@ -127,7 +132,7 @@ describe('resume editor model', () => {
 
   it('strictly rejects unknown import fields and malformed dates', () => {
     const content = createDefaultContent();
-    const envelope = { version: 3, title: 'Resume', profileAlignment: 'left', content };
+    const envelope = { version: 4, title: 'Resume', profileAlignment: 'left', content };
 
     expect(() => parseImportEnvelope({ ...envelope, unknown: true })).toThrow();
     expect(() => parseImportEnvelope({ ...envelope, version: 1 })).toThrow();
@@ -180,7 +185,7 @@ describe('resume editor model', () => {
   it('only requires a name for completion', () => {
     const content = createDefaultContent();
 
-    expect(completionIssues(content)).toEqual(['请填写姓名']);
+    expect(completionIssues(content)).toEqual(['请填写姓名', '请至少显示一项有内容的模块']);
     content.profile.fullName = 'Ada';
     for (const section of content.sections) {
       if (section.type === 'work') {
@@ -231,5 +236,22 @@ describe('resume editor model', () => {
     content.sections.push(createCustomSection('自定义板块'));
 
     expect(completionIssues(content)).toEqual([]);
+  });
+
+  it('migrates v3 profile visibility and validates completion against printable output', () => {
+    const legacyContent = structuredClone(createDefaultContent()) as Record<string, unknown>;
+    delete (legacyContent.profile as Record<string, unknown>).enabled;
+
+    expect(parseResumeContent(legacyContent, 3).profile.enabled).toBe(true);
+
+    const content = createDefaultContent();
+    content.profile.enabled = false;
+    expect(completionIssues(content)).toEqual(['请至少显示一项有内容的模块']);
+    const summary = content.sections.find((section) => section.type === 'summary');
+    if (!summary || summary.type !== 'summary') throw new Error('missing summary section');
+    summary.text = '匿名简历';
+    expect(completionIssues(content)).toEqual([]);
+    summary.enabled = false;
+    expect(completionIssues(content)).toEqual(['请至少显示一项有内容的模块']);
   });
 });

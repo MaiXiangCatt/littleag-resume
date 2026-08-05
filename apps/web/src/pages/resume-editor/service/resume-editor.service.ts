@@ -15,7 +15,7 @@ export class UnsupportedResumeContentError extends Error {
 }
 
 export function toDocument(detail: ResumeDetail): ResumeDocument {
-  if (detail.contentVersion !== 2 && detail.contentVersion !== 3)
+  if (detail.contentVersion !== 2 && detail.contentVersion !== 3 && detail.contentVersion !== 4)
     throw new UnsupportedResumeContentError();
   const compatible = detail as ResumeDetail & {
     profileAlignment?: string | null;
@@ -31,7 +31,7 @@ export function toDocument(detail: ResumeDetail): ResumeDocument {
       compatible.profileAlignment ?? compatible.templateId,
     ),
     exportCount: detail.exportCount,
-    contentVersion: 3,
+    contentVersion: 4,
     content: parseResumeContent(detail.content, detail.contentVersion),
     createdAt: detail.createdAt,
     updatedAt: detail.updatedAt,
@@ -50,7 +50,7 @@ export const resumeEditorService = {
         title: document.title,
         status: document.status,
         profileAlignment: document.profileAlignment,
-        contentVersion: 3,
+        contentVersion: 4,
         content: document.content as unknown as ResumeContent,
       }),
       headers: JSON_HEADERS,

@@ -5,6 +5,8 @@ import {
   Check,
   ChevronDown,
   Download,
+  Eye,
+  EyeOff,
   FileDown,
   FileUp,
   HardDrive,
@@ -47,7 +49,6 @@ import { useLocalResumeStatus } from '../hooks/useLocalResumeStatus';
 import type { ResumeEditorMode } from '../model/resume.editor';
 import {
   ACCENT_COLORS,
-  BUILTIN_TITLES,
   completionIssues,
   createCustomSection,
   createDefaultFormatting,
@@ -172,24 +173,21 @@ export function ResumeEditorPage({
   }
 
   function requestRemove(section: ResumeSection) {
-    if (section.type === 'custom') {
-      setPendingRemove(section);
-      return;
-    }
-    mutate((draft) => {
-      const target = draft.content.sections.find((item) => item.id === section.id);
-      if (target) target.enabled = false;
-    }, true);
-    setActiveId('profile');
+    if (section.type !== 'custom') return;
+    setPendingRemove(section);
   }
 
-  function restoreBuiltin(id: string) {
+  function toggleProfileVisibility() {
     mutate((draft) => {
-      const target = draft.content.sections.find((item) => item.id === id);
-      if (target) target.enabled = true;
+      draft.content.profile.enabled = !draft.content.profile.enabled;
     }, true);
-    setActiveId(id);
-    setAddOpen(false);
+  }
+
+  function toggleSectionVisibility(section: ResumeSection) {
+    mutate((draft) => {
+      const target = draft.content.sections.find((item) => item.id === section.id);
+      if (target) target.enabled = !target.enabled;
+    }, true);
   }
 
   function addCustom() {
@@ -248,7 +246,7 @@ export function ResumeEditorPage({
   async function exportJson() {
     if (!document) return;
     const envelope: ResumeImportEnvelope = {
-      version: 3,
+      version: 4,
       title: document.title,
       profileAlignment: document.profileAlignment,
       content: document.content,
@@ -292,7 +290,7 @@ export function ResumeEditorPage({
 
   function requestExport() {
     if (!document) return;
-    const values = completionIssues(document.content);
+    const values = completionIssues(document.content, document.hasAvatar);
     if (values.length) setIssues({ mode: 'export', values });
     else void runPdfExport();
   }
@@ -305,7 +303,7 @@ export function ResumeEditorPage({
       }, true);
       return;
     }
-    const values = completionIssues(document.content);
+    const values = completionIssues(document.content, document.hasAvatar);
     if (values.length) setIssues({ mode: 'complete', values });
     else
       mutate((draft) => {
@@ -437,7 +435,12 @@ export function ResumeEditorPage({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => void exportJson()}>
                 <FileDown />
-                导出 JSON
+                <span>
+                  <span className="block">导出 JSON 备份</span>
+                  <span className="block text-[11px] font-normal text-[#8f828a]">
+                    包含隐藏内容，不适合匿名分享
+                  </span>
+                </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -552,6 +555,7 @@ export function ResumeEditorPage({
         >
           <StructurePanel
             activeId={activeId}
+            hasAvatar={document.hasAvatar}
             onAdd={() => setAddOpen(true)}
             onFormat={() => setFormatOpen(true)}
             onMove={(sections) =>
@@ -561,6 +565,9 @@ export function ResumeEditorPage({
             }
             onRemove={requestRemove}
             onSelect={setActiveId}
+            onToggleProfile={toggleProfileVisibility}
+            onToggleSection={toggleSectionVisibility}
+            profile={document.content.profile}
             sections={document.content.sections}
           />
         </div>
@@ -571,6 +578,14 @@ export function ResumeEditorPage({
             isReadOnly && 'pointer-events-none opacity-70',
           )}
         >
+          {activeId === 'profile' && !document.content.profile.enabled ? (
+            <VisibilityNotice label="基本信息" onRestore={toggleProfileVisibility} />
+          ) : activeSection && !activeSection.enabled ? (
+            <VisibilityNotice
+              label={activeSection.title}
+              onRestore={() => toggleSectionVisibility(activeSection)}
+            />
+          ) : null}
           {activeId === 'profile' ? (
             <ProfileEditor
               avatar={visibleAvatar}
@@ -643,8 +658,6 @@ export function ResumeEditorPage({
           onAddCustom={addCustom}
           onChangeName={setCustomName}
           onClose={() => setAddOpen(false)}
-          onRestore={restoreBuiltin}
-          sections={document.content.sections}
         />
       ) : null}
       {cropSource && !isReadOnly ? (
@@ -1073,17 +1086,12 @@ function AddSectionDialog({
   onAddCustom,
   onChangeName,
   onClose,
-  onRestore,
-  sections,
 }: {
   customName: string;
   onAddCustom: () => void;
   onChangeName: (value: string) => void;
   onClose: () => void;
-  onRestore: (id: string) => void;
-  sections: ResumeSection[];
 }) {
-  const disabled = sections.filter((section) => section.type !== 'custom' && !section.enabled);
   return (
     <Dialog
       onOpenChange={(open) => {
@@ -1092,27 +1100,11 @@ function AddSectionDialog({
       open
     >
       <DialogContent className="rounded-3xl p-7">
-        <DialogTitle>添加简历板块</DialogTitle>
-        <DialogDescription>恢复内置板块会保留之前填写的内容。</DialogDescription>
-        <div className="mt-5 space-y-2">
-          {disabled.map((section) => (
-            <Button
-              className="w-full justify-between"
-              key={section.id}
-              onClick={() => onRestore(section.id)}
-              variant="outline"
-            >
-              <span>{BUILTIN_TITLES[section.type as keyof typeof BUILTIN_TITLES]}</span>
-              <Plus size={16} />
-            </Button>
-          ))}
-          {disabled.length === 0 ? (
-            <p className="rounded-xl bg-[#f7f3f5] p-3 text-sm text-[#776b73]">
-              所有内置板块都已启用。
-            </p>
-          ) : null}
-        </div>
-        <div className="mt-6 border-t pt-5">
+        <DialogTitle>添加自定义板块</DialogTitle>
+        <DialogDescription>
+          内置板块始终保留在简历结构中，可直接用眼睛按钮显示或隐藏。
+        </DialogDescription>
+        <div className="mt-5">
           <Label htmlFor="custom-section-name">自定义板块</Label>
           <div className="mt-2 flex gap-2">
             <Input
@@ -1129,6 +1121,24 @@ function AddSectionDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function VisibilityNotice({ label, onRestore }: { label: string; onRestore: () => void }) {
+  return (
+    <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[#e5d7dc] bg-[#f8f1f3] px-4 py-3 text-[#6f5d66]">
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-[#a63a2a] shadow-sm">
+        <EyeOff size={17} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-[#493941]">“{label}”当前已隐藏</p>
+        <p className="mt-0.5 text-xs">内容仍会保存，但不会出现在实时预览和 PDF 中。</p>
+      </div>
+      <Button onClick={onRestore} size="sm" type="button" variant="outline">
+        <Eye size={15} />
+        恢复显示
+      </Button>
+    </div>
   );
 }
 

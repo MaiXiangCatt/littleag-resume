@@ -25,6 +25,8 @@ import {
   FolderKanban,
   GraduationCap,
   GripVertical,
+  Eye,
+  EyeOff,
   Plus,
   Settings2,
   Sparkles,
@@ -36,7 +38,8 @@ import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
 
 import { moveById } from '../model/resume.model';
-import type { ResumeSection } from '../model/resume.types';
+import { profileHasContent, sectionHasContent } from '../model/resume.preview';
+import type { ResumeProfile, ResumeSection } from '../model/resume.types';
 
 const icons = {
   summary: FileText,
@@ -55,24 +58,31 @@ export function StructurePanel({
   onMove,
   onRemove,
   onSelect,
+  onToggleProfile,
+  onToggleSection,
+  profile,
+  hasAvatar,
   sections,
 }: {
   activeId: string;
+  hasAvatar: boolean;
   onAdd: () => void;
   onFormat: () => void;
   onMove: (sections: ResumeSection[]) => void;
   onRemove: (section: ResumeSection) => void;
   onSelect: (id: string) => void;
+  onToggleProfile: () => void;
+  onToggleSection: (section: ResumeSection) => void;
+  profile: ResumeProfile;
   sections: ResumeSection[];
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const enabled = sections.filter((section) => section.enabled);
   function moveButton(id: string, delta: number) {
-    const index = enabled.findIndex((section) => section.id === id);
-    const target = enabled[index + delta];
+    const index = sections.findIndex((section) => section.id === id);
+    const target = sections[index + delta];
     if (!target) return;
     const moved = moveById(sections, id, target.id);
     onMove(moved);
@@ -90,31 +100,29 @@ export function StructurePanel({
         <h2 className="mt-1 font-serif text-xl font-semibold text-[#30252d]">简历结构</h2>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        <Button
-          className={cn(
-            'mb-2 h-11 w-full justify-start rounded-xl px-3',
-            activeId === 'profile' ? 'bg-white text-[#bf301e] shadow-sm' : 'text-[#62565f]',
-          )}
-          onClick={() => onSelect('profile')}
-          variant="ghost"
-        >
-          <UserRound size={17} />
-          基本信息
-        </Button>
+        <StructureProfileItem
+          active={activeId === 'profile'}
+          enabled={profile.enabled}
+          hasContent={profileHasContent(profile, hasAvatar)}
+          onSelect={() => onSelect('profile')}
+          onToggle={onToggleProfile}
+        />
         <DndContext collisionDetection={closestCenter} onDragEnd={dragEnd} sensors={sensors}>
           <SortableContext
-            items={enabled.map((section) => section.id)}
+            items={sections.map((section) => section.id)}
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-1">
-              {enabled.map((section, index) => (
+              {sections.map((section, index) => (
                 <StructureItem
                   active={activeId === section.id}
+                  hasContent={sectionHasContent(section)}
                   index={index}
                   key={section.id}
                   onDown={() => moveButton(section.id, 1)}
                   onRemove={() => onRemove(section)}
                   onSelect={() => onSelect(section.id)}
+                  onToggle={() => onToggleSection(section)}
                   onUp={() => moveButton(section.id, -1)}
                   section={section}
                 />
@@ -137,20 +145,68 @@ export function StructurePanel({
   );
 }
 
+function StructureProfileItem({
+  active,
+  enabled,
+  hasContent,
+  onSelect,
+  onToggle,
+}: {
+  active: boolean;
+  enabled: boolean;
+  hasContent: boolean;
+  onSelect: () => void;
+  onToggle: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        'mb-2 flex items-center rounded-xl border px-1 py-1 transition-colors',
+        active
+          ? 'border-[#e6d7e3] bg-white text-[#bf301e] shadow-sm'
+          : 'border-transparent text-[#655a62] hover:bg-white/70',
+        !enabled && 'bg-[#f0ebed] text-[#91858d]',
+      )}
+    >
+      <Button
+        className="h-11 min-w-0 flex-1 justify-start gap-2 px-3 hover:bg-transparent"
+        onClick={onSelect}
+        variant="ghost"
+      >
+        <UserRound className="shrink-0" size={17} />
+        <span className="min-w-0 text-left">
+          <span className="block truncate">基本信息</span>
+          {!enabled || !hasContent ? (
+            <span className="block truncate text-[10px] font-normal text-[#9a8d95]">
+              {!enabled ? '不会输出' : '暂无可预览内容'}
+            </span>
+          ) : null}
+        </span>
+        {active ? <Check className="ml-auto shrink-0" size={14} /> : null}
+      </Button>
+      <VisibilityButton enabled={enabled} label="基本信息" onToggle={onToggle} />
+    </div>
+  );
+}
+
 function StructureItem({
   active,
+  hasContent,
   index,
   onDown,
   onRemove,
   onSelect,
+  onToggle,
   onUp,
   section,
 }: {
   active: boolean;
+  hasContent: boolean;
   index: number;
   onDown: () => void;
   onRemove: () => void;
   onSelect: () => void;
+  onToggle: () => void;
   onUp: () => void;
   section: ResumeSection;
 }) {
@@ -168,6 +224,7 @@ function StructureItem({
         active
           ? 'border-[#e6d7e3] bg-white text-[#bf301e] shadow-sm'
           : 'text-[#655a62] hover:bg-white/70',
+        !section.enabled && 'bg-[#f0ebed] text-[#91858d]',
       )}
     >
       <Button
@@ -186,10 +243,18 @@ function StructureItem({
         variant="ghost"
       >
         <Icon className="shrink-0" size={16} />
-        <span className="truncate">{section.title}</span>
+        <span className="min-w-0 text-left">
+          <span className="block truncate">{section.title}</span>
+          {!section.enabled || !hasContent ? (
+            <span className="block truncate text-[10px] font-normal text-[#9a8d95]">
+              {!section.enabled ? '不会输出' : '暂无可预览内容'}
+            </span>
+          ) : null}
+        </span>
         {active ? <Check className="ml-auto shrink-0" size={14} /> : null}
       </Button>
-      <div className="hidden shrink-0 group-hover:flex">
+      <VisibilityButton enabled={section.enabled} label={section.title} onToggle={onToggle} />
+      <div className="hidden shrink-0 group-hover:flex group-focus-within:flex">
         <Button
           aria-label="上移板块"
           disabled={index === 0}
@@ -202,10 +267,43 @@ function StructureItem({
         <Button aria-label="下移板块" onClick={onDown} size="icon" variant="ghost">
           <ArrowDown size={13} />
         </Button>
-        <Button aria-label="移除板块" onClick={onRemove} size="icon" variant="ghost">
-          <Trash2 size={13} />
-        </Button>
+        {section.type === 'custom' ? (
+          <Button
+            aria-label={`永久删除 ${section.title}`}
+            onClick={onRemove}
+            size="icon"
+            variant="ghost"
+          >
+            <Trash2 size={13} />
+          </Button>
+        ) : null}
       </div>
     </div>
+  );
+}
+
+function VisibilityButton({
+  enabled,
+  label,
+  onToggle,
+}: {
+  enabled: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  const Icon = enabled ? Eye : EyeOff;
+  return (
+    <Button
+      aria-label={`${enabled ? '隐藏' : '显示'} ${label}`}
+      className={cn(
+        'size-9 shrink-0 rounded-lg',
+        enabled ? 'text-[#766871]' : 'bg-white/70 text-[#a63a2a]',
+      )}
+      onClick={onToggle}
+      size="icon"
+      variant="ghost"
+    >
+      <Icon size={15} />
+    </Button>
   );
 }

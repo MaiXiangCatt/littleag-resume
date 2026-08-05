@@ -74,7 +74,7 @@ func TestResumeHandlersLifecycleAndStats(t *testing.T) {
 	if createdData["status"] != "draft" ||
 		createdData["profileAlignment"] != "left" ||
 		createdData["templateId"] != "modern-editorial" ||
-		createdData["contentVersion"] != float64(3) {
+		createdData["contentVersion"] != float64(4) {
 		t.Fatalf("new resume should be draft: %+v", createdData)
 	}
 
@@ -161,7 +161,7 @@ func TestResumeHandlersAcceptCompatibleAlignmentFieldsAndRejectConflicts(t *test
 	content["unexpected"] = true
 	payload, err := json.Marshal(map[string]any{
 		"expectedRevision": 3,
-		"contentVersion":   3,
+		"contentVersion":   4,
 		"content":          content,
 	})
 	if err != nil {
@@ -175,7 +175,7 @@ func TestResumeHandlersAcceptCompatibleAlignmentFieldsAndRejectConflicts(t *test
 		string(payload),
 	)
 	if strict.Code != http.StatusBadRequest {
-		t.Fatalf("v3 unknown content field status=%d body=%s", strict.Code, strict.Body.String())
+		t.Fatalf("v4 unknown content field status=%d body=%s", strict.Code, strict.Body.String())
 	}
 }
 

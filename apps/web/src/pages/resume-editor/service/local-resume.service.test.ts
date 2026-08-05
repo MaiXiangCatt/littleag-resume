@@ -32,7 +32,7 @@ function createDocument(
     hasAvatar: false,
     profileAlignment: 'left',
     exportCount: 0,
-    contentVersion: 3,
+    contentVersion: 4,
     content: createDefaultContent(),
     createdAt: '2026-07-30T08:00:00.000Z',
     updatedAt: '2026-07-30T08:00:00.000Z',
@@ -41,8 +41,10 @@ function createDocument(
 
 async function seedLegacyResume(avatar: Blob | null = null) {
   const content = structuredClone(createDefaultContent()) as {
+    profile: Record<string, unknown>;
     formatting: Record<string, unknown>;
   };
+  delete content.profile.enabled;
   delete content.formatting.entryGapPx;
   const database = await openLocalDatabase();
   await database.put('guest-resume', {
@@ -98,7 +100,7 @@ describe('local resume service', () => {
 
     expect(loaded.document.hasAvatar).toBe(true);
     expect(loaded.document).toMatchObject({
-      contentVersion: 3,
+      contentVersion: 4,
       profileAlignment: 'center',
       content: { formatting: { entryGapPx: 14 } },
     });
@@ -108,7 +110,7 @@ describe('local resume service', () => {
       key: 'primary',
       storageVersion: 1,
       document: {
-        contentVersion: 3,
+        contentVersion: 4,
         profileAlignment: 'center',
         content: { formatting: { entryGapPx: 14 } },
       },
@@ -145,10 +147,10 @@ describe('local resume service', () => {
     expect((await service.get(copied.id)).document.title).toBe('产品简历 - 副本');
   });
 
-  it('imports v3 JSON as a new draft and includes it in filtering and stats', async () => {
+  it('imports v4 JSON as a new draft and includes it in filtering and stats', async () => {
     const service = createLocalResumeService({ createId: () => 'imported-id' });
     const envelope: ResumeImportEnvelope = {
-      version: 3,
+      version: 4,
       title: '  前端工程师简历  ',
       profileAlignment: 'center',
       content: createDefaultContent(),
@@ -196,7 +198,7 @@ describe('local resume service', () => {
     await expect(service.copy(first.id)).rejects.toBeInstanceOf(LocalResumeLimitError);
     await expect(
       service.import({
-        version: 3,
+        version: 4,
         title: '额外导入',
         profileAlignment: 'left',
         content: createDefaultContent(),

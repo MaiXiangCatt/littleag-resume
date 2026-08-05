@@ -50,7 +50,7 @@ export function ProfileEditor({
   onDeleteAvatar: () => void;
   profile: ResumeProfile;
 }) {
-  const setField = (key: keyof ResumeProfile, value: string) =>
+  const setField = (key: Exclude<keyof ResumeProfile, 'enabled' | 'links'>, value: string) =>
     onChange({ ...profile, [key]: value });
   return (
     <EditorPanel

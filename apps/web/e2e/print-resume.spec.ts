@@ -35,9 +35,10 @@ test('prints a short resume on a white page without leaking the token into the r
           profileAlignment: 'left',
           templateId: 'modern-editorial',
           exportCount: 0,
-          contentVersion: 3,
+          contentVersion: 4,
           content: {
             profile: {
+              enabled: true,
               fullName: '林清清',
               targetRole: '前端工程师',
               phone: '13800000000',

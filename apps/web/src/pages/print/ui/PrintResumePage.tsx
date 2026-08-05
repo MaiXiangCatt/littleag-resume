@@ -55,6 +55,15 @@ export function PrintResumePage({ resumeId, token }: { resumeId: string; token: 
     };
   }, [state]);
 
+  useEffect(() => {
+    if (state.status !== 'ready') return;
+    const previousTitle = document.title;
+    document.title = state.document.content.profile.enabled ? state.document.title : '简历';
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [state]);
+
   if (state.status !== 'ready') {
     return null;
   }

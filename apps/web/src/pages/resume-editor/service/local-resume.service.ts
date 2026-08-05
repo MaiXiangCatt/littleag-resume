@@ -266,7 +266,7 @@ export function createLocalResumeService(
           title: validateTitle(parsed.title),
           profileAlignment: parsed.profileAlignment,
           content: parsed.content,
-          contentVersion: 3,
+          contentVersion: 4,
           hasAvatar: Boolean(avatar),
         },
         expectedRevision,
@@ -453,7 +453,7 @@ function createDocument(
     hasAvatar: false,
     profileAlignment: 'left',
     exportCount: 0,
-    contentVersion: 3,
+    contentVersion: 4,
     content: createDefaultContent(),
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -477,7 +477,7 @@ function validateDocument(value: unknown): ResumeDocument {
     typeof document.exportCount !== 'number' ||
     !Number.isInteger(document.exportCount) ||
     document.exportCount < 0 ||
-    (contentVersion !== 2 && contentVersion !== 3) ||
+    (contentVersion !== 2 && contentVersion !== 3 && contentVersion !== 4) ||
     !isTimestamp(document.createdAt) ||
     !isTimestamp(document.updatedAt)
   ) {
@@ -499,7 +499,7 @@ function validateDocument(value: unknown): ResumeDocument {
     hasAvatar: document.hasAvatar,
     profileAlignment,
     exportCount: document.exportCount,
-    contentVersion: 3,
+    contentVersion: 4,
     content: parseResumeContent(document.content, contentVersion),
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
