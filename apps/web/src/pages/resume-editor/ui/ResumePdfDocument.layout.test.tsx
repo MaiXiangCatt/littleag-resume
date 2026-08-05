@@ -7,8 +7,12 @@ import type { ResumeDocument } from '../model/resume.types';
 import { ResumePdfDocument } from './ResumePdfDocument';
 
 type PdfElement = ReactElement<{
+  author?: string;
   children?: ReactNode;
+  flushTop?: boolean;
   style?: Record<string, unknown>;
+  subject?: string;
+  title?: string;
 }>;
 
 function childAt(element: PdfElement, index: number): PdfElement {
@@ -18,6 +22,7 @@ function childAt(element: PdfElement, index: number): PdfElement {
 function createClassicResume(): ResumeDocument {
   const content = createDefaultContent();
   content.profile = {
+    enabled: true,
     fullName: '林清清',
     targetRole: '前端开发工程师',
     phone: '13800000000',
@@ -33,7 +38,7 @@ function createClassicResume(): ResumeDocument {
     hasAvatar: true,
     profileAlignment: 'center',
     exportCount: 0,
-    contentVersion: 3,
+    contentVersion: 4,
     content,
     createdAt: '2026-07-29T00:00:00Z',
     updatedAt: '2026-07-29T00:00:00Z',
@@ -86,5 +91,27 @@ describe('ResumePdfDocument classic header layout', () => {
       marginRight: pxToPt(createResumePresentation(resume.content.formatting, 'right').photoGapPx),
     });
     expect(name.props.style).toMatchObject({ textAlign: 'right' });
+  });
+
+  it('uses anonymous metadata and omits the profile header when it is hidden', () => {
+    const resume = createClassicResume();
+    resume.content.profile.enabled = false;
+    const summary = resume.content.sections.find((section) => section.type === 'summary');
+    if (!summary || summary.type !== 'summary') throw new Error('missing summary section');
+    summary.text = '匿名内容';
+
+    const document = ResumePdfDocument({
+      avatar: 'data:image/jpeg;base64,avatar',
+      resume,
+    }) as PdfElement;
+    const page = childAt(document, 0);
+    const firstSection = childAt(page, 0);
+
+    expect(document.props).toMatchObject({
+      author: 'LittleAgResume',
+      subject: '',
+      title: '简历',
+    });
+    expect(firstSection.props.flushTop).toBe(true);
   });
 });

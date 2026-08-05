@@ -10,6 +10,7 @@ export type AccentColor = PresetAccentColor | `#${string}`;
 export type ContactLink = { id: string; label: string; url: string };
 
 export type ResumeProfile = {
+  enabled: boolean;
   fullName: string;
   targetRole: string;
   phone: string;
@@ -101,7 +102,7 @@ export type ResumeFormatting = {
   accentColor: AccentColor;
 };
 
-export type ResumeContentV3 = {
+export type ResumeContentV4 = {
   profile: ResumeProfile;
   sections: ResumeSection[];
   formatting: ResumeFormatting;
@@ -115,17 +116,17 @@ export type ResumeDocument = {
   hasAvatar: boolean;
   profileAlignment: ProfileAlignment;
   exportCount: number;
-  contentVersion: 3;
-  content: ResumeContentV3;
+  contentVersion: 4;
+  content: ResumeContentV4;
   createdAt: string;
   updatedAt: string;
 };
 
 export type ResumeImportEnvelope = {
-  version: 3;
+  version: 4;
   title: string;
   profileAlignment: ProfileAlignment;
-  content: ResumeContentV3;
+  content: ResumeContentV4;
   avatar?: string | null;
 };
 

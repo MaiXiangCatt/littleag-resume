@@ -48,6 +48,7 @@ beforeAll(() => {
 function createResume(profileAlignment: ResumeDocument['profileAlignment']): ResumeDocument {
   const content = createDefaultContent();
   content.profile = {
+    enabled: true,
     fullName: '林清清',
     targetRole: '前端开发工程师',
     phone: '13800000000',
@@ -67,7 +68,7 @@ function createResume(profileAlignment: ResumeDocument['profileAlignment']): Res
     hasAvatar: false,
     profileAlignment,
     exportCount: 0,
-    contentVersion: 3,
+    contentVersion: 4,
     content,
     createdAt: '2026-07-28T00:00:00Z',
     updatedAt: '2026-07-28T00:00:00Z',

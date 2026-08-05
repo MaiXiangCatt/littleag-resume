@@ -12,6 +12,7 @@ const (
 	DefaultProfileAlignment    = "left"
 	ContentVersionV2           = 2
 	ContentVersionV3           = 3
+	ContentVersionV4           = 4
 	MaxResumeContentBytes      = 512 << 10
 	MaxResumeDescriptionRunes  = 20_000
 	maxResumeIDRunes           = 128
@@ -30,7 +31,7 @@ var validProfileAlignments = map[string]struct{}{
 func DefaultResumeContent() map[string]any {
 	return map[string]any{
 		"profile": map[string]any{
-			"fullName": "", "targetRole": "", "phone": "", "email": "", "location": "",
+			"enabled": true, "fullName": "", "targetRole": "", "phone": "", "email": "", "location": "",
 			"links": []any{},
 		},
 		"sections": []any{
@@ -51,11 +52,11 @@ func DefaultResumeContent() map[string]any {
 }
 
 func ValidateResumeContent(content map[string]any) error {
-	return ValidateResumeContentVersion(content, ContentVersionV3)
+	return ValidateResumeContentVersion(content, ContentVersionV4)
 }
 
 func ValidateResumeContentVersion(content map[string]any, version int) error {
-	if version != ContentVersionV2 && version != ContentVersionV3 {
+	if version != ContentVersionV2 && version != ContentVersionV3 && version != ContentVersionV4 {
 		return fmt.Errorf("unsupported content version")
 	}
 	serialized, err := json.Marshal(content)
@@ -66,7 +67,7 @@ func ValidateResumeContentVersion(content map[string]any, version int) error {
 		return fmt.Errorf("content must contain profile, sections and formatting")
 	}
 	profile, ok := content["profile"].(map[string]any)
-	if !ok || !validateProfile(profile) {
+	if !ok || !validateProfile(profile, version) {
 		return fmt.Errorf("invalid profile")
 	}
 	sections, ok := content["sections"].([]any)
@@ -80,8 +81,14 @@ func ValidateResumeContentVersion(content map[string]any, version int) error {
 	return nil
 }
 
-func validateProfile(profile map[string]any) bool {
+func validateProfile(profile map[string]any, version int) bool {
 	allowed := map[string]bool{"fullName": true, "targetRole": true, "phone": true, "email": true, "location": true, "links": true}
+	if version == ContentVersionV4 {
+		allowed["enabled"] = true
+		if _, ok := profile["enabled"].(bool); !ok {
+			return false
+		}
+	}
 	if !onlyAllowed(profile, allowed) {
 		return false
 	}
@@ -113,7 +120,7 @@ func validateFormatting(formatting map[string]any, version int) bool {
 		"bodyFontSizePx": true, "lineHeightRatio": true, "pageMarginPx": true,
 		"sectionGapPx": true, "fontFamily": true, "accentColor": true,
 	}
-	if version == ContentVersionV3 {
+	if version >= ContentVersionV3 {
 		allowed["entryGapPx"] = true
 	}
 	if !onlyAllowed(formatting, allowed) ||
@@ -127,7 +134,7 @@ func validateFormatting(formatting map[string]any, version int) bool {
 		!validAccentColor(formatting["accentColor"]) {
 		return false
 	}
-	if version == ContentVersionV3 && !integerBetween(formatting["entryGapPx"], 0, 64) {
+	if version >= ContentVersionV3 && !integerBetween(formatting["entryGapPx"], 0, 64) {
 		return false
 	}
 	margins, ok := formatting["pageMarginPx"].(map[string]any)
@@ -187,7 +194,7 @@ func validateSections(sections []any, version int) bool {
 		}
 		ids[id] = true
 		optionalSpacing := []string(nil)
-		if version == ContentVersionV3 {
+		if version >= ContentVersionV3 {
 			optionalSpacing = []string{"spacingBeforePx"}
 			if !optionalIntegerBetween(section, "spacingBeforePx", 0, 64) {
 				return false
@@ -229,14 +236,14 @@ func validateSections(sections []any, version int) bool {
 func validateItemSection(section map[string]any, typeName string, version int) bool {
 	items, ok := section["items"].([]any)
 	optionalSectionFields := []string(nil)
-	if version == ContentVersionV3 {
+	if version >= ContentVersionV3 {
 		optionalSectionFields = []string{"spacingBeforePx"}
 	}
 	if !ok || len(items) > 100 || !stringFields(section, []string{"id", "type", "title"}, []string{"enabled", "items"}, optionalSectionFields) {
 		return false
 	}
 	allowed := map[string]bool{"id": true}
-	if version == ContentVersionV3 {
+	if version >= ContentVersionV3 {
 		allowed["spacingBeforePx"] = true
 	}
 	switch typeName {
@@ -267,7 +274,7 @@ func validateItemSection(section map[string]any, typeName string, version int) b
 		if id, ok := item["id"].(string); !ok || id == "" || utf8.RuneCountInString(id) > maxResumeIDRunes {
 			return false
 		}
-		if version == ContentVersionV3 && !optionalIntegerBetween(item, "spacingBeforePx", 0, 64) {
+		if version >= ContentVersionV3 && !optionalIntegerBetween(item, "spacingBeforePx", 0, 64) {
 			return false
 		}
 		for key, value := range item {
@@ -357,7 +364,29 @@ func MigrateResumeContentV2(content map[string]any) (map[string]any, error) {
 	}
 	formatting := migrated["formatting"].(map[string]any)
 	formatting["entryGapPx"] = formatting["bodyFontSizePx"]
-	if err := ValidateResumeContentVersion(migrated, ContentVersionV3); err != nil {
+	profile := migrated["profile"].(map[string]any)
+	profile["enabled"] = true
+	if err := ValidateResumeContentVersion(migrated, ContentVersionV4); err != nil {
+		return nil, err
+	}
+	return migrated, nil
+}
+
+func MigrateResumeContentV3(content map[string]any) (map[string]any, error) {
+	if err := ValidateResumeContentVersion(content, ContentVersionV3); err != nil {
+		return nil, err
+	}
+	serialized, err := json.Marshal(content)
+	if err != nil {
+		return nil, err
+	}
+	migrated := map[string]any{}
+	if err := json.Unmarshal(serialized, &migrated); err != nil {
+		return nil, err
+	}
+	profile := migrated["profile"].(map[string]any)
+	profile["enabled"] = true
+	if err := ValidateResumeContentVersion(migrated, ContentVersionV4); err != nil {
 		return nil, err
 	}
 	return migrated, nil

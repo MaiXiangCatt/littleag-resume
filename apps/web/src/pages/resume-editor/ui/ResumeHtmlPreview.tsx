@@ -8,6 +8,7 @@ import { RESUME_FONT_FAMILIES, resolveAccentColor } from '../model/resume.model'
 import {
   getEntryDisplay,
   itemHasPrintableContent,
+  profileHasPrintableContent,
   sectionHasPrintableContent,
 } from '../model/resume.preview';
 import { createResumePresentation, formatTargetRole } from '../model/resume.presentation';
@@ -29,11 +30,14 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   const formatting = resume.content.formatting;
   const profile = resume.content.profile;
   const profileAlignment = resume.profileAlignment;
+  const visibleAvatar = profile.enabled ? avatar : null;
   const accent = resolveAccentColor(formatting.accentColor);
   const presentation = createResumePresentation(formatting, profileAlignment);
-  const hasCenteredAvatar = profileAlignment === 'center' && Boolean(avatar);
-  const hasSideAvatar = Boolean(avatar) && !hasCenteredAvatar;
+  const hasCenteredAvatar = profileAlignment === 'center' && Boolean(visibleAvatar);
+  const hasSideAvatar = Boolean(visibleAvatar) && !hasCenteredAvatar;
   const avatarOnLeft = profileAlignment === 'right' && hasSideAvatar;
+  const hasPrintableProfile = profileHasPrintableContent(profile, Boolean(visibleAvatar));
+  const printableSections = resume.content.sections.filter(sectionHasPrintableContent);
   const style = {
     '--resume-accent': accent,
     ...(isPrint ? {} : { containerType: 'inline-size' }),
@@ -71,17 +75,13 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
               }
         }
       >
-        {profile.fullName ||
-        profile.targetRole ||
-        contacts.length ||
-        profile.links.length ||
-        avatar ? (
+        {hasPrintableProfile ? (
           <header
             className={cn(
               'flex',
               hasCenteredAvatar && 'relative flex-col',
               hasSideAvatar && 'flex-row items-start justify-between',
-              !avatar && 'flex-col',
+              !visibleAvatar && 'flex-col',
             )}
             style={{
               minHeight: hasCenteredAvatar
@@ -90,11 +90,11 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
               paddingBottom: presentation.headerPaddingBottomPx,
             }}
           >
-            {avatar && avatarOnLeft ? (
+            {visibleAvatar && avatarOnLeft ? (
               <img
                 alt=""
                 className="shrink-0 object-contain"
-                src={avatar}
+                src={visibleAvatar}
                 style={{
                   height: presentation.photoHeightPx,
                   marginRight: presentation.photoGapPx,
@@ -167,14 +167,14 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
                 </div>
               ) : null}
             </div>
-            {avatar && !avatarOnLeft ? (
+            {visibleAvatar && !avatarOnLeft ? (
               <img
                 alt=""
                 className={cn(
                   'shrink-0 object-contain',
                   hasCenteredAvatar && 'absolute right-0 top-0',
                 )}
-                src={avatar}
+                src={visibleAvatar}
                 style={{
                   height: presentation.photoHeightPx,
                   marginLeft: hasCenteredAvatar ? undefined : presentation.photoGapPx,
@@ -185,8 +185,9 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
           </header>
         ) : null}
 
-        {resume.content.sections.filter(sectionHasPrintableContent).map((section) => (
+        {printableSections.map((section, index) => (
           <HtmlSection
+            flushTop={!hasPrintableProfile && index === 0}
             key={section.id}
             section={section}
             formatting={formatting}
@@ -199,10 +200,12 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
 });
 
 function HtmlSection({
+  flushTop,
   section,
   formatting,
   presentation,
 }: {
+  flushTop: boolean;
   section: ResumeSection;
   formatting: ResumeFormatting;
   presentation: ReturnType<typeof createResumePresentation>;
@@ -210,7 +213,9 @@ function HtmlSection({
   return (
     <section
       className="break-inside-avoid"
-      style={{ marginTop: section.spacingBeforePx ?? formatting.sectionGapPx }}
+      style={{
+        marginTop: flushTop ? 0 : (section.spacingBeforePx ?? formatting.sectionGapPx),
+      }}
     >
       <h2
         className="border-b font-bold tracking-[0.04em] text-[var(--resume-accent)]"

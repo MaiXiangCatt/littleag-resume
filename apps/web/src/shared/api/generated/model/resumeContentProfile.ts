@@ -6,4 +6,8 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ResumeContentProfile = { [key: string]: unknown };
+export type ResumeContentProfile = {
+  /** Required by content version 4. Controls whether the profile header is previewed and printed. */
+  enabled?: boolean;
+  [key: string]: unknown;
+ };

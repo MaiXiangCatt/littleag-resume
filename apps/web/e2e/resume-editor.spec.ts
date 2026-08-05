@@ -6,7 +6,15 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   const resumeId = '00000000-0000-0000-0000-000000000101';
   let revision = 1;
   let content = {
-    profile: { fullName: '', targetRole: '', phone: '', email: '', location: '', links: [] },
+    profile: {
+      enabled: true,
+      fullName: '',
+      targetRole: '',
+      phone: '',
+      email: '',
+      location: '',
+      links: [],
+    },
     sections: [
       { id: 'summary', type: 'summary', title: '个人简介', enabled: true, text: '' },
       {
@@ -66,7 +74,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     hasAvatar: true,
     profileAlignment,
     exportCount: 0,
-    contentVersion: 3,
+    contentVersion: 4,
     content,
     createdAt: '2026-07-22T00:00:00Z',
     updatedAt: '2026-07-22T00:00:00Z',
@@ -127,6 +135,13 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   await expect.poll(() => revision, { timeout: 5000 }).toBeGreaterThan(1);
   await expect(page.getByText('已保存', { exact: true })).toBeVisible();
 
+  await page.getByRole('button', { name: '隐藏 基本信息' }).click();
+  await expect(page.getByText('“基本信息”当前已隐藏')).toBeVisible();
+  await expect(preview.getByRole('heading', { name: '林清清' })).toHaveCount(0);
+  await expect.poll(() => content.profile.enabled, { timeout: 5000 }).toBe(false);
+  await page.getByRole('button', { name: '恢复显示' }).click();
+  await expect(preview.getByRole('heading', { name: '林清清' })).toBeVisible();
+
   await page.getByRole('button', { name: '添加板块' }).click();
   await page.getByLabel('自定义板块').fill('志愿经历');
   await page.getByRole('button', { name: '创建' }).click();
@@ -144,6 +159,11 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     .toBe(true);
 
   await page.getByRole('button', { name: '工作经历', exact: true }).click();
+  await page.getByRole('button', { name: '隐藏 工作经历' }).click();
+  await expect(preview.getByRole('heading', { name: '工作经历' })).toHaveCount(0);
+  await expect(page.getByText('“工作经历”当前已隐藏')).toBeVisible();
+  await page.getByRole('button', { name: '恢复显示' }).click();
+  await expect(preview.getByRole('heading', { name: '工作经历' })).toBeVisible();
   await page.getByRole('spinbutton', { name: '与上一条记录间距' }).fill('12');
   await page.getByRole('spinbutton', { name: '与上一条记录间距' }).blur();
   await expect

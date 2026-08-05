@@ -86,7 +86,7 @@ func (s *ResumeService) Create(ctx context.Context, userID uuid.UUID, title stri
 		Title:          validatedTitle,
 		Status:         model.ResumeStatusDraft,
 		TemplateID:     &profileAlignment,
-		ContentVersion: ContentVersionV3,
+		ContentVersion: ContentVersionV4,
 		ContentJSON:    model.JSONDocument(contentJSON),
 		Revision:       1,
 		CreatedAt:      now,
@@ -122,7 +122,7 @@ func (s *ResumeService) Import(ctx context.Context, userID uuid.UUID, input Impo
 		Title:          validatedTitle,
 		Status:         model.ResumeStatusDraft,
 		TemplateID:     &profileAlignment,
-		ContentVersion: ContentVersionV3,
+		ContentVersion: ContentVersionV4,
 		ContentJSON:    model.JSONDocument(contentJSON),
 		Revision:       1,
 		CreatedAt:      now,
@@ -186,7 +186,9 @@ func (s *ResumeService) Update(ctx context.Context, userID, resumeID uuid.UUID, 
 	if err != nil {
 		return nil, err
 	}
-	if resume.ContentVersion != ContentVersionV2 && resume.ContentVersion != ContentVersionV3 {
+	if resume.ContentVersion != ContentVersionV2 &&
+		resume.ContentVersion != ContentVersionV3 &&
+		resume.ContentVersion != ContentVersionV4 {
 		return nil, model.ErrResumeInvalidSchema
 	}
 	if input.Title != nil {
@@ -222,13 +224,13 @@ func (s *ResumeService) Update(ctx context.Context, userID, resumeID uuid.UUID, 
 			return nil, model.ErrResumeInvalidSchema
 		}
 		resume.ContentJSON = model.JSONDocument(content)
-		resume.ContentVersion = ContentVersionV3
-	} else if resume.ContentVersion == ContentVersionV2 {
+		resume.ContentVersion = ContentVersionV4
+	} else if resume.ContentVersion != ContentVersionV4 {
 		storedContent, decodeErr := resumeContentMap(resume)
 		if decodeErr != nil {
 			return nil, model.ErrResumeInvalidSchema
 		}
-		migratedContent, migrateErr := MigrateResumeContentV2(storedContent)
+		migratedContent, migrateErr := normalizeContentForWrite(storedContent, resume.ContentVersion)
 		if migrateErr != nil {
 			return nil, model.ErrResumeInvalidSchema
 		}
@@ -237,7 +239,7 @@ func (s *ResumeService) Update(ctx context.Context, userID, resumeID uuid.UUID, 
 			return nil, model.ErrResumeInvalidSchema
 		}
 		resume.ContentJSON = model.JSONDocument(content)
-		resume.ContentVersion = ContentVersionV3
+		resume.ContentVersion = ContentVersionV4
 	}
 	if resume.TemplateID == nil || !ValidProfileAlignment(*resume.TemplateID) {
 		profileAlignment, normalizeErr := NormalizeProfileAlignment(nil, resume.TemplateID)
@@ -286,7 +288,7 @@ func (s *ResumeService) Copy(ctx context.Context, userID, resumeID uuid.UUID) (*
 		Title:          copyTitle(source.Title),
 		Status:         model.ResumeStatusDraft,
 		TemplateID:     &profileAlignment,
-		ContentVersion: ContentVersionV3,
+		ContentVersion: ContentVersionV4,
 		ContentJSON:    model.JSONDocument(contentJSON),
 		Revision:       1,
 		CreatedAt:      now,
@@ -410,7 +412,9 @@ func normalizeContentForWrite(content map[string]any, version int) (map[string]a
 	case ContentVersionV2:
 		return MigrateResumeContentV2(content)
 	case ContentVersionV3:
-		if err := ValidateResumeContentVersion(content, ContentVersionV3); err != nil {
+		return MigrateResumeContentV3(content)
+	case ContentVersionV4:
+		if err := ValidateResumeContentVersion(content, ContentVersionV4); err != nil {
 			return nil, err
 		}
 		return content, nil

@@ -1,13 +1,19 @@
 import type { ResumeContent } from '@/shared/api/generated/model/resumeContent';
 
-import { importEnvelopeSchema, resumeContentSchema, resumeContentV2Schema } from './resume.schema';
+import { resumeHasPrintableContent } from './resume.preview';
+import {
+  importEnvelopeSchema,
+  resumeContentSchema,
+  resumeContentV2Schema,
+  resumeContentV3Schema,
+} from './resume.schema';
 import type {
   AccentColor,
   CustomItem,
   LegacyTemplateId,
   PresetAccentColor,
   ProfileAlignment,
-  ResumeContentV3,
+  ResumeContentV4,
   ResumeFontFamily,
   ResumeFormatting,
   ResumeImportEnvelope,
@@ -68,9 +74,17 @@ export function createDefaultFormatting(): ResumeFormatting {
   };
 }
 
-export function createDefaultContent(): ResumeContentV3 {
+export function createDefaultContent(): ResumeContentV4 {
   return {
-    profile: { fullName: '', targetRole: '', phone: '', email: '', location: '', links: [] },
+    profile: {
+      enabled: true,
+      fullName: '',
+      targetRole: '',
+      phone: '',
+      email: '',
+      location: '',
+      links: [],
+    },
     sections: [
       { id: 'summary', type: 'summary', title: '个人简介', enabled: true, text: '' },
       { id: 'work', type: 'work', title: '工作经历', enabled: true, items: [] },
@@ -85,31 +99,46 @@ export function createDefaultContent(): ResumeContentV3 {
 
 export function parseResumeContent(
   value: ResumeContent | unknown,
-  version: 2 | 3 = 3,
-): ResumeContentV3 {
-  if (version === 3) return resumeContentSchema.parse(value) as ResumeContentV3;
+  version: 2 | 3 | 4 = 4,
+): ResumeContentV4 {
+  if (version === 4) return resumeContentSchema.parse(value) as ResumeContentV4;
+  if (version === 3) {
+    const content = resumeContentV3Schema.parse(value) as {
+      profile: Omit<ResumeContentV4['profile'], 'enabled'>;
+      sections: ResumeContentV4['sections'];
+      formatting: ResumeFormatting;
+    };
+    return resumeContentSchema.parse({
+      ...content,
+      profile: { ...content.profile, enabled: true },
+    }) as ResumeContentV4;
+  }
   const content = resumeContentV2Schema.parse(value) as {
-    profile: ResumeContentV3['profile'];
-    sections: ResumeContentV3['sections'];
+    profile: Omit<ResumeContentV4['profile'], 'enabled'>;
+    sections: ResumeContentV4['sections'];
     formatting: Omit<ResumeFormatting, 'entryGapPx'>;
   };
   return resumeContentSchema.parse({
     ...content,
+    profile: { ...content.profile, enabled: true },
     formatting: {
       ...content.formatting,
       entryGapPx: content.formatting.bodyFontSizePx,
     },
-  }) as ResumeContentV3;
+  }) as ResumeContentV4;
 }
 
 export function parseImportEnvelope(value: unknown): ResumeImportEnvelope {
   const envelope = importEnvelopeSchema.parse(value);
-  if (envelope.version === 3) return envelope as ResumeImportEnvelope;
+  if (envelope.version === 4) return envelope as ResumeImportEnvelope;
   return {
-    version: 3,
+    version: 4,
     title: envelope.title,
-    profileAlignment: normalizeProfileAlignment(envelope.templateId),
-    content: parseResumeContent(envelope.content, 2),
+    profileAlignment:
+      envelope.version === 2
+        ? normalizeProfileAlignment(envelope.templateId)
+        : envelope.profileAlignment,
+    content: parseResumeContent(envelope.content, envelope.version),
     avatar: envelope.avatar,
   };
 }
@@ -191,6 +220,9 @@ export function moveById<T extends { id: string }>(items: T[], activeId: string,
   return next;
 }
 
-export function completionIssues(content: ResumeContentV3) {
-  return content.profile.fullName.trim() ? [] : ['请填写姓名'];
+export function completionIssues(content: ResumeContentV4, hasAvatar = false) {
+  const issues: string[] = [];
+  if (content.profile.enabled && !content.profile.fullName.trim()) issues.push('请填写姓名');
+  if (!resumeHasPrintableContent(content, hasAvatar)) issues.push('请至少显示一项有内容的模块');
+  return issues;
 }

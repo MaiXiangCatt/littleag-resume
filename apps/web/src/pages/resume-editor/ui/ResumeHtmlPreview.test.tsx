@@ -9,6 +9,7 @@ import { ResumeHtmlPreview } from './ResumeHtmlPreview';
 function createResume(): ResumeDocument {
   const content = createDefaultContent();
   content.profile = {
+    enabled: true,
     fullName: '林清清',
     targetRole: '前端开发工程师',
     phone: '',
@@ -67,7 +68,7 @@ function createResume(): ResumeDocument {
     hasAvatar: false,
     profileAlignment: 'left',
     exportCount: 0,
-    contentVersion: 3,
+    contentVersion: 4,
     content,
     createdAt: '2026-07-22T00:00:00Z',
     updatedAt: '2026-07-22T00:00:00Z',
@@ -147,6 +148,30 @@ describe('ResumeHtmlPreview', () => {
       'center',
     );
     expect(screen.getByRole('heading', { name: '林清清' })).toBeVisible();
+  });
+
+  it('omits a hidden profile, avatar and section without leaving a leading gap', () => {
+    const resume = createResume();
+    resume.content.profile.enabled = false;
+    const work = resume.content.sections.find((section) => section.type === 'work');
+    if (!work) throw new Error('missing work section');
+    work.enabled = false;
+
+    const { container } = render(
+      <ResumeHtmlPreview
+        avatar="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q=="
+        resume={resume}
+      />,
+    );
+
+    expect(screen.queryByRole('heading', { name: '林清清' })).not.toBeInTheDocument();
+    expect(screen.queryByText('qingqing@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '工作经历' })).not.toBeInTheDocument();
+    expect(container.querySelector('header')).not.toBeInTheDocument();
+    expect(container.querySelector('img')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '个人简介' }).parentElement).toHaveStyle({
+      marginTop: '0px',
+    });
   });
 
   it('uses a rectangular one-inch photo without a header divider', () => {

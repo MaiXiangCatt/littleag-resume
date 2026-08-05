@@ -12,7 +12,7 @@ const document: ResumeDocument = {
   hasAvatar: false,
   profileAlignment: 'left',
   exportCount: 0,
-  contentVersion: 3,
+  contentVersion: 4,
   content: createDefaultContent(),
   createdAt: '2026-07-22T00:00:00Z',
   updatedAt: '2026-07-22T00:00:00Z',

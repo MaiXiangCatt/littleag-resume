@@ -4,6 +4,7 @@ import { RESUME_FONT_FAMILIES, resolveAccentColor } from '../model/resume.model'
 import {
   getEntryDisplay,
   itemHasPrintableContent,
+  profileHasPrintableContent,
   sectionHasPrintableContent,
 } from '../model/resume.preview';
 import { createResumePresentation, formatTargetRole, pxToPt } from '../model/resume.presentation';
@@ -37,12 +38,14 @@ export function ResumePdfDocument({
   resume: ResumeDocument;
 }) {
   const accent = resolveAccentColor(resume.content.formatting.accentColor);
+  const profile = resume.content.profile;
+  const visibleAvatar = profile.enabled ? avatar : null;
   const profileAlignment = resume.profileAlignment;
   const formatting = resume.content.formatting;
   const base = pxToPt(formatting.bodyFontSizePx);
   const presentation = createResumePresentation(formatting, profileAlignment);
-  const hasCenteredAvatar = profileAlignment === 'center' && Boolean(avatar);
-  const hasSideAvatar = Boolean(avatar) && !hasCenteredAvatar;
+  const hasCenteredAvatar = profileAlignment === 'center' && Boolean(visibleAvatar);
+  const hasSideAvatar = Boolean(visibleAvatar) && !hasCenteredAvatar;
   const avatarOnLeft = profileAlignment === 'right' && hasSideAvatar;
   const avatarLayout = createAvatarLayout(
     hasCenteredAvatar,
@@ -131,23 +134,22 @@ export function ResumePdfDocument({
     link: { color: presentation.bodyColor, textDecoration: 'none' },
   });
 
-  const profile = resume.content.profile;
   const contacts = [profile.phone, profile.email, profile.location].filter(Boolean);
+  const hasPrintableProfile = profileHasPrintableContent(profile, Boolean(visibleAvatar));
+  const printableSections = resume.content.sections.filter(sectionHasPrintableContent);
 
   return (
     <Document
-      author={profile.fullName || 'LittleAgResume'}
-      subject={profile.targetRole}
-      title={resume.title}
+      author={profile.enabled ? profile.fullName || 'LittleAgResume' : 'LittleAgResume'}
+      subject={profile.enabled ? profile.targetRole : ''}
+      title={profile.enabled ? resume.title : '简历'}
     >
       <Page size="A4" style={styles.page} wrap>
-        {profile.fullName ||
-        profile.targetRole ||
-        contacts.length ||
-        profile.links.length ||
-        avatar ? (
+        {hasPrintableProfile ? (
           <View style={styles.header}>
-            {avatar && avatarOnLeft ? <Image src={avatar} style={styles.avatar} /> : null}
+            {visibleAvatar && avatarOnLeft ? (
+              <Image src={visibleAvatar} style={styles.avatar} />
+            ) : null}
             <View style={styles.identity}>
               {profile.fullName ? <Text style={styles.name}>{profile.fullName}</Text> : null}
               {profile.targetRole ? (
@@ -168,12 +170,15 @@ export function ResumePdfDocument({
                 </View>
               ) : null}
             </View>
-            {avatar && !avatarOnLeft ? <Image src={avatar} style={styles.avatar} /> : null}
+            {visibleAvatar && !avatarOnLeft ? (
+              <Image src={visibleAvatar} style={styles.avatar} />
+            ) : null}
           </View>
         ) : null}
-        {resume.content.sections.filter(sectionHasPrintableContent).map((section) => (
+        {printableSections.map((section, index) => (
           <PdfSection
             accent={accent}
+            flushTop={!hasPrintableProfile && index === 0}
             formatting={formatting}
             key={section.id}
             section={section}
@@ -208,11 +213,13 @@ function createAvatarLayout(hasCenteredAvatar: boolean, avatarOnLeft: boolean, g
 
 function PdfSection({
   accent,
+  flushTop,
   formatting,
   section,
   styles,
 }: {
   accent: string;
+  flushTop: boolean;
   formatting: ResumeFormatting;
   section: ResumeSection;
   styles: ReturnType<typeof StyleSheet.create>;
@@ -224,7 +231,9 @@ function PdfSection({
       <View
         style={[
           styles.section,
-          { marginTop: pxToPt(section.spacingBeforePx ?? formatting.sectionGapPx) },
+          {
+            marginTop: flushTop ? 0 : pxToPt(section.spacingBeforePx ?? formatting.sectionGapPx),
+          },
         ]}
         minPresenceAhead={40}
       >
@@ -243,7 +252,9 @@ function PdfSection({
     <View
       style={[
         styles.section,
-        { marginTop: pxToPt(section.spacingBeforePx ?? formatting.sectionGapPx) },
+        {
+          marginTop: flushTop ? 0 : pxToPt(section.spacingBeforePx ?? formatting.sectionGapPx),
+        },
       ]}
       minPresenceAhead={55}
     >

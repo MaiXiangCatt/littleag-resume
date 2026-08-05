@@ -1,4 +1,4 @@
-import type { ResumeSection, SectionType } from './resume.types';
+import type { ResumeContentV4, ResumeProfile, ResumeSection, SectionType } from './resume.types';
 
 export type ResumeEntryDisplay = {
   date: string;
@@ -7,10 +7,38 @@ export type ResumeEntryDisplay = {
 };
 
 export function sectionHasPrintableContent(section: ResumeSection): boolean {
-  if (!section.enabled) return false;
+  return section.enabled && sectionHasContent(section);
+}
+
+export function sectionHasContent(section: ResumeSection): boolean {
   if (section.type === 'summary') return Boolean(section.text.trim());
   if (section.type === 'skills') return Boolean(section.description.trim());
   return section.items.some(itemHasPrintableContent);
+}
+
+export function profileHasContent(profile: ResumeProfile, hasAvatar = false): boolean {
+  return (
+    hasAvatar ||
+    Boolean(
+      profile.fullName.trim() ||
+      profile.targetRole.trim() ||
+      profile.phone.trim() ||
+      profile.email.trim() ||
+      profile.location.trim() ||
+      profile.links.some((link) => link.label.trim() && link.url.trim()),
+    )
+  );
+}
+
+export function profileHasPrintableContent(profile: ResumeProfile, hasAvatar = false): boolean {
+  return profile.enabled && profileHasContent(profile, hasAvatar);
+}
+
+export function resumeHasPrintableContent(content: ResumeContentV4, hasAvatar = false): boolean {
+  return (
+    profileHasPrintableContent(content.profile, hasAvatar) ||
+    content.sections.some(sectionHasPrintableContent)
+  );
 }
 
 export function itemHasPrintableContent(item: { id: string }): boolean {

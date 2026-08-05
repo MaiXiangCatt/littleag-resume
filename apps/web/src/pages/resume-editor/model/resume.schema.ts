@@ -129,7 +129,7 @@ function createSectionSchema(
   ]);
 }
 
-const profileSchema = z
+const profileV3Schema = z
   .object({
     fullName: text,
     targetRole: text,
@@ -139,6 +139,8 @@ const profileSchema = z
     links: z.array(z.object({ id, label: text, url: text }).strict()).max(20),
   })
   .strict();
+
+const profileSchema = profileV3Schema.extend({ enabled: z.boolean() }).strict();
 
 const pageMarginSchema = z
   .object({
@@ -170,12 +172,13 @@ const baseFormatting = {
 };
 
 function createContentSchema(
+  profile: z.ZodType,
   sections: ReturnType<typeof createSectionSchema>,
   formatting: z.ZodType,
 ) {
   return z
     .object({
-      profile: profileSchema,
+      profile,
       sections: z.array(sections).max(64),
       formatting,
     })
@@ -196,11 +199,19 @@ function createContentSchema(
 }
 
 export const resumeContentV2Schema = createContentSchema(
+  profileV3Schema,
   createSectionSchema(baseSectionV2, baseItemV2),
   z.object(baseFormatting).strict(),
 );
 
+export const resumeContentV3Schema = createContentSchema(
+  profileV3Schema,
+  createSectionSchema(baseSectionV3, baseItemV3),
+  z.object({ ...baseFormatting, entryGapPx: integerBetween(0, 64) }).strict(),
+);
+
 export const resumeContentSchema = createContentSchema(
+  profileSchema,
   createSectionSchema(baseSectionV3, baseItemV3),
   z.object({ ...baseFormatting, entryGapPx: integerBetween(0, 64) }).strict(),
 );
@@ -220,6 +231,15 @@ export const importEnvelopeSchema = z.union([
   z
     .object({
       version: z.literal(3),
+      title: z.string().trim().min(1).max(80),
+      profileAlignment: z.enum(['left', 'center', 'right']),
+      avatar,
+      content: resumeContentV3Schema,
+    })
+    .strict(),
+  z
+    .object({
+      version: z.literal(4),
       title: z.string().trim().min(1).max(80),
       profileAlignment: z.enum(['left', 'center', 'right']),
       avatar,

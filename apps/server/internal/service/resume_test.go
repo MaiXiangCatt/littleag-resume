@@ -37,8 +37,8 @@ func TestResumeServiceLifecycleAndOwnership(t *testing.T) {
 	if created.Title != "产品经理简历" || created.Status != model.ResumeStatusDraft {
 		t.Fatalf("unexpected created resume: %+v", created)
 	}
-	if created.ContentVersion != 3 || created.TemplateID == nil || *created.TemplateID != "left" {
-		t.Fatalf("new resumes must use v3 left alignment, got %+v", created)
+	if created.ContentVersion != 4 || created.TemplateID == nil || *created.TemplateID != "left" {
+		t.Fatalf("new resumes must use v4 left alignment, got %+v", created)
 	}
 	if _, err := resumes.Get(ctx, otherUserID, created.ID); !errors.Is(err, model.ErrResumeNotFound) {
 		t.Fatalf("cross-user read must look missing, got %v", err)
@@ -168,16 +168,17 @@ func TestResumeServiceImportsAndMigratesVersionedContent(t *testing.T) {
 	userID := uuid.New()
 
 	imported, err := resumes.Import(context.Background(), userID, service.ImportResumeInput{
-		Version: 3, Title: "导入简历", Content: service.DefaultResumeContent(),
+		Version: 4, Title: "导入简历", Content: service.DefaultResumeContent(),
 	})
 	if err != nil {
 		t.Fatalf("import resume: %v", err)
 	}
-	if imported.ContentVersion != 3 || string(imported.ContentJSON) == "{}" {
+	if imported.ContentVersion != 4 || string(imported.ContentJSON) == "{}" {
 		t.Fatalf("opaque content was not preserved: %+v", imported)
 	}
 
 	v2 := service.DefaultResumeContent()
+	delete(v2["profile"].(map[string]any), "enabled")
 	delete(v2["formatting"].(map[string]any), "entryGapPx")
 	classic := "classic-professional"
 	migrated, err := resumes.Import(context.Background(), userID, service.ImportResumeInput{
@@ -186,8 +187,8 @@ func TestResumeServiceImportsAndMigratesVersionedContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("import v2 resume: %v", err)
 	}
-	if migrated.ContentVersion != 3 || migrated.TemplateID == nil || *migrated.TemplateID != "center" {
-		t.Fatalf("v2 import should persist canonical v3: %+v", migrated)
+	if migrated.ContentVersion != 4 || migrated.TemplateID == nil || *migrated.TemplateID != "center" {
+		t.Fatalf("v2 import should persist canonical v4: %+v", migrated)
 	}
 	var migratedContent map[string]any
 	if err := json.Unmarshal(migrated.ContentJSON, &migratedContent); err != nil {
@@ -207,6 +208,7 @@ func TestResumeServiceReadsV2LazilyAndUpgradesOnCopy(t *testing.T) {
 	resumes := service.NewResumeService(service.ResumeServiceConfig{Resumes: store})
 	userID := uuid.New()
 	v2 := service.DefaultResumeContent()
+	delete(v2["profile"].(map[string]any), "enabled")
 	delete(v2["formatting"].(map[string]any), "entryGapPx")
 	raw, err := json.Marshal(v2)
 	if err != nil {
@@ -229,8 +231,8 @@ func TestResumeServiceReadsV2LazilyAndUpgradesOnCopy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("copy v2 resume: %v", err)
 	}
-	if copied.ContentVersion != 3 || copied.TemplateID == nil || *copied.TemplateID != "center" {
-		t.Fatalf("copy should persist canonical v3: %+v", copied)
+	if copied.ContentVersion != 4 || copied.TemplateID == nil || *copied.TemplateID != "center" {
+		t.Fatalf("copy should persist canonical v4: %+v", copied)
 	}
 }
 

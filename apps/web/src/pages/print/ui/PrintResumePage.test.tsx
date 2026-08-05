@@ -24,7 +24,7 @@ function createResume(): ResumeDocument {
     hasAvatar: false,
     profileAlignment: 'left',
     exportCount: 0,
-    contentVersion: 3,
+    contentVersion: 4,
     content,
     createdAt: '2026-07-22T00:00:00Z',
     updatedAt: '2026-07-22T00:00:00Z',
@@ -66,5 +66,21 @@ describe('PrintResumePage', () => {
       expect(document.body.dataset.printError).toBe('token 无效');
     });
     expect(document.body.dataset.printReady).toBeUndefined();
+  });
+
+  it('uses a generic document title when the profile is hidden', async () => {
+    const resume = createResume();
+    resume.content.profile.enabled = false;
+    getPrintData.mockResolvedValue({ document: resume, avatar: null });
+
+    const view = render(<PrintResumePage resumeId="resume-1" token="token-1" />);
+
+    await waitFor(() => {
+      expect(document.body.dataset.printReady).toBe('true');
+    });
+    expect(document.title).toBe('简历');
+
+    view.unmount();
+    expect(document.title).not.toBe('简历');
   });
 });
