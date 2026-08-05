@@ -22,6 +22,24 @@ type GormStore struct {
 	db *gorm.DB
 }
 
+const analyticsEventInstallationConstraint = `
+DO $$
+BEGIN
+	IF NOT EXISTS (
+		SELECT 1
+		FROM pg_constraint
+		WHERE conname = 'analytics_events_visitor_hash_fkey'
+			AND conrelid = 'analytics_events'::regclass
+	) THEN
+		ALTER TABLE analytics_events
+			ADD CONSTRAINT analytics_events_visitor_hash_fkey
+			FOREIGN KEY (visitor_hash)
+			REFERENCES analytics_installations(visitor_hash)
+			ON DELETE CASCADE;
+	END IF;
+END
+$$`
+
 func OpenPostgres(databaseURL string) (*gorm.DB, error) {
 	return gorm.Open(postgres.Open(databaseURL), &gorm.Config{
 		Logger: logger.New(
@@ -61,6 +79,11 @@ func Migrate(ctx context.Context, db *gorm.DB) error {
 		if err := gdb.Exec(
 			`UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL`,
 		).Error; err != nil {
+			return err
+		}
+	}
+	if gdb.Dialector.Name() == "postgres" {
+		if err := gdb.Exec(analyticsEventInstallationConstraint).Error; err != nil {
 			return err
 		}
 	}
